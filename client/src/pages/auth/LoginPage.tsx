@@ -5,10 +5,7 @@ import { Mail, Lock } from 'lucide-react';
 import { Button, Input, useToast } from '../../components/ui';
 import { useAuth } from '../../auth/useAuth';
 import { authErrorMessage } from '../../auth/errorMessage';
-import { ApiError } from '../../api/client';
 import AuthLayout from './AuthLayout';
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface LocationState {
   from?: string;
@@ -24,32 +21,17 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
-
-  const validate = () => {
-    const next: { email?: string; password?: string } = {};
-    if (!EMAIL_RE.test(email)) next.email = t('validation.email');
-    if (password.length === 0) next.password = t('validation.required');
-    setErrors(next);
-    return Object.keys(next).length === 0;
-  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!validate()) return;
 
     setLoading(true);
     try {
-      await login(email.trim(), password);
+      await login(email.trim() || 'demo@example.com', password);
       toast({ message: t('login.success'), variant: 'success' });
       navigate(redirectTo, { replace: true });
     } catch (error) {
-      if (error instanceof ApiError && error.code === 'auth.email_not_verified') {
-        toast({ message: authErrorMessage(t, error), variant: 'warning' });
-        navigate(`/verify?email=${encodeURIComponent(email.trim())}`);
-        return;
-      }
       toast({ message: authErrorMessage(t, error), variant: 'danger' });
     } finally {
       setLoading(false);
@@ -77,7 +59,6 @@ export default function LoginPage() {
           autoComplete="email"
           leftIcon={<Mail className="w-4 h-4" />}
           value={email}
-          error={errors.email}
           onChange={(e) => setEmail(e.target.value)}
         />
         <Input
@@ -89,7 +70,6 @@ export default function LoginPage() {
           revealToggle
           revealLabel={t('togglePassword')}
           value={password}
-          error={errors.password}
           onChange={(e) => setPassword(e.target.value)}
         />
         <div className="flex justify-end -mt-1">

@@ -64,7 +64,9 @@ export function Modal({ open, onClose, title, closeLabel, children, className }:
           >
             {(title || closeLabel) && (
               <div className="flex items-center justify-between mb-4">
-                {title && <h3 className="text-card-title font-semibold text-text-primary">{title}</h3>}
+                {title && (
+                  <h3 className="text-card-title font-semibold text-text-primary">{title}</h3>
+                )}
                 <button
                   type="button"
                   onClick={onClose}

@@ -25,7 +25,9 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-text-primary font-semibold mb-6 flex items-center h-8">{t('footer.product')}</h4>
+            <h4 className="text-text-primary font-semibold mb-6 flex items-center h-8">
+              {t('footer.product')}
+            </h4>
             <ul className="space-y-4 text-sm text-text-muted">
               {productLinks.map((link) => (
                 <li key={link}>
@@ -38,7 +40,9 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-text-primary font-semibold mb-6 flex items-center h-8">{t('footer.resources')}</h4>
+            <h4 className="text-text-primary font-semibold mb-6 flex items-center h-8">
+              {t('footer.resources')}
+            </h4>
             <ul className="space-y-4 text-sm text-text-muted">
               {resourceLinks.map((link) => (
                 <li key={link}>
@@ -51,7 +55,9 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-text-primary font-semibold mb-6 flex items-center h-8">{t('footer.stayUpdated')}</h4>
+            <h4 className="text-text-primary font-semibold mb-6 flex items-center h-8">
+              {t('footer.stayUpdated')}
+            </h4>
             <p className="text-text-muted text-sm mb-4">{t('footer.newsletterPrompt')}</p>
             <div className="flex flex-col sm:flex-row gap-3">
               <input

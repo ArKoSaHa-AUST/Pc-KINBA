@@ -25,8 +25,7 @@ export interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'children'>
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:
     'text-white bg-gradient-to-br from-accent to-purple shadow-[0_8px_24px_rgba(0,0,0,0.2)] hover:brightness-110',
-  secondary:
-    'text-text-primary bg-glass border border-border backdrop-blur-md hover:bg-border',
+  secondary: 'text-text-primary bg-glass border border-border backdrop-blur-md hover:bg-border',
   ghost: 'text-text-muted hover:text-text-primary hover:bg-border',
   danger: 'text-white bg-danger hover:brightness-110',
 };

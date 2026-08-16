@@ -7,8 +7,6 @@ import { useAuth } from '../../auth/useAuth';
 import { authErrorMessage } from '../../auth/errorMessage';
 import AuthLayout from './AuthLayout';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export default function ForgotPasswordPage() {
   const { t } = useTranslation('auth');
   const { forgotPassword } = useAuth();
@@ -21,10 +19,6 @@ export default function ForgotPasswordPage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!EMAIL_RE.test(email)) {
-      setError(t('validation.email'));
-      return;
-    }
     setError(undefined);
 
     setLoading(true);

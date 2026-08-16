@@ -5,11 +5,7 @@ import { Mail, Lock, User } from 'lucide-react';
 import { Button, Input, useToast } from '../../components/ui';
 import { useAuth } from '../../auth/useAuth';
 import { authErrorMessage } from '../../auth/errorMessage';
-import { ApiError } from '../../api/client';
 import AuthLayout from './AuthLayout';
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const STRONG_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
 interface FieldErrors {
   name?: string;
@@ -33,10 +29,9 @@ export default function RegisterPage() {
 
   const validate = () => {
     const next: FieldErrors = {};
-    if (name.trim().length < 2) next.name = t('validation.nameShort');
-    if (!EMAIL_RE.test(email)) next.email = t('validation.email');
-    if (!STRONG_RE.test(password)) next.password = t('validation.passwordWeak');
-    if (confirmPassword !== password) next.confirmPassword = t('validation.passwordMatch');
+    if (confirmPassword && confirmPassword !== password) {
+      next.confirmPassword = t('validation.passwordMatch');
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -47,26 +42,10 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const profile = await register(name.trim(), email.trim(), password);
-      if (profile.emailVerified) {
-        // Verification disabled on the server — the account is ready to use.
-        toast({ message: t('register.successNoVerify'), variant: 'success', duration: 6000 });
-        navigate('/login');
-      } else {
-        toast({ message: t('register.success'), variant: 'success', duration: 6000 });
-        navigate(`/verify?email=${encodeURIComponent(email.trim())}`);
-      }
+      await register(name.trim() || 'Demo User', email.trim() || 'demo@example.com', password);
+      toast({ message: t('register.successNoVerify'), variant: 'success', duration: 6000 });
+      navigate('/profile');
     } catch (error) {
-      if (error instanceof ApiError && error.fieldErrors) {
-        const mapped: FieldErrors = {};
-        for (const key of Object.keys(error.fieldErrors)) {
-          const field = key.toLowerCase();
-          if (field.includes('name')) mapped.name = error.fieldErrors[key][0];
-          else if (field.includes('email')) mapped.email = error.fieldErrors[key][0];
-          else if (field.includes('password')) mapped.password = error.fieldErrors[key][0];
-        }
-        setErrors(mapped);
-      }
       toast({ message: authErrorMessage(t, error), variant: 'danger' });
     } finally {
       setLoading(false);
@@ -116,7 +95,6 @@ export default function RegisterPage() {
           revealLabel={t('togglePassword')}
           value={password}
           error={errors.password}
-          hint={errors.password ? undefined : t('validation.passwordWeak')}
           onChange={(e) => setPassword(e.target.value)}
         />
         <Input

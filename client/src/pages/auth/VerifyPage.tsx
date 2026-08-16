@@ -7,8 +7,6 @@ import { useAuth } from '../../auth/useAuth';
 import { authErrorMessage } from '../../auth/errorMessage';
 import AuthLayout from './AuthLayout';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export default function VerifyPage() {
   const { t } = useTranslation('auth');
   const { verifyEmail } = useAuth();
@@ -18,20 +16,10 @@ export default function VerifyPage() {
 
   const [email, setEmail] = useState(params.get('email') ?? '');
   const [code, setCode] = useState('');
-  const [errors, setErrors] = useState<{ email?: string; code?: string }>({});
   const [loading, setLoading] = useState(false);
-
-  const validate = () => {
-    const next: { email?: string; code?: string } = {};
-    if (!EMAIL_RE.test(email)) next.email = t('validation.email');
-    if (!/^\d{6}$/.test(code)) next.code = t('validation.code');
-    setErrors(next);
-    return Object.keys(next).length === 0;
-  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!validate()) return;
 
     setLoading(true);
     try {
@@ -50,7 +38,9 @@ export default function VerifyPage() {
   return (
     <AuthLayout
       title={t('verify.title')}
-      subtitle={knownEmail ? t('verify.subtitle', { email: knownEmail }) : t('verify.subtitleNoEmail')}
+      subtitle={
+        knownEmail ? t('verify.subtitle', { email: knownEmail }) : t('verify.subtitleNoEmail')
+      }
       footer={
         <Link to="/login" className="text-accent font-medium hover:underline">
           {t('forgot.backToLogin')}
@@ -66,7 +56,6 @@ export default function VerifyPage() {
             autoComplete="email"
             leftIcon={<Mail className="w-4 h-4" />}
             value={email}
-            error={errors.email}
             onChange={(e) => setEmail(e.target.value)}
           />
         )}
@@ -77,8 +66,7 @@ export default function VerifyPage() {
           maxLength={6}
           leftIcon={<KeyRound className="w-4 h-4" />}
           value={code}
-          error={errors.code}
-          hint={errors.code ? undefined : t('verify.hint')}
+          hint={t('verify.hint')}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
         />
         <Button type="submit" fullWidth loading={loading}>

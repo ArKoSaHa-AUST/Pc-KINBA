@@ -459,7 +459,8 @@ h4,
 /* Raised surfaces (cards, modals, popovers) -> light glass.
  * These fixed-hex utilities are unique to the product code, so they can be
  * remapped globally within the light theme without affecting shared UI. */
-:root[data-theme='light'] :is(
+:root[data-theme='light']
+  :is(
     .bg-\[\#0c1228\],
     .bg-\[\#0c1228\]\/80,
     .bg-\[\#0c1228\]\/90,
@@ -473,11 +474,9 @@ h4,
 }
 
 /* Frosted dark bars (floating assistant, sticky buy bar) -> light glass */
-:root[data-theme='light'] .bg-\[\#050816\] :is(
-    .bg-gray-900\/60,
-    .bg-gray-900\/70,
-    .bg-gray-900\/80
-  ) {
+:root[data-theme='light']
+  .bg-\[\#050816\]
+  :is(.bg-gray-900\/60, .bg-gray-900\/70, .bg-gray-900\/80) {
   background-color: var(--glass-bg);
   border-color: var(--border);
 }
@@ -488,20 +487,16 @@ h4,
   color: var(--text-primary);
 }
 
-:root[data-theme='light'] :is(.bg-\[\#050816\], .bg-\[\#080d1a\]) :is(
-    .text-gray-200,
-    .text-gray-300,
-    .text-gray-400,
-    .text-gray-500
-  ) {
+:root[data-theme='light']
+  :is(.bg-\[\#050816\], .bg-\[\#080d1a\])
+  :is(.text-gray-200, .text-gray-300, .text-gray-400, .text-gray-500) {
   color: var(--text-muted);
 }
 
 /* Light cyan copy would vanish on a light background -> use the accent hue */
-:root[data-theme='light'] :is(.bg-\[\#050816\], .bg-\[\#080d1a\]) :is(
-    .text-cyan-200,
-    .text-cyan-300
-  ) {
+:root[data-theme='light']
+  :is(.bg-\[\#050816\], .bg-\[\#080d1a\])
+  :is(.text-cyan-200, .text-cyan-300) {
   color: var(--accent);
 }
 
@@ -522,11 +517,14 @@ h4,
 }
 
 /* Keep white glyphs on solid, saturated accent chips/buttons readable */
-:root[data-theme='light'] :is(.bg-\[\#050816\], .bg-\[\#080d1a\]) :is(
-    .bg-gradient-to-br,
-    .bg-gradient-to-r
-  ):is([class*='from-cyan-4'], [class*='from-cyan-5'], [class*='to-purple-6'], [class*='to-blue-6']) :is(
-    .text-white
-  ) {
+:root[data-theme='light']
+  :is(.bg-\[\#050816\], .bg-\[\#080d1a\])
+  :is(.bg-gradient-to-br, .bg-gradient-to-r):is(
+    [class*='from-cyan-4'],
+    [class*='from-cyan-5'],
+    [class*='to-purple-6'],
+    [class*='to-blue-6']
+  )
+  :is(.text-white) {
   color: #ffffff;
 }

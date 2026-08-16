@@ -88,7 +88,10 @@ export default function Navbar() {
                 >
                   <LogIn className="w-4 h-4" /> {t('signIn')}
                 </button>
-                <button onClick={() => navigate('/register')} className="button-primary text-sm py-2 px-5">
+                <button
+                  onClick={() => navigate('/register')}
+                  className="button-primary text-sm py-2 px-5"
+                >
                   {t('signUp')}
                 </button>
               </>

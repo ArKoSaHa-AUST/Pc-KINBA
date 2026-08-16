@@ -14,11 +14,7 @@ export function Skeleton({ circle = false, className, ...props }: SkeletonProps)
   return (
     <div
       aria-hidden="true"
-      className={cn(
-        'animate-pulse bg-border',
-        circle ? 'rounded-full' : 'rounded-lg',
-        className,
-      )}
+      className={cn('animate-pulse bg-border', circle ? 'rounded-full' : 'rounded-lg', className)}
       {...props}
     />
   );

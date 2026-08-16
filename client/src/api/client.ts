@@ -11,7 +11,12 @@ export class ApiError extends Error {
   /** Per-field validation errors, when present. */
   readonly fieldErrors?: Record<string, string[]>;
 
-  constructor(status: number, code: string, message: string, fieldErrors?: Record<string, string[]>) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    fieldErrors?: Record<string, string[]>,
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;

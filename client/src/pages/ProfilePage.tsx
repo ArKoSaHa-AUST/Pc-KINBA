@@ -149,7 +149,9 @@ export default function ProfilePage() {
         <div>
           <h1 className="text-2xl font-bold text-text-primary">{t('profile.title')}</h1>
           <div className="mt-1 flex items-center gap-2 flex-wrap">
-            <Badge variant="accent">{t(`profile.roleLabel`)}: {user.role}</Badge>
+            <Badge variant="accent">
+              {t(`profile.roleLabel`)}: {user.role}
+            </Badge>
             {user.emailVerified ? (
               <Badge variant="success">
                 <ShieldCheck className="w-3 h-3" /> {t('profile.verifiedBadge')}
@@ -167,12 +169,7 @@ export default function ProfilePage() {
           <UserIcon className="w-4 h-4 text-accent" /> {t('profile.personal')}
         </div>
         <Input label={t('fullName')} value={name} onChange={(e) => setName(e.target.value)} />
-        <Input
-          label={t('email')}
-          value={user.email}
-          disabled
-          readOnly
-        />
+        <Input label={t('email')} value={user.email} disabled readOnly />
 
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-text-primary">{t('profile.photo')}</span>
@@ -230,7 +227,11 @@ export default function ProfilePage() {
             setAvatarBroken(false);
           }}
           hint={avatarUrl.startsWith('data:') ? t('profile.usingUploaded') : undefined}
-          error={avatarUrl && !avatarUrl.startsWith('data:') && avatarBroken ? t('profile.avatarError') : undefined}
+          error={
+            avatarUrl && !avatarUrl.startsWith('data:') && avatarBroken
+              ? t('profile.avatarError')
+              : undefined
+          }
         />
         <p className="text-xs text-text-muted">
           {t('profile.memberSince')}: {formatDate(user.createdAt, i18n.language)}
@@ -291,7 +292,12 @@ export default function ProfilePage() {
         </div>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <p className="text-sm text-text-muted">{t('profile.logoutDesc')}</p>
-          <Button variant="danger" onClick={handleLogout} loading={loggingOut} leftIcon={<LogOut className="w-4 h-4" />}>
+          <Button
+            variant="danger"
+            onClick={handleLogout}
+            loading={loggingOut}
+            leftIcon={<LogOut className="w-4 h-4" />}
+          >
             {t('profile.logout')}
           </Button>
         </div>

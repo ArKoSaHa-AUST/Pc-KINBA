@@ -26,7 +26,10 @@ export function Tabs({ items, value, onChange, className }: TabsProps) {
   const layoutId = useId();
 
   return (
-    <div role="tablist" className={cn('inline-flex gap-1 p-1 rounded-full bg-glass border border-border', className)}>
+    <div
+      role="tablist"
+      className={cn('inline-flex gap-1 p-1 rounded-full bg-glass border border-border', className)}
+    >
       {items.map((item) => {
         const active = item.value === value;
         return (

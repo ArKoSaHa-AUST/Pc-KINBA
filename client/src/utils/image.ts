@@ -22,7 +22,11 @@ function loadImage(src: string): Promise<HTMLImageElement> {
  * Keeps avatars tiny (default max 256px) so they persist inline without a file
  * store and stay well under the server's size limit.
  */
-export async function resizeImageToDataUrl(file: File, maxSize = 256, quality = 0.82): Promise<string> {
+export async function resizeImageToDataUrl(
+  file: File,
+  maxSize = 256,
+  quality = 0.82,
+): Promise<string> {
   const source = await readFileAsDataUrl(file);
   const image = await loadImage(source);
 
