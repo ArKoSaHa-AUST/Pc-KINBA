@@ -40,6 +40,8 @@ The workspace is organized into logical folders separating UI, backend, docker c
 
 ```
 PCBuilder/
+├── .github/                 # GitHub CI Actions workflows & templates
+├── .vscode/                 # VS Code launch and settings configurations
 ├── assets/                  # Logos and static documentation assets
 ├── client/                  # React + TypeScript Vite application
 ├── docker/                  # Containership manifests (Dockerfiles)
@@ -49,6 +51,9 @@ PCBuilder/
 ├── docs/                    # Architectural Decision Records (ADRs)
 ├── scripts/                 # Cross-platform startup and housekeeping scripts
 ├── server/                  # Laravel backend (to be initialized)
+├── .editorconfig            # Code style styling rules
+├── .gitattributes           # Git checkout LF line-ending normalization config
+├── .gitignore               # Detailed VCS ignore index
 ├── client-build.sh          # Local client compiler Docker wrapper
 ├── client-dev.sh            # Local client dev server Docker wrapper
 ├── docker-compose.yml       # Production-like container configuration
@@ -91,18 +96,19 @@ To run the application, ensure the following are installed:
 
 ## 5. Development Infrastructure & Workflow
 
-### 5.1 Backend (Laravel)
+### 5.1 Host Directory Special-Character Bypass (Linux/macOS)
+Due to special characters in host directory paths on some machines, standard CLI commands can fail because bundlers/compilers URL-encode paths. Custom wrappers are provided:
+*   **React SPA Build**: Run **`./client-build.sh`** to compile the client inside a container.
+*   **React Dev Server**: Run **`./client-dev.sh`** to launch Vite inside a container with HMR mapped to `http://localhost:5173`.
+
+### 5.2 Backend (Laravel)
 Once the Laravel app is initialized inside `server/`, run backend commands via Composer and Artisan:
 *   **Install dependencies**: `composer install`
 *   **Run migrations**: `php artisan migrate`
 *   **Serve locally**: `php artisan serve`
 
-### 5.2 Frontend (React)
-*   **React SPA Build**: Run **`./client-build.sh`** to compile the client inside a Debian container.
-*   **React Dev Server**: Run **`./client-dev.sh`** to launch Vite inside a container with HMR (Hot Module Replacement) mapped to `http://localhost:5173`.
-
 ### 5.3 Helper scripts (`scripts/`)
-We include Bash helper scripts under `scripts/` for Linux/macOS:
+We include helper scripts under `scripts/`:
 *   **Start Stack**: `./scripts/start.sh`
 *   **Stop Stack**: `./scripts/stop.sh`
 *   **Rebuild**: `./scripts/rebuild.sh`
@@ -132,7 +138,7 @@ Environment Configuration: Set the `APP_ENV` variable explicitly to `production`
 
 Database Security: Update the default MySQL password (`DB_PASSWORD`) to a strong, cryptographically secure string. Never commit this password to version control systems (VCS).
 
-Secrets Management: Keep sensitive credentials—such as your `GEMINI_API_KEY` and Laravel `APP_KEY`—protected by storing them in a dedicated production manager like HashiCorp Vault, Azure Key Vault, or Kubernetes Secrets.
+Secrets Management: Keep sensitive credentials—such as your `GEMINI_API_KEY`, `JWT_SECRET`, and Laravel `APP_KEY`—protected by storing them in a dedicated production manager like HashiCorp Vault, Azure Key Vault, or Kubernetes Secrets.
 
 Reverse Proxy Configuration: Configure Nginx to bind to port 443 using valid SSL/TLS certificates, and mandate an automatic redirect from HTTP to HTTPS.
 

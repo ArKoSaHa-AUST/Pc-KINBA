@@ -1,5 +1,10 @@
+# ==============================================================================
+# PCBuilder Master GitIgnore (Laravel + React + Docker)
+# ==============================================================================
+
 # Dependencies
 node_modules/
+vendor/
 .pnpm-store/
 
 # Production build outputs
@@ -8,12 +13,16 @@ build/
 out/
 client/dist/
 client/dist-ssr/
+coverage/
 
 # Environment files
 .env
 .env.local
 .env.*.local
 *.env
+!.env.example
+!.env.development
+!.env.production
 
 # Logs
 logs/
@@ -23,14 +32,42 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Laravel / PHP / Composer
+.phpunit.result.cache
+.phpunit.cache/
+phpunit.xml
+Homestead.yaml
+Homestead.json
+.php-cs-fixer.cache
+storage/*.key
+
 # Editor & OS files
-.vscode/
+.vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
 .idea/
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# Database files
+*.db
+*.sqlite
+
+# Docker and Local Containers Data
+docker-data/
+.docker/
+
+# Temporary files
+branches.txt
+mailmap.txt
+secrets.json
+pnpm-lock.yaml

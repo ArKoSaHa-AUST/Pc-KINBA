@@ -298,16 +298,8 @@ h4,
   }
   50% {
     opacity: 0.8;
-    transform: scale(1.02);
-  }
-  50% {
-    opacity: 0.8;
     transform: scale(1.05);
   }
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 4s ease-in-out infinite;
 }
 
 .animate-pulse-glow {

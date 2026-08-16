@@ -1,0 +1,25 @@
+name: Testing Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_call:
+
+# TODO: Add Laravel PHPUnit test jobs when the backend is set up
+# jobs:
+#   test:
+#     name: Run Laravel Test Suite
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout Code
+#         uses: actions/checkout@v4
+#       - name: Setup PHP
+#         uses: shivammathur/setup-php@v2
+#         with:
+#           php-version: '8.3'
+#       - name: Install Dependencies
+#         run: composer install --no-interaction --prefer-dist
+#       - name: Run PHPUnit Tests
+#         run: php artisan test
