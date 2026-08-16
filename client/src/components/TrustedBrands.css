@@ -1,0 +1,72 @@
+.brands-section {
+  padding: 4rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(13, 17, 23, 0.5);
+  overflow: hidden;
+}
+
+.brands-title {
+  text-align: center;
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  margin-bottom: 3rem;
+  font-weight: 600;
+}
+
+.brands-marquee {
+  position: relative;
+  width: 100%;
+  display: flex;
+  overflow: hidden;
+}
+
+.brands-marquee::before,
+.brands-marquee::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 150px;
+  height: 100%;
+  z-index: 2;
+}
+
+.brands-marquee::before {
+  left: 0;
+  background: linear-gradient(to right, var(--bg-primary) 0%, transparent 100%);
+}
+
+.brands-marquee::after {
+  right: 0;
+  background: linear-gradient(to left, var(--bg-primary) 0%, transparent 100%);
+}
+
+.brands-track {
+  display: flex;
+  gap: 4rem;
+  animation: scroll-marquee 30s linear infinite;
+  white-space: nowrap;
+}
+
+.brand-logo {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: white;
+  filter: grayscale(100%);
+  opacity: 0.5;
+  transition: all 0.3s ease;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes scroll-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}

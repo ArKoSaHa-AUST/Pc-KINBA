@@ -1,0 +1,26 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Docker Compose Up",
+      "command": "docker",
+      "type": "shell",
+      "args": ["compose", "up", "--build", "-d"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker Compose Down",
+      "command": "docker",
+      "type": "shell",
+      "args": ["compose", "down"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker Compose Logs",
+      "command": "docker",
+      "type": "shell",
+      "args": ["compose", "logs", "-f"],
+      "problemMatcher": []
+    }
+  ]
+}

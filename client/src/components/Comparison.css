@@ -1,0 +1,82 @@
+.compare-table-container {
+  overflow-x: auto;
+  padding: 1rem;
+}
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.compare-table th {
+  padding: 1.5rem 1rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.compare-table td {
+  padding: 1.5rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  vertical-align: middle;
+}
+
+.highlight-row {
+  background: rgba(124, 58, 237, 0.05);
+  position: relative;
+}
+
+.highlight-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--purple);
+  border-radius: 0 4px 4px 0;
+}
+
+.font-bold {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.text-accent {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.fps-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 150px;
+}
+
+.fps-fill {
+  height: 6px;
+  background: var(--green);
+  border-radius: 3px;
+  box-shadow: 0 0 10px rgba(0, 255, 178, 0.3);
+}
+
+.score-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.score-badge.high {
+  background: rgba(0, 255, 178, 0.1);
+  color: var(--green);
+  border: 1px solid rgba(0, 255, 178, 0.2);
+}
+
+.score-badge.med {
+  background: rgba(0, 229, 255, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+}

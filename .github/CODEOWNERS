@@ -1,0 +1,5 @@
+# Default code owners for PCBuilder project.
+# These owners will be requested for review when pull requests are opened.
+
+# All files in the repository
+*       @arkosaha

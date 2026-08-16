@@ -1,0 +1,31 @@
+# EditorConfig configuration for PHP (Laravel) and Frontend Web projects
+# For more info see https://editorconfig.org
+
+root = true
+
+# All files
+[*]
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+charset = utf-8
+trim_trailing_whitespace = true
+
+# PHP files (PSR-12 standard)
+[*.php]
+indent_style = space
+indent_size = 4
+
+# Blade templates
+[*.blade.php]
+indent_style = space
+indent_size = 4
+
+# Frontend JS, TS, React components, CSS, and HTML
+[*.{js,jsx,ts,tsx,html,css,json,yaml,yml}]
+indent_style = space
+indent_size = 2
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false

@@ -1,0 +1,35 @@
+name: Security & Vulnerability Scanning
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 0 * * 1' # Runs weekly on Mondays at midnight
+  workflow_call:
+
+jobs:
+  dependencies-scan:
+    name: Scan Dependencies & Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Check Node Dependencies for Vulnerabilities
+        working-directory: client
+        run: npm audit --audit-level=high
+
+      - name: Scan Repository Secrets (Gitleaks)
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true # Prevents failure if gitleaks limits or quota fails, but alerts will show

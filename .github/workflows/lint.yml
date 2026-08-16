@@ -1,0 +1,39 @@
+name: Code Quality & Linting
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_call:
+
+jobs:
+  frontend-lint:
+    name: Lint React Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Verify Prettier Code Style
+        working-directory: client
+        run: npm run format
+
+      - name: Verify ESLint Quality Checks
+        working-directory: client
+        run: npm run lint
+
+      - name: Verify TypeScript compilation
+        working-directory: client
+        run: npx tsc --noEmit
