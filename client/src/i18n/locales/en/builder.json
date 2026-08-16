@@ -1,0 +1,13 @@
+{
+  "title": "PC Builder",
+  "subtitle": "Assemble your perfect build",
+  "addComponent": "Add component",
+  "removeComponent": "Remove",
+  "total": "Total",
+  "compatibility": "Compatibility",
+  "compatible": "Compatible",
+  "incompatible": "Incompatible",
+  "saveBuild": "Save build",
+  "shareBuild": "Share build",
+  "estimatedWattage": "Estimated wattage"
+}

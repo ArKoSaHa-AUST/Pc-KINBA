@@ -1,0 +1,16 @@
+{
+  "addToCart": "Add to cart",
+  "buyNow": "Buy now",
+  "specifications": "Specifications",
+  "reviews": "Reviews",
+  "compatibility": "Compatibility",
+  "benchmarks": "Performance Benchmarks",
+  "relatedProducts": "Related Products",
+  "alternatives": "Alternative Parts",
+  "gallery": "Gallery",
+  "overview": "Overview",
+  "inStock": "In stock",
+  "outOfStock": "Out of stock",
+  "writeReview": "Write a review",
+  "ratingCount": "{{count}} reviews"
+}

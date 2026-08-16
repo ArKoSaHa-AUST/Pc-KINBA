@@ -1,0 +1,49 @@
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.testimonial-card {
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.stars {
+  color: #fbbf24;
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+}
+
+.review-text {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  font-style: italic;
+  flex: 1;
+}
+
+.reviewer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bg-secondary), var(--glass-bg));
+  border: 1px solid var(--glass-border);
+}
+
+.reviewer-name {
+  font-weight: 700;
+}
+
+.reviewer-role {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}

@@ -1,0 +1,12 @@
+{
+  "from": "From",
+  "lowestPrice": "Lowest price",
+  "sellers": "Sellers",
+  "seller": "Seller",
+  "inStock": "In stock",
+  "outOfStock": "Out of stock",
+  "priceHistory": "Price history",
+  "viewDeal": "View deal",
+  "comparePrices": "Compare prices",
+  "priceDropAlert": "Price drop alert"
+}

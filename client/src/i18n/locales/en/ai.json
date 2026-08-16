@@ -1,0 +1,9 @@
+{
+  "title": "AI Assistant",
+  "subtitle": "Describe your needs, get a build",
+  "placeholder": "e.g. A gaming PC under ৳80,000 for 1080p",
+  "generate": "Generate build",
+  "recommend": "Recommend",
+  "thinking": "Thinking...",
+  "poweredBy": "Powered by AI"
+}

@@ -1,0 +1,20 @@
+{
+  "home": "Home",
+  "pcBuilder": "PC Builder",
+  "components": "Components",
+  "compare": "Compare",
+  "aiAssistant": "AI Assistant",
+  "signIn": "Sign In",
+  "signUp": "Sign Up",
+  "search": "Search",
+  "theme": {
+    "toggle": "Switch theme (current: {{theme}})",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "bn": "বাংলা"
+  }
+}

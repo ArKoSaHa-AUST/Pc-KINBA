@@ -1,0 +1,44 @@
+{
+  "appName": "PC Kinba",
+  "brand": "KINBA",
+  "loading": "Loading...",
+  "error": "Something went wrong",
+  "retry": "Retry",
+  "save": "Save",
+  "cancel": "Cancel",
+  "close": "Close",
+  "search": "Search",
+  "subscribe": "Subscribe",
+  "viewAll": "View all",
+  "learnMore": "Learn more",
+  "comingSoon": "Coming soon",
+  "hero": {
+    "badge": "AI-Powered",
+    "badgeSuffix": "PC Builder",
+    "titleLine1": "Build Your",
+    "titleHighlight": "Dream PC",
+    "titleLine2": "with AI",
+    "subtitle": "Find the best PC components, compare hardware, get AI recommendations, and build the perfect setup within your budget.",
+    "buildCta": "Build Your PC",
+    "exploreCta": "Explore Components"
+  },
+  "footer": {
+    "description": "The smartest place to build your dream PC. AI-powered hardware recommendations for everyone.",
+    "product": "Product",
+    "resources": "Resources",
+    "stayUpdated": "Stay Updated",
+    "newsletterPrompt": "Get the latest hardware news and price drops.",
+    "emailPlaceholder": "Enter your email",
+    "rights": "All rights reserved.",
+    "links": {
+      "pcBuilder": "PC Builder",
+      "aiAssistant": "AI Assistant",
+      "compareGpus": "Compare GPUs",
+      "compareCpus": "Compare CPUs",
+      "buildGuides": "Build Guides",
+      "compatibilityDb": "Compatibility DB",
+      "blog": "Blog",
+      "helpCenter": "Help Center"
+    }
+  }
+}

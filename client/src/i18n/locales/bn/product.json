@@ -1,0 +1,16 @@
+{
+  "addToCart": "কার্টে যোগ করুন",
+  "buyNow": "এখনই কিনুন",
+  "specifications": "স্পেসিফিকেশন",
+  "reviews": "রিভিউ",
+  "compatibility": "সামঞ্জস্য",
+  "benchmarks": "পারফরম্যান্স বেঞ্চমার্ক",
+  "relatedProducts": "সম্পর্কিত পণ্য",
+  "alternatives": "বিকল্প পার্টস",
+  "gallery": "গ্যালারি",
+  "overview": "সংক্ষিপ্ত বিবরণ",
+  "inStock": "স্টকে আছে",
+  "outOfStock": "স্টকে নেই",
+  "writeReview": "রিভিউ লিখুন",
+  "ratingCount": "{{count}}টি রিভিউ"
+}

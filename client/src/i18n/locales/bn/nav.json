@@ -1,0 +1,20 @@
+{
+  "home": "হোম",
+  "pcBuilder": "পিসি বিল্ডার",
+  "components": "কম্পোনেন্ট",
+  "compare": "তুলনা",
+  "aiAssistant": "এআই অ্যাসিস্ট্যান্ট",
+  "signIn": "সাইন ইন",
+  "signUp": "সাইন আপ",
+  "search": "খুঁজুন",
+  "theme": {
+    "toggle": "থিম পরিবর্তন করুন (বর্তমান: {{theme}})",
+    "light": "লাইট",
+    "dark": "ডার্ক"
+  },
+  "language": {
+    "label": "ভাষা",
+    "en": "English",
+    "bn": "বাংলা"
+  }
+}

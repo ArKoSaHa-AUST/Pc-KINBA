@@ -1,0 +1,13 @@
+{
+  "title": "পিসি বিল্ডার",
+  "subtitle": "আপনার নিখুঁত বিল্ড তৈরি করুন",
+  "addComponent": "কম্পোনেন্ট যোগ করুন",
+  "removeComponent": "সরান",
+  "total": "মোট",
+  "compatibility": "সামঞ্জস্য",
+  "compatible": "সামঞ্জস্যপূর্ণ",
+  "incompatible": "অসামঞ্জস্যপূর্ণ",
+  "saveBuild": "বিল্ড সংরক্ষণ করুন",
+  "shareBuild": "বিল্ড শেয়ার করুন",
+  "estimatedWattage": "আনুমানিক ওয়াটেজ"
+}

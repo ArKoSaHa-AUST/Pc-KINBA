@@ -1,0 +1,12 @@
+{
+  "from": "থেকে",
+  "lowestPrice": "সর্বনিম্ন দাম",
+  "sellers": "বিক্রেতা",
+  "seller": "বিক্রেতা",
+  "inStock": "স্টকে আছে",
+  "outOfStock": "স্টকে নেই",
+  "priceHistory": "দামের ইতিহাস",
+  "viewDeal": "ডিল দেখুন",
+  "comparePrices": "দাম তুলনা করুন",
+  "priceDropAlert": "দাম কমার সতর্কতা"
+}
