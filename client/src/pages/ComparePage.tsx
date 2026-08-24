@@ -3,10 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Check, ArrowLeftRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import Lenis from 'lenis';
 import { CompareHero } from '../components/compare/CompareHero';
 import { SlotCard } from '../components/compare/SlotCard';
 import { CompareTable } from '../components/compare/CompareTable';
 import { AddComponentModal } from '../components/compare/AddComponentModal';
+import { HolographicInspector3D } from '../components/compare/HolographicInspector3D';
 import { HARDWARE_DATASET, SPEC_CATEGORIES } from '../data/compareDataset';
 import type { CompareProduct } from '../types/compare';
 import '../components/compare/ComparePage.css';
@@ -28,6 +30,27 @@ export default function ComparePage() {
   const [swapModalOpen, setSwapModalOpen] = useState<boolean>(false);
   const [swapSourceIndex, setSwapSourceIndex] = useState<number>(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [inspectProduct, setInspectProduct] = useState<CompareProduct | null>(null);
+
+  // Initialize Lenis Inertial Smooth Scroll
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.1,
+      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    });
+
+    let rafId: number;
+    function raf(time: number) {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    }
+    rafId = requestAnimationFrame(raf);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      lenis.destroy();
+    };
+  }, []);
 
   // Show Toast
   const showToast = useCallback((msg: string) => {
@@ -218,8 +241,8 @@ export default function ComparePage() {
       />
 
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        {/* Component Header Slots Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-5 mb-8">
+        {/* Component Header Slots Grid (with 3D Parallax & Physics) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6 mb-8">
           {slots.slice(0, 3).map((product, idx) => (
             <SlotCard
               key={idx}
@@ -228,6 +251,7 @@ export default function ComparePage() {
               onAddClick={handleOpenAddModal}
               onRemoveClick={handleRemoveSlot}
               onSwapClick={handleOpenSwapModal}
+              onInspect3DClick={(prod) => setInspectProduct(prod)}
               totalSlots={slots.length}
             />
           ))}
@@ -257,6 +281,13 @@ export default function ComparePage() {
         onSelectProduct={handleSelectProduct}
         targetSlotIndex={targetSlotIndex}
         currentProductIds={activeProducts.map((p) => p.id)}
+      />
+
+      {/* Holographic 3D Component Inspector Modal */}
+      <HolographicInspector3D
+        isOpen={!!inspectProduct}
+        onClose={() => setInspectProduct(null)}
+        product={inspectProduct}
       />
 
       {/* Swap Slots Modal */}

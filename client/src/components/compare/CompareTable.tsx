@@ -1,14 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Cpu,
-  Zap,
-  HardDrive,
-  BatteryCharging,
-  Monitor,
-  Sparkles,
-  Tag,
-  Trophy,
-} from 'lucide-react';
+import { Cpu, Zap, HardDrive, BatteryCharging, Monitor, Sparkles, Tag, Trophy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SPEC_CATEGORIES } from '../../data/compareDataset';
 import type { CompareProduct, SpecItem } from '../../types/compare';
@@ -18,7 +9,7 @@ interface CompareTableProps {
   diffOnly: boolean;
 }
 
-export const CompareTable: React.FC<CompareTableProps> = ({ slots, diffOnly }) => {
+export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
   const { i18n } = useTranslation('compare');
   const isBn = i18n.language.startsWith('bn');
 
@@ -107,7 +98,7 @@ export const CompareTable: React.FC<CompareTableProps> = ({ slots, diffOnly }) =
 
     return (
       <span
-        className={`ml-2 text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+        className={`ml-2 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
           isAdvantage
             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
             : 'bg-danger/10 text-danger border border-danger/20'
@@ -118,8 +109,29 @@ export const CompareTable: React.FC<CompareTableProps> = ({ slots, diffOnly }) =
     );
   };
 
+  // Compute proportion bar width for numeric metrics
+  const getMeterBarProportion = (spec: SpecItem, rawVal: unknown) => {
+    if (typeof rawVal !== 'number' && typeof rawVal !== 'string') return null;
+    const num =
+      typeof rawVal === 'number' ? rawVal : parseFloat(String(rawVal).replace(/[^0-9.-]+/g, ''));
+    if (isNaN(num) || num <= 0) return null;
+
+    const allNums = activeProducts
+      .map((p) => {
+        const v = p.specs[spec.key];
+        return typeof v === 'number' ? v : parseFloat(String(v).replace(/[^0-9.-]+/g, ''));
+      })
+      .filter((n) => !isNaN(n) && n > 0);
+
+    if (allNums.length === 0) return null;
+    const maxVal = Math.max(...allNums);
+    if (maxVal <= 0) return null;
+
+    return Math.min(100, Math.max(10, (num / maxVal) * 100));
+  };
+
   return (
-    <div className="w-full border border-white/10 rounded-2xl bg-slate-900/60 backdrop-blur-xl overflow-hidden shadow-2xl">
+    <div className="w-full border border-white/10 rounded-3xl bg-slate-900/60 backdrop-blur-2xl overflow-hidden shadow-2xl">
       {SPEC_CATEGORIES.map((category) => {
         // Filter visible specs based on diffOnly
         const visibleSpecs = category.specs.filter((spec) => {
@@ -131,7 +143,7 @@ export const CompareTable: React.FC<CompareTableProps> = ({ slots, diffOnly }) =
 
         return (
           <div key={category.id} className="border-b border-white/10 last:border-b-0">
-            {/* Category Header Row */}
+            {/* Category Header Row (Sticky Locking) */}
             <div className="sticky top-[80px] z-30 flex items-center gap-2.5 px-6 py-3.5 bg-slate-950/90 backdrop-blur-md border-b border-white/10">
               {getCategoryIcon(category.iconName)}
               <h3 className="text-xs font-bold uppercase tracking-wider text-accent">
@@ -142,20 +154,20 @@ export const CompareTable: React.FC<CompareTableProps> = ({ slots, diffOnly }) =
             {/* Spec Rows */}
             <div className="divide-y divide-white/5">
               <AnimatePresence initial={false}>
-                {visibleSpecs.map((spec) => {
+                {visibleSpecs.map((spec, sIdx) => {
                   const winnerInfo = getWinnerInfo(spec);
 
                   return (
                     <motion.div
                       key={spec.key}
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.15 }}
+                      transition={{ delay: sIdx * 0.03, duration: 0.3, ease: 'easeOut' }}
                       className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 items-center hover:bg-white/[0.02] transition-colors"
                     >
                       {/* Column 0: Metric Label */}
-                      <div className="py-3.5 px-6 text-xs font-semibold text-text-muted flex items-center justify-between border-b md:border-b-0 md:border-r border-white/5 bg-slate-950/20">
+                      <div className="py-4 px-6 text-xs font-semibold text-text-muted flex items-center justify-between border-b md:border-b-0 md:border-r border-white/5 bg-slate-950/25">
                         <span>{isBn ? spec.labelBn || spec.label : spec.label}</span>
                         {spec.unit && (
                           <span className="text-[10px] font-mono text-text-muted/60 lowercase ml-1">
@@ -170,7 +182,7 @@ export const CompareTable: React.FC<CompareTableProps> = ({ slots, diffOnly }) =
                           return (
                             <div
                               key={slotIdx}
-                              className="py-3.5 px-6 text-xs text-text-muted/40 font-mono text-center md:border-r border-white/5 last:border-r-0"
+                              className="py-4 px-6 text-xs text-text-muted/40 font-mono text-center md:border-r border-white/5 last:border-r-0"
                             >
                               —
                             </div>
@@ -180,29 +192,49 @@ export const CompareTable: React.FC<CompareTableProps> = ({ slots, diffOnly }) =
                         const rawVal = prod.specs[spec.key];
                         const isWinner = winnerInfo?.winners.includes(slotIdx);
                         const deltaBadge = getDeltaBadge(spec, slotIdx);
+                        const barWidth = getMeterBarProportion(spec, rawVal);
 
                         return (
                           <div
                             key={slotIdx}
-                            className={`py-3.5 px-6 text-xs md:text-sm font-medium flex items-center justify-between md:border-r border-white/5 last:border-r-0 transition-colors ${
+                            className={`py-4 px-6 text-xs md:text-sm font-medium flex flex-col justify-center gap-1 md:border-r border-white/5 last:border-r-0 transition-colors ${
                               isWinner ? 'bg-emerald-500/[0.04]' : ''
                             }`}
                           >
-                            <div className="flex items-center flex-wrap gap-1.5 text-text-primary">
-                              <span className={typeof rawVal === 'number' ? 'font-mono' : ''}>
-                                {rawVal !== undefined && rawVal !== null && rawVal !== ''
-                                  ? String(rawVal)
-                                  : '—'}
-                              </span>
-                              {deltaBadge}
+                            <div className="flex items-center justify-between flex-wrap gap-1.5 text-text-primary">
+                              <div className="flex items-center flex-wrap gap-1">
+                                <span className={typeof rawVal === 'number' ? 'font-mono' : ''}>
+                                  {rawVal !== undefined && rawVal !== null && rawVal !== ''
+                                    ? String(rawVal)
+                                    : '—'}
+                                </span>
+                                {deltaBadge}
+                              </div>
+
+                              {/* Winner Badge */}
+                              {isWinner && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-sm">
+                                  <Trophy className="w-3 h-3 text-emerald-400" />
+                                  <span>Winner</span>
+                                </span>
+                              )}
                             </div>
 
-                            {/* Winner Badge */}
-                            {isWinner && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                                <Trophy className="w-3 h-3 text-emerald-400" />
-                                <span>Winner</span>
-                              </span>
+                            {/* Animated Meter Progress Bar for numeric benchmarks & capacities */}
+                            {barWidth !== null && typeof rawVal === 'number' && (
+                              <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden mt-1">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  whileInView={{ width: `${barWidth}%` }}
+                                  viewport={{ once: true }}
+                                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                                  className={`h-full rounded-full ${
+                                    isWinner
+                                      ? 'bg-gradient-to-r from-emerald-500 to-cyan-400'
+                                      : 'bg-gradient-to-r from-accent to-purple'
+                                  }`}
+                                />
+                              </div>
                             )}
                           </div>
                         );
