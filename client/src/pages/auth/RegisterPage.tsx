@@ -77,7 +77,13 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await register(name.trim() || 'Demo User', email.trim() || 'demo@example.com', password);
+      await register(
+        name.trim() || 'Demo User',
+        email.trim() || 'demo@example.com',
+        password,
+        purpose,
+        agreeTerms
+      );
       toast({ message: t('register.successNoVerify'), variant: 'success', duration: 6000 });
       navigate('/profile');
     } catch (error) {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { UpdateProfilePayload, UserProfile } from '../api/auth';
+import type { UpdateProfilePayload, UserProfile, UserRole } from '../api/auth';
+import { createClient } from '../utils/supabase/client';
 import {
   AUTH_STORAGE_KEY,
   AuthContext,
@@ -8,28 +9,27 @@ import {
 } from './auth-context';
 
 const DEMO_USER_KEY = 'pckinba.demo_user';
+const supabase = createClient();
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
-function createDemoUser(nameInput?: string, emailInput?: string): UserProfile {
-  const trimmedEmail = emailInput?.trim() || 'demo@example.com';
-  const email = trimmedEmail.includes('@') ? trimmedEmail : `${trimmedEmail}@example.com`;
-
-  let name = nameInput?.trim();
-  if (!name) {
-    const handle = email.split('@')[0];
-    name = handle ? handle.charAt(0).toUpperCase() + handle.slice(1) : 'Demo User';
-  }
-
+function mapToUserProfile(
+  id: string,
+  name: string,
+  email: string,
+  role: UserRole = 'Customer',
+  avatarUrl: string | null = null,
+  emailVerified = true
+): UserProfile {
   return {
-    id: `user_${Date.now()}`,
+    id,
     name,
     email,
-    role: 'Customer',
-    avatarUrl: null,
-    emailVerified: true,
+    role,
+    avatarUrl,
+    emailVerified,
     createdAt: new Date().toISOString(),
     notificationPreferences: {
       emailPriceDrops: true,
@@ -40,29 +40,96 @@ function createDemoUser(nameInput?: string, emailInput?: string): UserProfile {
   };
 }
 
-/**
- * Holds the current user in memory and local storage for pure client-side demo mode.
- */
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
 
-  // Load session from local storage on mount
-  useEffect(() => {
+  const fetchProfile = useCallback(async (userId: string, email: string, metadata?: Record<string, unknown>): Promise<UserProfile> => {
     try {
-      const storedUser = localStorage.getItem(DEMO_USER_KEY);
-      if (storedUser) {
-        setUser(JSON.parse(storedUser) as UserProfile);
-        setStatus('authenticated');
-      } else {
-        setStatus('unauthenticated');
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (profile) {
+        return mapToUserProfile(
+          profile.id,
+          profile.full_name || email.split('@')[0],
+          profile.email || email,
+          (profile.role as UserRole) || 'Customer',
+          profile.avatar_url || null,
+          true
+        );
       }
-    } catch {
-      setStatus('unauthenticated');
+    } catch (e) {
+      console.warn('Error fetching Supabase user profile:', e);
     }
+
+    const fallbackName = (metadata?.full_name as string) || (metadata?.name as string) || email.split('@')[0];
+    return mapToUserProfile(userId, fallbackName, email);
   }, []);
 
-  const saveSession = useCallback((nextUser: UserProfile) => {
+  // Listen to Supabase Auth state changes
+  useEffect(() => {
+    let mounted = true;
+
+    async function initAuth() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && mounted) {
+          const profile = await fetchProfile(session.user.id, session.user.email || '', session.user.user_metadata);
+          setUser(profile);
+          setStatus('authenticated');
+          return;
+        }
+      } catch (err) {
+        console.warn('Supabase getSession error:', err);
+      }
+
+      // Local storage fallback for offline demo session
+      try {
+        const storedUser = localStorage.getItem(DEMO_USER_KEY);
+        if (storedUser && mounted) {
+          setUser(JSON.parse(storedUser) as UserProfile);
+          setStatus('authenticated');
+          return;
+        }
+      } catch {
+        // ignore
+      }
+
+      if (mounted) {
+        setStatus('unauthenticated');
+      }
+    }
+
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id, session.user.email || '', session.user.user_metadata);
+        setUser(profile);
+        setStatus('authenticated');
+      } else {
+        const storedUser = localStorage.getItem(DEMO_USER_KEY);
+        if (storedUser) {
+          setUser(JSON.parse(storedUser) as UserProfile);
+          setStatus('authenticated');
+        } else {
+          setUser(null);
+          setStatus('unauthenticated');
+        }
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [fetchProfile]);
+
+  const saveDemoSession = useCallback((nextUser: UserProfile) => {
     localStorage.setItem(DEMO_USER_KEY, JSON.stringify(nextUser));
     setUser(nextUser);
     setStatus('authenticated');
@@ -76,34 +143,95 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const login = useCallback(
-    async (email: string) => {
-      const nextUser = createDemoUser(undefined, email);
-      saveSession(nextUser);
+    async (email: string, password: string) => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.user) {
+        const profile = await fetchProfile(data.user.id, data.user.email || '', data.user.user_metadata);
+        setUser(profile);
+        setStatus('authenticated');
+      }
     },
-    [saveSession],
+    [fetchProfile],
   );
 
   const register = useCallback(
-    async (name: string, email: string): Promise<UserProfile> => {
-      const nextUser = createDemoUser(name, email);
-      saveSession(nextUser);
-      return nextUser;
+    async (
+      name: string,
+      email: string,
+      password: string,
+      purpose = 'gaming',
+      agreeTerms = true
+    ): Promise<UserProfile> => {
+      // 1. Register with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+            purpose,
+            agree_terms: agreeTerms,
+          },
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const userId = data.user?.id || `user_${Date.now()}`;
+
+      // 2. Explicitly store/upsert signup data in Supabase 'profiles' table
+      if (data.user) {
+        try {
+          await supabase.from('profiles').upsert({
+            id: userId,
+            full_name: name,
+            email: email,
+            purpose: purpose,
+            agree_terms: agreeTerms,
+            role: 'Customer',
+            updated_at: new Date().toISOString(),
+          });
+        } catch (dbErr) {
+          console.warn('Direct profile upsert error (handled by DB trigger):', dbErr);
+        }
+      }
+
+      const newUser = mapToUserProfile(userId, name, email);
+      saveDemoSession(newUser);
+      return newUser;
     },
-    [saveSession],
+    [saveDemoSession],
   );
 
   const verifyEmail = useCallback(async () => {
     if (user) {
       const updated = { ...user, emailVerified: true };
-      saveSession(updated);
+      saveDemoSession(updated);
     }
-  }, [user, saveSession]);
+  }, [user, saveDemoSession]);
 
-  const forgotPassword = useCallback(async () => {}, []);
+  const forgotPassword = useCallback(async (email: string) => {
+    await supabase.auth.resetPasswordForEmail(email);
+  }, []);
 
   const resetPassword = useCallback(async () => {}, []);
 
   const logout = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // ignore
+    }
     clearSession();
   }, [clearSession]);
 
@@ -112,6 +240,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (!user) {
         throw new Error('Not authenticated');
       }
+
+      if (user.id && !user.id.startsWith('user_')) {
+        try {
+          await supabase.from('profiles').update({
+            full_name: payload.name !== undefined ? payload.name : user.name,
+            avatar_url: payload.avatarUrl !== undefined ? payload.avatarUrl : user.avatarUrl,
+            updated_at: new Date().toISOString(),
+          }).eq('id', user.id);
+        } catch (err) {
+          console.warn('Supabase profile update failed:', err);
+        }
+      }
+
       const updated: UserProfile = {
         ...user,
         name: payload.name !== undefined ? payload.name : user.name,
@@ -120,10 +261,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           ? { ...user.notificationPreferences, ...payload.notificationPreferences }
           : user.notificationPreferences,
       };
-      saveSession(updated);
+      saveDemoSession(updated);
       return updated;
     },
-    [user, saveSession],
+    [user, saveDemoSession],
   );
 
   const value = useMemo<AuthContextValue>(

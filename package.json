@@ -10,6 +10,13 @@
     "@semantic-release/commit-analyzer": "^13.0.0",
     "@semantic-release/github": "^11.0.0",
     "@semantic-release/release-notes-generator": "^14.0.0",
-    "semantic-release": "^25.0.0"
+    "@types/node": "^26.3.0",
+    "semantic-release": "^25.0.0",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@supabase/server": "^1.4.1",
+    "@supabase/ssr": "^0.12.5",
+    "@supabase/supabase-js": "^2.112.4"
   }
 }
