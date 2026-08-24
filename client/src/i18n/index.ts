@@ -70,8 +70,8 @@ const resources = {
 };
 
 /** Keep the <html lang> attribute in sync so CSS font stacks and a11y work. */
-function applyDocumentLanguage(language: string) {
-  const lang = language.startsWith('bn') ? 'bn' : 'en';
+function applyDocumentLanguage(language?: string) {
+  const lang = language && typeof language === 'string' && language.startsWith('bn') ? 'bn' : 'en';
   document.documentElement.setAttribute('lang', lang);
 }
 
@@ -93,6 +93,9 @@ i18n
     },
     interpolation: {
       escapeValue: false,
+    },
+    react: {
+      useSuspense: false,
     },
   });
 
