@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TonimaHero from '../components/ai/TonimaHero';
+import TonimaWorkspace from '../components/ai/TonimaWorkspace';
 import './AIAssistantPage.css';
 
 export default function AIAssistantPage() {
@@ -15,7 +16,7 @@ export default function AIAssistantPage() {
   const handleLaunchPrompt = (prompt: string, budget?: number) => {
     setActivePrompt(prompt);
     setActiveBudget(budget);
-    // Smooth scroll to workspace if present or prepare session
+    // Smooth scroll to workspace
     const targetElement = document.getElementById('tonima-workspace');
     if (targetElement) {
       targetElement.scrollIntoView({ behavior: 'smooth' });
@@ -31,6 +32,9 @@ export default function AIAssistantPage() {
       <div className="ai-page-content">
         {/* Tonima Hero & Stage 1 Initiation Section */}
         <TonimaHero onLaunchPrompt={handleLaunchPrompt} />
+
+        {/* Tonima 60/40 Interactive Workspace Section */}
+        <TonimaWorkspace initialPrompt={activePrompt} initialBudget={activeBudget} />
 
         {/* Hidden accessibility state tracker */}
         {activePrompt && (
