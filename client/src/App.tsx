@@ -10,6 +10,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import ProfilePage from './pages/ProfilePage';
 import AIAssistantPage from './pages/AIAssistantPage';
+import ComparePage from './pages/ComparePage';
 import ProtectedRoute from './auth/ProtectedRoute';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
+          <Route path="/compare" element={<ComparePage />} />
           <Route path="/ai-assistant" element={<AIAssistantPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
