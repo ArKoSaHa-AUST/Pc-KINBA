@@ -11,6 +11,7 @@ import enPricing from './locales/en/pricing.json';
 import enAi from './locales/en/ai.json';
 import enWishlist from './locales/en/wishlist.json';
 import enAdmin from './locales/en/admin.json';
+import enCompare from './locales/en/compare.json';
 
 import bnCommon from './locales/bn/common.json';
 import bnNav from './locales/bn/nav.json';
@@ -21,6 +22,7 @@ import bnPricing from './locales/bn/pricing.json';
 import bnAi from './locales/bn/ai.json';
 import bnWishlist from './locales/bn/wishlist.json';
 import bnAdmin from './locales/bn/admin.json';
+import bnCompare from './locales/bn/compare.json';
 
 export const SUPPORTED_LANGUAGES = ['en', 'bn'] as const;
 export type AppLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -35,6 +37,7 @@ export const NAMESPACES = [
   'ai',
   'wishlist',
   'admin',
+  'compare',
 ] as const;
 
 export const LANGUAGE_STORAGE_KEY = 'pckinba.language';
@@ -50,6 +53,7 @@ const resources = {
     ai: enAi,
     wishlist: enWishlist,
     admin: enAdmin,
+    compare: enCompare,
   },
   bn: {
     common: bnCommon,
@@ -61,6 +65,7 @@ const resources = {
     ai: bnAi,
     wishlist: bnWishlist,
     admin: bnAdmin,
+    compare: bnCompare,
   },
 };
 

@@ -1,0 +1,39 @@
+{
+  "title": "Hardware Battleground",
+  "subtitle": "Compare up to 4 components side-by-side with live Bangladeshi retail pricing, detailed architectural specs, and real-time compatibility metrics.",
+  "heroBadge": "Taisha Component Compare",
+  "actions": {
+    "filterDiffOnly": "Highlight Differences Only",
+    "filterAll": "All Specifications",
+    "hidingSpecs": "Hiding {{count}} identical specs",
+    "exportPdf": "Export PDF",
+    "share": "Share Link",
+    "clearAll": "Clear All",
+    "addSlot": "Add Component",
+    "swap": "Swap",
+    "remove": "Remove",
+    "selectComponent": "Select Component"
+  },
+  "slots": {
+    "slot": "Slot {{index}}",
+    "empty": "Empty Slot",
+    "addPrompt": "Click to select a component to compare",
+    "priceLastSynced": "Price last synced: {{time}}",
+    "outOfStock": "Out of Stock",
+    "priceWithheld": "Price Unavailable",
+    "bestPrice": "Best Market Price",
+    "winner": "Winner"
+  },
+  "modal": {
+    "title": "Choose a Component to Compare",
+    "searchPlaceholder": "Search by GPU, CPU, brand, or model...",
+    "allCategories": "All Categories",
+    "noResults": "No hardware components found matching your search.",
+    "select": "Select Component"
+  },
+  "toast": {
+    "linkCopied": "Comparison permalink copied to clipboard!",
+    "slotCleared": "Slot {{index}} cleared.",
+    "slotsSwapped": "Swapped Slot {{from}} with Slot {{to}}."
+  }
+}
