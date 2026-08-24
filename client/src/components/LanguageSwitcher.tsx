@@ -19,7 +19,11 @@ interface LanguageSwitcherProps {
  */
 export default function LanguageSwitcher({ className = '' }: LanguageSwitcherProps) {
   const { i18n, t } = useTranslation('nav');
-  const current = (i18n.language.startsWith('bn') ? 'bn' : 'en') as AppLanguage;
+  const current = (
+    i18n.language && typeof i18n.language === 'string' && i18n.language.startsWith('bn')
+      ? 'bn'
+      : 'en'
+  ) as AppLanguage;
 
   const cycleLanguage = () => {
     const next =

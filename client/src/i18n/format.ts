@@ -5,8 +5,10 @@ const LOCALE_MAP: Record<AppLanguage, string> = {
   bn: 'bn-BD',
 };
 
-function resolveLocale(language: string): string {
-  return language.startsWith('bn') ? LOCALE_MAP.bn : LOCALE_MAP.en;
+function resolveLocale(language?: string): string {
+  return language && typeof language === 'string' && language.startsWith('bn')
+    ? LOCALE_MAP.bn
+    : LOCALE_MAP.en;
 }
 
 /**
