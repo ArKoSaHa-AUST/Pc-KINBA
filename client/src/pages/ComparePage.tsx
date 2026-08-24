@@ -9,6 +9,10 @@ import { SlotCard } from '../components/compare/SlotCard';
 import { CompareTable } from '../components/compare/CompareTable';
 import { AddComponentModal } from '../components/compare/AddComponentModal';
 import { HolographicInspector3D } from '../components/compare/HolographicInspector3D';
+import { PerformanceRadarChart } from '../components/compare/PerformanceRadarChart';
+import { AICalloutAuditor } from '../components/compare/AICalloutAuditor';
+import { FloatingActionBar } from '../components/compare/FloatingActionBar';
+import { ShareModal } from '../components/compare/ShareModal';
 import { HARDWARE_DATASET, SPEC_CATEGORIES } from '../data/compareDataset';
 import type { CompareProduct } from '../types/compare';
 import '../components/compare/ComparePage.css';
@@ -29,6 +33,7 @@ export default function ComparePage() {
   const [targetSlotIndex, setTargetSlotIndex] = useState<number>(0);
   const [swapModalOpen, setSwapModalOpen] = useState<boolean>(false);
   const [swapSourceIndex, setSwapSourceIndex] = useState<number>(0);
+  const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [inspectProduct, setInspectProduct] = useState<CompareProduct | null>(null);
 
@@ -141,7 +146,7 @@ export default function ComparePage() {
   };
 
   // Open Swap Modal
-  const handleOpenSwapModal = (slotIndex: number) => {
+  const handleOpenSwapModal = (slotIndex: number = 0) => {
     setSwapSourceIndex(slotIndex);
     setSwapModalOpen(true);
   };
@@ -173,11 +178,11 @@ export default function ComparePage() {
     syncToUrl(slots, nextDiff);
   };
 
-  // Share Comparison Link
-  const handleShareLink = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
-      showToast(t('toast.linkCopied', 'Comparison link copied to clipboard!'));
+  // Scroll to AI Auditor
+  const handleScrollToAuditor = () => {
+    const el = document.getElementById('ai-auditor-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -235,44 +240,72 @@ export default function ComparePage() {
         onToggleDiffOnly={handleToggleDiffOnly}
         hiddenDiffCount={hiddenDiffCount}
         onExportPdf={handleExportPdf}
-        onShareLink={handleShareLink}
+        onShareLink={() => setShareModalOpen(true)}
         onClearAll={handleClearAll}
         activeCount={activeProducts.length}
       />
 
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-10">
         {/* Component Header Slots Grid (with 3D Parallax & Physics) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6 mb-8">
-          {slots.slice(0, 3).map((product, idx) => (
-            <SlotCard
-              key={idx}
-              slotIndex={idx}
-              product={product}
-              onAddClick={handleOpenAddModal}
-              onRemoveClick={handleRemoveSlot}
-              onSwapClick={handleOpenSwapModal}
-              onInspect3DClick={(prod) => setInspectProduct(prod)}
-              totalSlots={slots.length}
-            />
-          ))}
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6 mb-6">
+            {slots.slice(0, 3).map((product, idx) => (
+              <SlotCard
+                key={idx}
+                slotIndex={idx}
+                product={product}
+                onAddClick={handleOpenAddModal}
+                onRemoveClick={handleRemoveSlot}
+                onSwapClick={handleOpenSwapModal}
+                onInspect3DClick={(prod) => setInspectProduct(prod)}
+                totalSlots={slots.length}
+              />
+            ))}
+          </div>
+
+          {/* 4th Slot Expansion Trigger */}
+          {slots.length < 4 && (
+            <div className="flex justify-center">
+              <button
+                onClick={handleAddFourthSlot}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/30 text-text-secondary hover:text-white transition-all shadow-lg"
+              >
+                <Plus className="w-4 h-4 text-accent" />
+                <span>{t('actions.addSlot', 'Add 4th Slot for 4-Way Comparison')}</span>
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* 4th Slot Expansion Trigger */}
-        {slots.length < 4 && (
-          <div className="flex justify-center mb-8">
-            <button
-              onClick={handleAddFourthSlot}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/30 text-text-secondary hover:text-white transition-all shadow-lg"
-            >
-              <Plus className="w-4 h-4 text-accent" />
-              <span>{t('actions.addSlot', 'Add 4th Slot for 4-Way Comparison')}</span>
-            </button>
-          </div>
-        )}
+        {/* 6-Axis Interactive Performance Radar Chart */}
+        {activeProducts.length > 0 && <PerformanceRadarChart slots={slots} />}
+
+        {/* AI Bottleneck & Compatibility Auditor */}
+        {activeProducts.length > 0 && <AICalloutAuditor slots={slots} />}
 
         {/* Detailed Spec Comparison Table */}
         <CompareTable slots={slots} diffOnly={diffOnly} />
       </div>
+
+      {/* Floating Quick Action Bar */}
+      <FloatingActionBar
+        diffOnly={diffOnly}
+        onToggleDiffOnly={handleToggleDiffOnly}
+        hiddenDiffCount={hiddenDiffCount}
+        onOpenSwapModal={() => handleOpenSwapModal(0)}
+        onScrollToAuditor={handleScrollToAuditor}
+        onExportPdf={handleExportPdf}
+        onOpenShareModal={() => setShareModalOpen(true)}
+      />
+
+      {/* Share Modal with QR Code */}
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        onCopiedToast={() =>
+          showToast(t('toast.linkCopied', 'Comparison link copied to clipboard!'))
+        }
+      />
 
       {/* Add Component Modal */}
       <AddComponentModal
