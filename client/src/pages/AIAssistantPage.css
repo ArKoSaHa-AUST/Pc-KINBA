@@ -1,0 +1,41 @@
+/* ==========================================================================
+   AI Assistant Page Styles (tonima1.md Architecture)
+   ========================================================================== */
+
+.ai-assistant-page {
+  min-height: 100vh;
+  position: relative;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+/* Background Ambient Lighting Blobs */
+.ai-ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(140px);
+  z-index: 0;
+}
+
+.ai-ambient-orb-1 {
+  width: 500px;
+  height: 500px;
+  top: -100px;
+  right: -100px;
+  background: radial-gradient(circle, rgba(0, 229, 255, 0.15) 0%, transparent 70%);
+}
+
+.ai-ambient-orb-2 {
+  width: 600px;
+  height: 600px;
+  top: 30%;
+  left: -200px;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.12) 0%, transparent 70%);
+}
+
+.ai-page-content {
+  position: relative;
+  z-index: 1;
+}
