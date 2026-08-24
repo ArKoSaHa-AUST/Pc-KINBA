@@ -13,6 +13,8 @@ import { PerformanceRadarChart } from '../components/compare/PerformanceRadarCha
 import { AICalloutAuditor } from '../components/compare/AICalloutAuditor';
 import { FloatingActionBar } from '../components/compare/FloatingActionBar';
 import { ShareModal } from '../components/compare/ShareModal';
+import { RetailerPriceMatrix } from '../components/compare/RetailerPriceMatrix';
+import { fetchLiveRetailerPrices } from '../api/compare';
 import { HARDWARE_DATASET, SPEC_CATEGORIES } from '../data/compareDataset';
 import type { CompareProduct } from '../types/compare';
 import '../components/compare/ComparePage.css';
@@ -36,6 +38,26 @@ export default function ComparePage() {
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [inspectProduct, setInspectProduct] = useState<CompareProduct | null>(null);
+  const [isRefreshingPrices, setIsRefreshingPrices] = useState<boolean>(false);
+
+  // Show Toast
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  }, []);
+
+  // Background SWR Live Price Sync
+  const refreshPrices = useCallback(async () => {
+    setIsRefreshingPrices(true);
+    const activeIds = slots.filter((p): p is CompareProduct => p !== null).map((p) => p.id);
+    if (activeIds.length > 0) {
+      await fetchLiveRetailerPrices(activeIds);
+    }
+    setTimeout(() => {
+      setIsRefreshingPrices(false);
+      showToast('Retailer prices synced with Star Tech & Ryans!');
+    }, 600);
+  }, [slots, showToast]);
 
   // Initialize Lenis Inertial Smooth Scroll
   useEffect(() => {
@@ -55,12 +77,6 @@ export default function ComparePage() {
       cancelAnimationFrame(rafId);
       lenis.destroy();
     };
-  }, []);
-
-  // Show Toast
-  const showToast = useCallback((msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
   }, []);
 
   // Initialize from URL query parameters
@@ -282,6 +298,15 @@ export default function ComparePage() {
 
         {/* AI Bottleneck & Compatibility Auditor */}
         {activeProducts.length > 0 && <AICalloutAuditor slots={slots} />}
+
+        {/* Bangladeshi Retailer Live Price Aggregator */}
+        {activeProducts.length > 0 && (
+          <RetailerPriceMatrix
+            slots={slots}
+            onRefreshPrices={refreshPrices}
+            isRefreshing={isRefreshingPrices}
+          />
+        )}
 
         {/* Detailed Spec Comparison Table */}
         <CompareTable slots={slots} diffOnly={diffOnly} />
