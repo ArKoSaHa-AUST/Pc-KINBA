@@ -45,3 +45,34 @@ export async function resizeImageToDataUrl(
   context.drawImage(image, 0, 0, width, height);
   return canvas.toDataURL('image/jpeg', quality);
 }
+
+/**
+ * Validates and sanitizes an image URL or data URI to prevent XSS.
+ * Only allows http:, https:, or safe data:image/ URIs.
+ */
+export function sanitizeImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+
+  // Allow safe data URIs for images
+  if (/^data:image\/(png|jpeg|jpg|webp|gif|svg\+xml);base64,[A-Za-z0-9+/=]+$/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  // Allow relative paths
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+    return trimmed;
+  }
+
+  // Allow http/https protocols only
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
