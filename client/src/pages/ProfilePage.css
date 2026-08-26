@@ -1,0 +1,62 @@
+/* ==============================================================================
+   ProfilePage.css — Full-Page 3D Ambient Parallax and Glassmorphic Styling
+   ============================================================================== */
+
+.profile-page-root {
+  position: relative;
+  min-height: 100vh;
+  padding-top: 5rem;
+  padding-bottom: 6rem;
+  overflow-x: hidden;
+  background-color: var(--bg-primary, #090d16);
+  background-image: 
+    radial-gradient(circle at 15% 20%, rgba(0, 229, 255, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 85% 60%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
+}
+
+/* Ambient Parallax Orbs */
+.profile-ambient-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+.profile-orb-1 {
+  top: 8%;
+  left: -5%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(0, 229, 255, 0.18), transparent 70%);
+}
+
+.profile-orb-2 {
+  top: 45%;
+  right: -8%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.18), transparent 70%);
+}
+
+.profile-orb-3 {
+  bottom: 10%;
+  left: 20%;
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(0, 255, 178, 0.12), transparent 70%);
+}
+
+.profile-content-container {
+  position: relative;
+  z-index: 1;
+  max-width: 54rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}

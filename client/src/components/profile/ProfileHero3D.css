@@ -1,0 +1,120 @@
+/* ==============================================================================
+   ProfileHero3D.css — Holographic 3D Avatar and Hero Section Styling
+   ============================================================================== */
+
+.profile-hero-card {
+  position: relative;
+  background: var(--glass-bg, rgba(15, 23, 42, 0.65));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+  border-radius: 1.25rem;
+  padding: 2.25rem;
+  overflow: hidden;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.profile-hero-card:hover {
+  border-color: rgba(0, 229, 255, 0.3);
+  box-shadow: 0 25px 50px -12px rgba(0, 229, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.profile-hero-gloss {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  transition: opacity 0.3s ease;
+}
+
+.profile-avatar-container {
+  position: relative;
+  width: 7.5rem;
+  height: 7.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-avatar-glow {
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(0, 229, 255, 0.45) 0%, rgba(124, 58, 237, 0.3) 50%, transparent 70%);
+  filter: blur(12px);
+  animation: avatar-pulse-glow 4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes avatar-pulse-glow {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.1);
+    opacity: 0.85;
+  }
+}
+
+@keyframes avatar-ring-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.profile-avatar-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  background: conic-gradient(
+    from 0deg,
+    var(--accent, #00e5ff),
+    var(--purple, #7c3aed),
+    var(--green, #00ffb2),
+    var(--accent, #00e5ff)
+  );
+  animation: avatar-ring-rotate 8s linear infinite;
+  z-index: 1;
+}
+
+.profile-avatar-inner {
+  position: relative;
+  width: calc(100% - 6px);
+  height: calc(100% - 6px);
+  border-radius: 9999px;
+  background: var(--bg-primary, #090d16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-stat-badge {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+
+.profile-stat-badge:hover {
+  background: rgba(0, 229, 255, 0.05);
+  border-color: rgba(0, 229, 255, 0.25);
+  transform: translateY(-2px);
+}
