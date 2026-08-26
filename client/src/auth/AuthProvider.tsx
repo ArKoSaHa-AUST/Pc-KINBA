@@ -21,7 +21,7 @@ function mapToUserProfile(
   email: string,
   role: UserRole = 'Customer',
   avatarUrl: string | null = null,
-  emailVerified = true
+  emailVerified = true,
 ): UserProfile {
   return {
     id,
@@ -44,31 +44,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
 
-  const fetchProfile = useCallback(async (userId: string, email: string, metadata?: Record<string, unknown>): Promise<UserProfile> => {
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+  const fetchProfile = useCallback(
+    async (
+      userId: string,
+      email: string,
+      metadata?: Record<string, unknown>,
+    ): Promise<UserProfile> => {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
 
-      if (profile) {
-        return mapToUserProfile(
-          profile.id,
-          profile.full_name || email.split('@')[0],
-          profile.email || email,
-          (profile.role as UserRole) || 'Customer',
-          profile.avatar_url || null,
-          true
-        );
+        if (profile) {
+          return mapToUserProfile(
+            profile.id,
+            profile.full_name || email.split('@')[0],
+            profile.email || email,
+            (profile.role as UserRole) || 'Customer',
+            profile.avatar_url || null,
+            true,
+          );
+        }
+      } catch (e) {
+        console.warn('Error fetching Supabase user profile:', e);
       }
-    } catch (e) {
-      console.warn('Error fetching Supabase user profile:', e);
-    }
 
-    const fallbackName = (metadata?.full_name as string) || (metadata?.name as string) || email.split('@')[0];
-    return mapToUserProfile(userId, fallbackName, email);
-  }, []);
+      const fallbackName =
+        (metadata?.full_name as string) || (metadata?.name as string) || email.split('@')[0];
+      return mapToUserProfile(userId, fallbackName, email);
+    },
+    [],
+  );
 
   // Listen to Supabase Auth state changes
   useEffect(() => {
@@ -76,9 +84,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     async function initAuth() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (session?.user && mounted) {
-          const profile = await fetchProfile(session.user.id, session.user.email || '', session.user.user_metadata);
+          const profile = await fetchProfile(
+            session.user.id,
+            session.user.email || '',
+            session.user.user_metadata,
+          );
           setUser(profile);
           setStatus('authenticated');
           return;
@@ -106,9 +120,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const profile = await fetchProfile(session.user.id, session.user.email || '', session.user.user_metadata);
+        const profile = await fetchProfile(
+          session.user.id,
+          session.user.email || '',
+          session.user.user_metadata,
+        );
         setUser(profile);
         setStatus('authenticated');
       } else {
@@ -154,7 +174,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       if (data.user) {
-        const profile = await fetchProfile(data.user.id, data.user.email || '', data.user.user_metadata);
+        const profile = await fetchProfile(
+          data.user.id,
+          data.user.email || '',
+          data.user.user_metadata,
+        );
         setUser(profile);
         setStatus('authenticated');
       }
@@ -162,20 +186,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [fetchProfile],
   );
 
-  const loginWithOAuth = useCallback(
-    async (provider: 'google' | 'github' | 'discord') => {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/profile`,
-        },
-      });
-      if (error) {
-        throw error;
-      }
-    },
-    [],
-  );
+  const loginWithOAuth = useCallback(async (provider: 'google' | 'github' | 'discord') => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/profile`,
+      },
+    });
+    if (error) {
+      throw error;
+    }
+  }, []);
 
   const register = useCallback(
     async (
@@ -183,7 +204,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       email: string,
       password: string,
       purpose = 'gaming',
-      agreeTerms = true
+      agreeTerms = true,
     ): Promise<UserProfile> => {
       let userId = `user_${Date.now()}`;
 
@@ -290,11 +311,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (user.id && !user.id.startsWith('user_')) {
         try {
-          await supabase.from('profiles').update({
-            full_name: payload.name !== undefined ? payload.name : user.name,
-            avatar_url: payload.avatarUrl !== undefined ? payload.avatarUrl : user.avatarUrl,
-            updated_at: new Date().toISOString(),
-          }).eq('id', user.id);
+          await supabase
+            .from('profiles')
+            .update({
+              full_name: payload.name !== undefined ? payload.name : user.name,
+              avatar_url: payload.avatarUrl !== undefined ? payload.avatarUrl : user.avatarUrl,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', user.id);
         } catch (err) {
           console.warn('Supabase profile update failed:', err);
         }

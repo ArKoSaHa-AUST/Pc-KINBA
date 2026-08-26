@@ -3,6 +3,31 @@ import nodemailer from "nodemailer";
 
 dotenv.config();
 
+/**
+ * Escapes HTML special characters to prevent HTML injection (XSS) in email templates.
+ * @param {string} str 
+ * @returns {string}
+ */
+const escapeHtml = (str) => {
+  if (typeof str !== "string") return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
+/**
+ * Sanitizes input string to prevent log injection vulnerabilities (strips CR/LF).
+ * @param {string} str 
+ * @returns {string}
+ */
+const sanitizeLog = (str) => {
+  if (typeof str !== "string") return "";
+  return str.replace(/[\r\n\t]/g, " ");
+};
+
 const transporter = nodemailer.createTransport({
   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
   port: Number(process.env.BREVO_SMTP_PORT) || 587,
@@ -17,11 +42,16 @@ const transporter = nodemailer.createTransport({
  * Sends a welcome email to newly registered users via Brevo SMTP.
  * Wrapped to ensure email failure never blocks user signup.
  */
-export const sendWelcomeEmail = async (email, name) => {
+export const sendWelcomeEmail = async (rawEmail, rawName) => {
+  const email = escapeHtml(rawEmail || "");
+  const name = escapeHtml(rawName || "Builder");
+
+  const safeLogEmail = sanitizeLog(rawEmail || "");
+
   try {
     const info = await transporter.sendMail({
       from: process.env.EMAIL_FROM || '"PC Kinba" <arkosaha61005@gmail.com>',
-      to: email,
+      to: rawEmail,
       subject: "Welcome to PC Kinba 🎉",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #334155; border-radius: 12px; background-color: #0f172a; color: #f8fafc;">
@@ -30,7 +60,7 @@ export const sendWelcomeEmail = async (email, name) => {
             <p style="color: #94a3b8; font-size: 14px; margin-top: 4px;">Next-Gen 3D PC Builder & Hardware Platform</p>
           </div>
           <div style="padding: 24px; background-color: #1e293b; border-radius: 8px; border: 1px solid #475569;">
-            <h2 style="color: #ffffff; margin-top: 0; font-size: 20px;">Hello ${name || "Builder"}, welcome aboard! 🎉</h2>
+            <h2 style="color: #ffffff; margin-top: 0; font-size: 20px;">Hello ${name}, welcome aboard! 🎉</h2>
             <p style="color: #cbd5e1; line-height: 1.6; font-size: 15px;">
               Your account has been successfully created. You can now build, customize, and compare high-performance PC rigs with real-time 3D spatial visualization and AI optimization.
             </p>
@@ -46,11 +76,10 @@ export const sendWelcomeEmail = async (email, name) => {
         </div>
       `,
     });
-    console.log(`[Brevo SMTP] Welcome email sent successfully to ${email} (MessageID: ${info.messageId})`);
+    console.log(`[Brevo SMTP] Welcome email sent successfully to ${safeLogEmail} (MessageID: ${info.messageId})`);
     return info;
   } catch (error) {
-    console.error(`[Brevo SMTP Error] Failed to send welcome email to ${email}:`, error.message);
-    // Return error status without throwing to ensure signup flow is not blocked
+    console.error(`[Brevo SMTP Error] Failed to send welcome email to ${safeLogEmail}:`, sanitizeLog(error.message));
     return { success: false, error: error.message };
   }
 };

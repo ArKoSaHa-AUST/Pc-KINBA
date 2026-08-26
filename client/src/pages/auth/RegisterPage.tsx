@@ -77,13 +77,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await register(
-        name.trim(),
-        email.trim(),
-        password,
-        purpose,
-        agreeTerms
-      );
+      await register(name.trim(), email.trim(), password, purpose, agreeTerms);
       toast({ message: t('register.successNoVerify'), variant: 'success', duration: 6000 });
       navigate('/profile');
     } catch (error) {

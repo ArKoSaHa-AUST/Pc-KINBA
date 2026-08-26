@@ -13,7 +13,13 @@ export interface AuthContextValue {
   /** Authenticate via Supabase OAuth provider (Google, GitHub, Discord). */
   loginWithOAuth?: (provider: 'google' | 'github' | 'discord') => Promise<void>;
   /** Create an account (returns the unverified profile). */
-  register: (name: string, email: string, password: string, purpose?: string, agreeTerms?: boolean) => Promise<UserProfile>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    purpose?: string,
+    agreeTerms?: boolean,
+  ) => Promise<UserProfile>;
   /** Confirm an email address with the emailed OTP code. */
   verifyEmail: (email: string, code: string) => Promise<void>;
   /** Revoke the session and clear local state. */
