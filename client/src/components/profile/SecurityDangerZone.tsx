@@ -39,11 +39,13 @@ export function SecurityDangerZone({
           <div>
             <div className="text-sm font-semibold text-text-primary">Password Reset</div>
             <div className="text-xs text-text-muted mt-0.5">
-              Send a secure password reset link to <span className="text-text-primary font-medium">{email}</span>
+              Send a secure password reset link to{' '}
+              <span className="text-text-primary font-medium">{email}</span>
             </div>
           </div>
 
           <Button
+            id="profile-reset-password-btn"
             variant="secondary"
             onClick={onResetPassword}
             loading={resetting}
@@ -74,7 +76,9 @@ export function SecurityDangerZone({
               </div>
               <span>Danger Zone</span>
             </div>
-            <span className="text-xs text-red-400/80 uppercase font-bold tracking-wider">Session Control</span>
+            <span className="text-xs text-red-400/80 uppercase font-bold tracking-wider">
+              Session Control
+            </span>
           </div>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -88,6 +92,7 @@ export function SecurityDangerZone({
             {showConfirmLogout ? (
               <div className="flex items-center gap-2">
                 <Button
+                  id="profile-cancel-logout-btn"
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowConfirmLogout(false)}
@@ -95,6 +100,7 @@ export function SecurityDangerZone({
                   Cancel
                 </Button>
                 <Button
+                  id="profile-confirm-logout-btn"
                   variant="danger"
                   onClick={onLogout}
                   loading={loggingOut}
@@ -105,6 +111,7 @@ export function SecurityDangerZone({
               </div>
             ) : (
               <Button
+                id="profile-logout-btn"
                 variant="danger"
                 onClick={() => setShowConfirmLogout(true)}
                 leftIcon={<LogOut className="w-4 h-4" />}

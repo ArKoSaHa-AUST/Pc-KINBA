@@ -26,7 +26,10 @@ export function BuildHistoryTimeline() {
       const storedConfig = localStorage.getItem('pc_kinba_configured_build');
       if (storedConfig) {
         const parsed = JSON.parse(storedConfig) as Record<string, unknown>;
-        const partsObj = (parsed.components || parsed.parts || {}) as Record<string, { name?: string; model?: string } | string>;
+        const partsObj = (parsed.components || parsed.parts || {}) as Record<
+          string,
+          { name?: string; model?: string } | string
+        >;
         saved.push({
           id: 'build_configured',
           name: (parsed.name as string) || 'Custom Quantum Rig',
@@ -34,7 +37,13 @@ export function BuildHistoryTimeline() {
           totalPrice: (parsed.totalPrice as number) || 165000,
           partsCount: Object.keys(partsObj).length || 7,
           parts: Object.values(partsObj)
-            .map((p) => (typeof p === 'object' && p !== null ? p.name || p.model || '' : typeof p === 'string' ? p : ''))
+            .map((p) =>
+              typeof p === 'object' && p !== null
+                ? p.name || p.model || ''
+                : typeof p === 'string'
+                  ? p
+                  : '',
+            )
             .filter(Boolean)
             .slice(0, 4),
           status: 'Complete',
@@ -54,9 +63,18 @@ export function BuildHistoryTimeline() {
               totalPrice: (b.totalPrice as number) || (b.total as number) || 145000,
               partsCount: (b.partsCount as number) || (b.parts ? Object.keys(rawParts).length : 6),
               parts: b.parts
-                ? Object.values(rawParts).map((p) => (typeof p === 'object' && p !== null ? p.name || '' : typeof p === 'string' ? p : '')).filter(Boolean).slice(0, 4)
+                ? Object.values(rawParts)
+                    .map((p) =>
+                      typeof p === 'object' && p !== null
+                        ? p.name || ''
+                        : typeof p === 'string'
+                          ? p
+                          : '',
+                    )
+                    .filter(Boolean)
+                    .slice(0, 4)
                 : ['Ryzen 7 7800X3D', 'RTX 4070 Ti Super', '32GB DDR5', '1TB NVMe'],
-              status: ((b.status as string) === 'Draft' ? 'Draft' : 'Complete'),
+              status: (b.status as string) === 'Draft' ? 'Draft' : 'Complete',
             });
           });
         }
@@ -71,7 +89,12 @@ export function BuildHistoryTimeline() {
             date: new Date(Date.now() - 86400000 * 2).toISOString(),
             totalPrice: 245000,
             partsCount: 8,
-            parts: ['Intel Core i7-14700K', 'RTX 4080 Super 16GB', 'Corsair Dominator 32GB DDR5', 'Samsung 990 PRO 2TB'],
+            parts: [
+              'Intel Core i7-14700K',
+              'RTX 4080 Super 16GB',
+              'Corsair Dominator 32GB DDR5',
+              'Samsung 990 PRO 2TB',
+            ],
             status: 'Complete',
           },
           {
@@ -80,7 +103,12 @@ export function BuildHistoryTimeline() {
             date: new Date(Date.now() - 86400000 * 12).toISOString(),
             totalPrice: 320000,
             partsCount: 7,
-            parts: ['AMD Ryzen 9 7950X', 'RTX 4090 24GB', 'G.Skill 64GB DDR5-6000', 'WD Black SN850X 4TB'],
+            parts: [
+              'AMD Ryzen 9 7950X',
+              'RTX 4090 24GB',
+              'G.Skill 64GB DDR5-6000',
+              'WD Black SN850X 4TB',
+            ],
             status: 'Complete',
           },
         );
@@ -102,6 +130,7 @@ export function BuildHistoryTimeline() {
           <span>Build History & Saved Rigs</span>
         </div>
         <Button
+          id="profile-open-builder-btn"
           variant="secondary"
           size="sm"
           onClick={() => navigate('/builder')}
@@ -130,7 +159,10 @@ export function BuildHistoryTimeline() {
                     <h3 className="font-bold text-text-primary text-base group-hover:text-accent transition-colors">
                       {build.name}
                     </h3>
-                    <Badge variant={build.status === 'Complete' ? 'success' : 'neutral'} className="text-xs">
+                    <Badge
+                      variant={build.status === 'Complete' ? 'success' : 'neutral'}
+                      className="text-xs"
+                    >
                       <CheckCircle2 className="w-3 h-3 mr-1" /> {build.status}
                     </Badge>
                   </div>

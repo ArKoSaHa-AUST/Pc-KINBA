@@ -22,7 +22,9 @@ export const createClient = (request: {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+      setAll(
+        cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>,
+      ) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
       },
     },

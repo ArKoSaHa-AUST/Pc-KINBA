@@ -11,15 +11,21 @@
   border-radius: 1.25rem;
   padding: 2.25rem;
   overflow: hidden;
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 20px 40px -15px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   transform-style: preserve-3d;
   perspective: 1000px;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .profile-hero-card:hover {
   border-color: rgba(0, 229, 255, 0.3);
-  box-shadow: 0 25px 50px -12px rgba(0, 229, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 25px 50px -12px rgba(0, 229, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .profile-hero-gloss {
@@ -44,7 +50,12 @@
   position: absolute;
   inset: -8px;
   border-radius: 9999px;
-  background: radial-gradient(circle, rgba(0, 229, 255, 0.45) 0%, rgba(124, 58, 237, 0.3) 50%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(0, 229, 255, 0.45) 0%,
+    rgba(124, 58, 237, 0.3) 50%,
+    transparent 70%
+  );
   filter: blur(12px);
   animation: avatar-pulse-glow 4s ease-in-out infinite alternate;
   pointer-events: none;
@@ -117,4 +128,27 @@
   background: rgba(0, 229, 255, 0.05);
   border-color: rgba(0, 229, 255, 0.25);
   transform: translateY(-2px);
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 768px) {
+  .profile-hero-card {
+    padding: 1.5rem;
+    transform: none !important;
+  }
+
+  .profile-avatar-container {
+    width: 6rem;
+    height: 6rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .profile-hero-card {
+    padding: 1.25rem;
+  }
+
+  .profile-stat-badge {
+    padding: 0.5rem 0.75rem;
+  }
 }

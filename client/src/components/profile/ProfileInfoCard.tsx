@@ -1,6 +1,16 @@
 import { useState, useRef, type ChangeEvent } from 'react';
 import { motion } from 'framer-motion';
-import { User as UserIcon, Mail, Upload, Sparkles, Gamepad2, Palette, BrainCircuit, Briefcase, Check } from 'lucide-react';
+import {
+  User as UserIcon,
+  Mail,
+  Upload,
+  Sparkles,
+  Gamepad2,
+  Palette,
+  BrainCircuit,
+  Briefcase,
+  Check,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -64,13 +74,14 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
     });
   };
 
-  const initials = user.name
-    .split(' ')
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase() || 'U';
+  const initials =
+    user.name
+      .split(' ')
+      .map((p) => p[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'U';
 
   return (
     <motion.div
@@ -104,6 +115,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
         <form onSubmit={handleFormSubmit} className="flex flex-col gap-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Input
+              id="profile-name-input"
               label={t('fullName') || 'Full Name'}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -112,11 +124,15 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
             />
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-text-primary uppercase tracking-wider">
+              <label
+                htmlFor="profile-email-input"
+                className="text-xs font-semibold text-text-primary uppercase tracking-wider"
+              >
                 {t('email') || 'Email Address'}
               </label>
               <div className="relative">
                 <Input
+                  id="profile-email-input"
                   value={user.email}
                   disabled
                   readOnly
@@ -151,6 +167,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
 
               <div className="flex items-center gap-2.5 flex-wrap">
                 <input
+                  id="profile-avatar-file-input"
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
@@ -158,6 +175,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
                   onChange={handleFileSelected}
                 />
                 <Button
+                  id="profile-upload-avatar-btn"
                   type="button"
                   variant="secondary"
                   size="sm"
@@ -168,6 +186,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
                 </Button>
                 {avatarUrl && (
                   <Button
+                    id="profile-remove-avatar-btn"
                     type="button"
                     variant="ghost"
                     size="sm"
@@ -183,6 +202,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
             </div>
 
             <Input
+              id="profile-avatar-url-input"
               label="Or specify an Image URL"
               placeholder="https://example.com/avatar.jpg"
               value={avatarUrl.startsWith('data:') ? '' : avatarUrl}
@@ -190,7 +210,11 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
                 setAvatarUrl(e.target.value);
                 setAvatarBroken(false);
               }}
-              hint={avatarUrl.startsWith('data:') ? 'Custom compressed image active (≤256px)' : undefined}
+              hint={
+                avatarUrl.startsWith('data:')
+                  ? 'Custom compressed image active (≤256px)'
+                  : undefined
+              }
             />
           </div>
 
@@ -206,6 +230,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
                 return (
                   <button
                     key={opt.id}
+                    id={`profile-purpose-${opt.id}`}
                     type="button"
                     onClick={() => setPurpose(opt.id)}
                     className={`relative p-3.5 rounded-xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${
@@ -215,7 +240,9 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <Icon className={`w-5 h-5 ${isSelected ? 'text-accent' : 'text-text-muted'}`} />
+                      <Icon
+                        className={`w-5 h-5 ${isSelected ? 'text-accent' : 'text-text-muted'}`}
+                      />
                       {isSelected && <Check className="w-4 h-4 text-accent" />}
                     </div>
                     <div>
@@ -229,7 +256,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
           </div>
 
           <div className="flex justify-end pt-2 border-t border-white/10">
-            <Button type="submit" loading={saving} className="px-6 py-2.5">
+            <Button id="profile-save-btn" type="submit" loading={saving} className="px-6 py-2.5">
               Save Changes
             </Button>
           </div>

@@ -65,13 +65,14 @@ export function ProfileHero3D({ user }: ProfileHero3DProps) {
     }
   }, []);
 
-  const initials = user.name
-    .split(' ')
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase() || 'U';
+  const initials =
+    user.name
+      .split(' ')
+      .map((part) => part[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'U';
 
   return (
     <motion.div

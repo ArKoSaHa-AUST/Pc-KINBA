@@ -9,7 +9,7 @@
   padding-bottom: 6rem;
   overflow-x: hidden;
   background-color: var(--bg-primary, #090d16);
-  background-image: 
+  background-image:
     radial-gradient(circle at 15% 20%, rgba(0, 229, 255, 0.04) 0%, transparent 40%),
     radial-gradient(circle at 85% 60%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
 }
@@ -59,4 +59,35 @@
   display: flex;
   flex-direction: column;
   gap: 2rem;
+}
+
+@media (max-width: 768px) {
+  .profile-page-root {
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+  }
+
+  .profile-content-container {
+    gap: 1.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .profile-ambient-orb {
+    filter: blur(60px);
+    opacity: 0.35;
+  }
+}
+
+@media (max-width: 640px) {
+  .profile-page-root {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+
+  .profile-content-container {
+    gap: 1.25rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
 }

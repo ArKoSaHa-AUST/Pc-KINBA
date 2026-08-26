@@ -99,7 +99,9 @@ export function NotificationPanel({ preferences, onChange }: NotificationPanelPr
                 className="flex items-center justify-between gap-4 py-4 first:pt-1 last:pb-1"
               >
                 <div className="flex items-start gap-3.5">
-                  <div className={`p-2 rounded-lg bg-white/[0.03] border border-white/5 ${item.color} mt-0.5`}>
+                  <div
+                    className={`p-2 rounded-lg bg-white/[0.03] border border-white/5 ${item.color} mt-0.5`}
+                  >
                     <Icon className="w-4 h-4" />
                   </div>
                   <div>
@@ -109,6 +111,7 @@ export function NotificationPanel({ preferences, onChange }: NotificationPanelPr
                 </div>
 
                 <button
+                  id={`profile-pref-${item.key}`}
                   type="button"
                   role="switch"
                   aria-checked={isChecked}

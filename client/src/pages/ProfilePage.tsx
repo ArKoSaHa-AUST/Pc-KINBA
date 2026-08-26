@@ -131,7 +131,8 @@ export default function ProfilePage() {
         variant: 'success',
       });
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Failed to update profile. Please try again.';
+      const msg =
+        error instanceof Error ? error.message : 'Failed to update profile. Please try again.';
       toast({
         message: msg,
         variant: 'danger',
@@ -152,7 +153,8 @@ export default function ProfilePage() {
         variant: 'success',
       });
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Failed to update notification preferences.';
+      const msg =
+        error instanceof Error ? error.message : 'Failed to update notification preferences.';
       toast({
         message: msg,
         variant: 'danger',
@@ -243,11 +245,7 @@ export default function ProfilePage() {
 
         {/* Section 2: Personal Information Card */}
         <motion.div variants={sectionVariants} className="profile-scroll-section">
-          <ProfileInfoCard
-            user={user}
-            onSave={handleSaveProfile}
-            saving={saving}
-          />
+          <ProfileInfoCard user={user} onSave={handleSaveProfile} saving={saving} />
         </motion.div>
 
         {/* Section 3: Build History Timeline */}

@@ -127,26 +127,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event: AuthChangeEvent, session: Session | null) => {
-      if (session?.user) {
-        const profile = await fetchProfile(
-          session.user.id,
-          session.user.email || '',
-          session.user.user_metadata,
-        );
-        setUser(profile);
-        setStatus('authenticated');
-      } else {
-        const storedUser = localStorage.getItem(DEMO_USER_KEY);
-        if (storedUser) {
-          setUser(JSON.parse(storedUser) as UserProfile);
+    } = supabase.auth.onAuthStateChange(
+      async (_event: AuthChangeEvent, session: Session | null) => {
+        if (session?.user) {
+          const profile = await fetchProfile(
+            session.user.id,
+            session.user.email || '',
+            session.user.user_metadata,
+          );
+          setUser(profile);
           setStatus('authenticated');
         } else {
-          setUser(null);
-          setStatus('unauthenticated');
+          const storedUser = localStorage.getItem(DEMO_USER_KEY);
+          if (storedUser) {
+            setUser(JSON.parse(storedUser) as UserProfile);
+            setStatus('authenticated');
+          } else {
+            setUser(null);
+            setStatus('unauthenticated');
+          }
         }
-      }
-    });
+      },
+    );
 
     return () => {
       mounted = false;
