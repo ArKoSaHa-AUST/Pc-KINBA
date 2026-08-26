@@ -1,6 +1,21 @@
-import type { BuilderProduct, ComponentCategory, FormFactor } from './builderCatalog';
+import {
+    BUILDER_CATALOG,
+    type BuilderProduct,
+    type ComponentCategory,
+    type FormFactor,
+} from './builderCatalog';
 
 export type BuildSelection = Partial<Record<ComponentCategory, BuilderProduct>>;
+
+/** Rebuild a selection from a comma-separated id list (share links / checkout URLs). */
+export function selectionFromPartIds(param: string | null): BuildSelection {
+  const selection: BuildSelection = {};
+  for (const id of param?.split(',') ?? []) {
+    const product = BUILDER_CATALOG.find((p) => p.id === id);
+    if (product) selection[product.category] = product;
+  }
+  return selection;
+}
 
 export type CompatStatus = 'compatible' | 'warning' | 'incompatible';
 

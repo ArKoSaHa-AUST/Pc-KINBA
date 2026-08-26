@@ -968,73 +968,6 @@
   }
 }
 
-/* ---- Floating Sticky Build Bar ---- */
-.sticky-build-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 90;
-  height: 72px;
-  background: color-mix(in srgb, var(--bg-primary) 80%, transparent);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-top: 1px solid var(--glass-border);
-  box-shadow: 0 -4px 32px var(--glass-glow);
-}
-
-.sticky-build-bar-inner {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-.sticky-build-stat {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.sticky-build-stat strong {
-  font-variant-numeric: tabular-nums;
-}
-
-.sticky-build-total svg {
-  color: var(--accent);
-}
-
-.sticky-build-compat .is-warn {
-  color: var(--warning);
-}
-
-.sticky-build-compat .is-bad {
-  color: var(--danger);
-}
-
-.sticky-build-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.sticky-build-actions button {
-  padding: 0.55rem 1.4rem;
-  font-size: 14px;
-}
-
-@media (max-width: 767px) {
-  .sticky-build-parts,
-  .sticky-build-compat,
-  .sticky-build-save {
-    display: none;
-  }
-}
-
 /* ---- Print: export the build summary as PDF ---- */
 @media print {
   @page {
@@ -1046,8 +979,7 @@
   .builder-hero,
   .builder-grid-section,
   .builder-assembly-section,
-  .builder-ai-section,
-  .sticky-build-bar {
+  .builder-ai-section {
     display: none !important;
   }
 

@@ -1,5 +1,5 @@
-import { createClient } from '../utils/supabase/client';
 import type { BuildSelection } from '../components/builder/compatibility';
+import { createClient } from '../utils/supabase/client';
 
 export interface SavedBuild {
   id: string;

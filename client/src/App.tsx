@@ -7,6 +7,7 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import VerifyPage from './pages/auth/VerifyPage';
+import BuildCheckoutPage from './pages/BuildCheckoutPage';
 import ComparePage from './pages/ComparePage';
 import Home from './pages/Home';
 import PCBuilderPage from './pages/PCBuilderPage';
@@ -24,6 +25,7 @@ function App() {
           <Route path="/product/:id" element={<ProductDetailsPage />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/pc-builder" element={<PCBuilderPage />} />
+          <Route path="/pc-builder/checkout" element={<BuildCheckoutPage />} />
           <Route path="/ai-assistant" element={<AIAssistantPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
