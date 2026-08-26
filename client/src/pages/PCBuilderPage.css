@@ -1,0 +1,24 @@
+/* PC Builder page shell — dark-first glassmorphism */
+
+.pc-builder-page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  overflow-x: hidden;
+}
+
+.builder-grid-section {
+  min-height: 50vh;
+}
+
+.builder-section-title {
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+
+.builder-section-subtitle {
+  color: var(--text-secondary);
+  font-size: 17px;
+  max-width: 620px;
+}
