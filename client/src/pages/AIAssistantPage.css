@@ -1,5 +1,5 @@
 /* ==========================================================================
-   AI Assistant Page Styles (tonima1.md Architecture)
+   AI Assistant Page Styles (tonima1.md, tonima2.md & tonima3.md Architecture)
    ========================================================================== */
 
 .ai-assistant-page {
@@ -10,29 +10,79 @@
   overflow-x: hidden;
 }
 
-/* Background Ambient Lighting Blobs */
+/* Background Ambient Lighting Blobs with continuous subtle drift (tonima3.md Section 3.1) */
 .ai-ambient-orb {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
   filter: blur(140px);
+  -webkit-filter: blur(140px);
   z-index: 0;
+  will-change: transform, background;
 }
 
 .ai-ambient-orb-1 {
-  width: 500px;
-  height: 500px;
-  top: -100px;
-  right: -100px;
-  background: radial-gradient(circle, rgba(0, 229, 255, 0.15) 0%, transparent 70%);
+  width: 550px;
+  height: 550px;
+  top: -120px;
+  right: -120px;
+  background: radial-gradient(circle, rgba(0, 229, 255, 0.18) 0%, rgba(124, 58, 237, 0.08) 60%, transparent 70%);
+  animation: orbDrift1 12s ease-in-out infinite alternate;
 }
 
 .ai-ambient-orb-2 {
-  width: 600px;
-  height: 600px;
-  top: 30%;
-  left: -200px;
-  background: radial-gradient(circle, rgba(124, 58, 237, 0.12) 0%, transparent 70%);
+  width: 650px;
+  height: 650px;
+  top: 35%;
+  left: -220px;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.16) 0%, rgba(0, 229, 255, 0.08) 60%, transparent 70%);
+  animation: orbDrift2 15s ease-in-out infinite alternate;
+}
+
+.ai-ambient-orb-3 {
+  width: 500px;
+  height: 500px;
+  bottom: 5%;
+  right: -100px;
+  background: radial-gradient(circle, rgba(0, 229, 255, 0.12) 0%, rgba(0, 255, 178, 0.08) 60%, transparent 70%);
+  animation: orbDrift3 18s ease-in-out infinite alternate;
+}
+
+@keyframes orbDrift1 {
+  0% {
+    transform: translate(0, 0) scale(1);
+    background: radial-gradient(circle, rgba(0, 229, 255, 0.18) 0%, rgba(124, 58, 237, 0.08) 60%, transparent 70%);
+  }
+  50% {
+    transform: translate(-60px, 80px) scale(1.1);
+  }
+  100% {
+    transform: translate(-100px, 40px) scale(0.95);
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.2) 0%, rgba(0, 229, 255, 0.1) 60%, transparent 70%);
+  }
+}
+
+@keyframes orbDrift2 {
+  0% {
+    transform: translate(0, 0) scale(1);
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.16) 0%, rgba(0, 229, 255, 0.08) 60%, transparent 70%);
+  }
+  50% {
+    transform: translate(80px, -50px) scale(1.15);
+  }
+  100% {
+    transform: translate(120px, -20px) scale(0.9);
+    background: radial-gradient(circle, rgba(0, 229, 255, 0.18) 0%, rgba(124, 58, 237, 0.1) 60%, transparent 70%);
+  }
+}
+
+@keyframes orbDrift3 {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(-50px, -60px) scale(1.08);
+  }
 }
 
 .ai-page-content {

@@ -3,6 +3,7 @@ import { useEffect, useRef, useCallback } from 'react';
 interface HolographicCoreProps {
   isVoiceActive?: boolean;
   intensity?: number;
+  scaleProgress?: number;
   className?: string;
 }
 
@@ -21,11 +22,19 @@ interface Particle3D {
 export default function HolographicCore({
   isVoiceActive = false,
   intensity = 1.0,
+  scaleProgress = 1.0,
   className = '',
 }: HolographicCoreProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mouseRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
   const animationFrameRef = useRef<number | null>(null);
+
+  // Web Audio API refs
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioLevelRef = useRef<number>(0);
 
   // Initialize 3D particles and rings
   const particlesRef = useRef<Particle3D[]>([]);
@@ -60,6 +69,71 @@ export default function HolographicCore({
     }
     particlesRef.current = particles;
   }, []);
+
+  // Web Audio API Listener Setup
+  useEffect(() => {
+    if (!isVoiceActive) {
+      // Clean up microphone stream if deactivated
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current = null;
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+      }
+      analyserRef.current = null;
+      audioSourceRef.current = null;
+      audioLevelRef.current = 0;
+      return;
+    }
+
+    let isMounted = true;
+
+    async function setupAudio() {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) return;
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (!isMounted) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
+        mediaStreamRef.current = stream;
+        const AudioContextClass =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const ctx = new AudioContextClass();
+        audioCtxRef.current = ctx;
+
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 64;
+        analyser.smoothingTimeConstant = 0.8;
+        analyserRef.current = analyser;
+
+        const source = ctx.createMediaStreamSource(stream);
+        audioSourceRef.current = source;
+        source.connect(analyser);
+      } catch {
+        // Fallback to simulated audio reactive pulse
+        audioLevelRef.current = 0;
+      }
+    }
+
+    setupAudio();
+
+    return () => {
+      isMounted = false;
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current = null;
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+      }
+    };
+  }, [isVoiceActive]);
 
   useEffect(() => {
     initParticles();
@@ -105,9 +179,29 @@ export default function HolographicCore({
     const rotationX = 0.2;
     let rotationY = 0;
     let time = 0;
+    const dataArray = new Uint8Array(32);
 
     const render = () => {
       time += 0.02;
+
+      // Real-time audio analyzer extraction
+      let liveVolume = 0;
+      if (analyserRef.current) {
+        analyserRef.current.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        liveVolume = sum / dataArray.length / 255; // 0 to 1
+      }
+
+      // Smooth audio volume interpolation with fallback simulation
+      const targetAudio = isVoiceActive
+        ? analyserRef.current
+          ? liveVolume * 1.5
+          : 0.3 + Math.sin(time * 6) * 0.2
+        : 0;
+      audioLevelRef.current += (targetAudio - audioLevelRef.current) * 0.15;
 
       // Mouse easing
       mouseRef.current.x += (mouseRef.current.targetX - mouseRef.current.x) * 0.05;
@@ -116,7 +210,7 @@ export default function HolographicCore({
       const currentRotX = rotationX + mouseRef.current.y;
       const currentRotY = rotationY + mouseRef.current.x;
 
-      rotationY += 0.008;
+      rotationY += 0.008 + audioLevelRef.current * 0.02;
 
       ctx.clearRect(0, 0, width, height);
 
@@ -124,29 +218,35 @@ export default function HolographicCore({
       const centerY = height / 2;
       const fov = 400;
 
-      // Dynamic voice pulse factor
-      const pulse = isVoiceActive ? 1.0 + Math.sin(time * 8) * 0.25 * intensity : 1.0;
+      // Dynamic voice pulse factor combining audio reactivity & base pulse
+      const audioPulse = 1.0 + audioLevelRef.current * 0.6 * intensity;
+      const baseScale = scaleProgress * audioPulse;
 
-      // 1. Draw central glowing core
+      // 1. Draw central glowing core with dynamic audio-reactive aura
+      const coreRadius = (80 + audioLevelRef.current * 40) * baseScale;
       const coreGradient = ctx.createRadialGradient(
         centerX,
         centerY,
-        10 * pulse,
+        10 * baseScale,
         centerX,
         centerY,
-        90 * pulse,
+        coreRadius,
       );
-      coreGradient.addColorStop(0, 'rgba(0, 229, 255, 0.9)');
-      coreGradient.addColorStop(0.3, 'rgba(124, 58, 237, 0.5)');
+
+      const cyanOpacity = 0.75 + audioLevelRef.current * 0.25;
+      const purpleOpacity = 0.45 + audioLevelRef.current * 0.35;
+
+      coreGradient.addColorStop(0, `rgba(0, 229, 255, ${cyanOpacity})`);
+      coreGradient.addColorStop(0.35, `rgba(124, 58, 237, ${purpleOpacity})`);
       coreGradient.addColorStop(0.7, 'rgba(0, 229, 255, 0.15)');
       coreGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
       ctx.fillStyle = coreGradient;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, 90 * pulse, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, coreRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      // 2. Draw 3D Orbital Rings
+      // 2. Draw 3D Orbital Rings with audio deformation
       const drawRing = (
         radius: number,
         tiltX: number,
@@ -154,19 +254,24 @@ export default function HolographicCore({
         tiltZ: number,
         color: string,
         lineDash: number[] = [],
+        waveFreq = 0,
       ) => {
         ctx.save();
         ctx.setLineDash(lineDash);
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.5 + audioLevelRef.current * 1.5;
         ctx.beginPath();
 
         const segments = 64;
         for (let i = 0; i <= segments; i++) {
           const theta = (i / segments) * Math.PI * 2;
-          // Local ring coords
-          const x = Math.cos(theta) * radius * pulse;
-          const y = Math.sin(theta) * radius * pulse;
+          // Local ring coords with waveform modulation
+          const waveDeform =
+            waveFreq > 0 ? Math.sin(theta * waveFreq + time * 5) * audioLevelRef.current * 18 : 0;
+          const currentR = (radius + waveDeform) * baseScale;
+
+          const x = Math.cos(theta) * currentR;
+          const y = Math.sin(theta) * currentR;
           const z = 0;
 
           // Apply ring tilt
@@ -198,9 +303,9 @@ export default function HolographicCore({
       };
 
       // Draw primary, secondary, and tertiary neon rings
-      drawRing(110, 0.6 + time * 0.2, 0.4, 0.2, 'rgba(0, 229, 255, 0.65)', [8, 6]);
-      drawRing(140, -0.5, 0.8 + time * 0.15, -0.3, 'rgba(124, 58, 237, 0.6)', [12, 8]);
-      drawRing(170, 0.9, -0.4, 0.7 + time * 0.1, 'rgba(0, 255, 178, 0.45)', [4, 10]);
+      drawRing(110, 0.6 + time * 0.2, 0.4, 0.2, 'rgba(0, 229, 255, 0.7)', [8, 6], 8);
+      drawRing(140, -0.5, 0.8 + time * 0.15, -0.3, 'rgba(124, 58, 237, 0.65)', [12, 8], 6);
+      drawRing(170, 0.9, -0.4, 0.7 + time * 0.1, 'rgba(0, 255, 178, 0.5)', [4, 10], 12);
 
       // 3. Update & render 3D Particles
       const particles = particlesRef.current;
@@ -215,10 +320,10 @@ export default function HolographicCore({
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
-        p.angle += p.speed;
+        p.angle += p.speed * (1 + audioLevelRef.current * 3);
 
         // Current 3D position
-        const currentRadius = p.orbitRadius * pulse;
+        const currentRadius = p.orbitRadius * baseScale;
         const rawX = Math.cos(p.angle) * Math.cos(p.elevation) * currentRadius;
         const rawY = Math.sin(p.elevation) * currentRadius;
         const rawZ = Math.sin(p.angle) * Math.cos(p.elevation) * currentRadius;
@@ -232,7 +337,7 @@ export default function HolographicCore({
         const scale = fov / (fov + zFinal);
         const projX = centerX + xRot * scale;
         const projY = centerY + yRot * scale;
-        const projR = Math.max(0.5, p.baseRadius * scale);
+        const projR = Math.max(0.5, p.baseRadius * scale * (1 + audioLevelRef.current * 0.8));
         const alpha = Math.max(0.1, Math.min(1, (zFinal + 200) / 400));
 
         projectedList.push({
@@ -258,8 +363,9 @@ export default function HolographicCore({
           const dy = p1.projY - p2.projY;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist < 45) {
-            const lineAlpha = (1 - dist / 45) * 0.25 * p1.alpha;
+          const maxDist = 45 + audioLevelRef.current * 25;
+          if (dist < maxDist) {
+            const lineAlpha = (1 - dist / maxDist) * 0.3 * p1.alpha;
             ctx.strokeStyle = `rgba(0, 229, 255, ${lineAlpha})`;
             ctx.beginPath();
             ctx.moveTo(p1.projX, p1.projY);
@@ -291,7 +397,7 @@ export default function HolographicCore({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [initParticles, isVoiceActive, intensity]);
+  }, [initParticles, isVoiceActive, intensity, scaleProgress]);
 
   return (
     <div className={`relative w-full h-[520px] flex items-center justify-center ${className}`}>
