@@ -15,17 +15,18 @@ const escapeHtml = (str) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replace(/'/g, "&#039;")
+    .replace(/[^a-zA-Z0-9\s.@_-]/g, "");
 };
 
 /**
- * Sanitizes input string to prevent log injection vulnerabilities (strips CR/LF).
+ * Sanitizes input string to prevent log injection vulnerabilities.
  * @param {string} str 
  * @returns {string}
  */
 const sanitizeLog = (str) => {
   if (typeof str !== "string") return "";
-  return str.replace(/[\r\n\t]/g, " ");
+  return str.replace(/[\r\n\t\x00-\x1F\x7F]/g, " ").slice(0, 100);
 };
 
 const transporter = nodemailer.createTransport({
@@ -51,7 +52,7 @@ export const sendWelcomeEmail = async (rawEmail, rawName) => {
   try {
     const info = await transporter.sendMail({
       from: process.env.EMAIL_FROM || '"PC Kinba" <arkosaha61005@gmail.com>',
-      to: rawEmail,
+      to: email,
       subject: "Welcome to PC Kinba 🎉",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #334155; border-radius: 12px; background-color: #0f172a; color: #f8fafc;">
@@ -76,10 +77,11 @@ export const sendWelcomeEmail = async (rawEmail, rawName) => {
         </div>
       `,
     });
-    console.log(`[Brevo SMTP] Welcome email sent successfully to ${safeLogEmail} (MessageID: ${info.messageId})`);
+    console.log("[Brevo SMTP] Welcome email sent successfully to %s (MessageID: %s)", safeLogEmail, info.messageId);
     return info;
   } catch (error) {
-    console.error(`[Brevo SMTP Error] Failed to send welcome email to ${safeLogEmail}:`, sanitizeLog(error.message));
+    const safeErrorMsg = sanitizeLog(error.message || "");
+    console.error("[Brevo SMTP Error] Failed to send welcome email to %s: %s", safeLogEmail, safeErrorMsg);
     return { success: false, error: error.message };
   }
 };

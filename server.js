@@ -6,13 +6,13 @@ import { sendWelcomeEmail } from "./mailer.js";
 dotenv.config();
 
 /**
- * Sanitizes input string to prevent log injection vulnerabilities (strips CR/LF).
+ * Sanitizes input string to prevent log injection vulnerabilities.
  * @param {string} str 
  * @returns {string}
  */
 const sanitizeLog = (str) => {
   if (typeof str !== "string") return "";
-  return str.replace(/[\r\n\t]/g, " ");
+  return str.replace(/[\r\n\t\x00-\x1F\x7F]/g, " ").slice(0, 100);
 };
 
 const app = express();
@@ -28,13 +28,14 @@ app.post("/api/send-welcome", async (req, res) => {
   const safeLogEmail = sanitizeLog(email);
   const safeLogName = sanitizeLog(name || "User");
 
-  console.log(`[Signup Event] Triggering welcome email for: ${safeLogEmail} (${safeLogName})`);
+  console.log("[Signup Event] Triggering welcome email for: %s (%s)", safeLogEmail, safeLogName);
 
   try {
     const result = await sendWelcomeEmail(email, name);
     return res.json({ success: true, result });
   } catch (error) {
-    console.error("[Signup Event Error] Email sending failed:", sanitizeLog(error.message));
+    const safeErrorMsg = sanitizeLog(error.message || "");
+    console.error("[Signup Event Error] Email sending failed: %s", safeErrorMsg);
     return res.status(500).json({ error: error.message });
   }
 });
