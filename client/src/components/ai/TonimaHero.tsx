@@ -73,11 +73,21 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
     }
 
     // Check browser SpeechRecognition support
+    interface ISpeechRecognitionEvent {
+      results: {
+        [index: number]: {
+          [index: number]: {
+            transcript: string;
+          };
+        };
+      };
+    }
+
     interface ISpeechRecognition {
       lang: string;
       interimResults: boolean;
       maxAlternatives: number;
-      onresult: ((event: SpeechRecognitionEvent) => void) | null;
+      onresult: ((event: ISpeechRecognitionEvent) => void) | null;
       onerror: (() => void) | null;
       onend: (() => void) | null;
       start: () => void;
@@ -102,7 +112,7 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
 
         setIsVoiceActive(true);
 
-        recognition.onresult = (event: SpeechRecognitionEvent) => {
+        recognition.onresult = (event: ISpeechRecognitionEvent) => {
           const transcript = event.results[0][0].transcript;
           if (transcript) {
             setPromptText(transcript);

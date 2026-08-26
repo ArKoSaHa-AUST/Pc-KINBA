@@ -1,0 +1,151 @@
+/* ==========================================================================
+   Tonima 3D Parallax Feature Cards (tonima3.md Section 2.3 & 2.4 Specification)
+   ========================================================================== */
+
+.tonima-features-section {
+  position: relative;
+  padding-top: 100px;
+  padding-bottom: 120px;
+  perspective: 1200px;
+  overflow: visible;
+}
+
+@media (max-width: 1024px) {
+  .tonima-features-section {
+    padding-top: 70px;
+    padding-bottom: 80px;
+  }
+}
+
+@media (max-width: 640px) {
+  .tonima-features-section {
+    padding-top: 50px;
+    padding-bottom: 60px;
+  }
+}
+
+.tonima-features-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding-left: 32px;
+  padding-right: 32px;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .tonima-features-container {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .tonima-features-container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* Feature Grid Distribution */
+.tonima-features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  align-items: stretch;
+}
+
+@media (max-width: 1024px) {
+  .tonima-features-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+/* 3D Parallax Card Wrapper & Perspective context */
+.tonima-feature-card-wrapper {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+  height: 100%;
+}
+
+.tonima-feature-card {
+  position: relative;
+  height: 100%;
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 1.75rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.tonima-feature-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 30px 60px var(--glass-glow);
+}
+
+/* Dynamic Gloss Highlight Overlay */
+.tonima-card-gloss {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  z-index: 1;
+  transition: opacity 0.3s ease;
+}
+
+.tonima-feature-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--fill-subtle);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transform: translateZ(20px);
+}
+
+.tonima-feature-badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  background: var(--fill-subtle);
+  border: 1px solid var(--glass-border);
+  color: var(--accent);
+  transform: translateZ(25px);
+}
+
+.tonima-feature-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.6rem;
+  line-height: 1.3;
+  transform: translateZ(25px);
+}
+
+.tonima-feature-desc {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  transform: translateZ(20px);
+}
+
+.tonima-feature-interactive-box {
+  margin-top: auto;
+  transform: translateZ(30px);
+}
