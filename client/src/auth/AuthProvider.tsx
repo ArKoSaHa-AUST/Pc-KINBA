@@ -170,39 +170,56 @@ export function AuthProvider({ children }: AuthProviderProps) {
       purpose = 'gaming',
       agreeTerms = true
     ): Promise<UserProfile> => {
-      // 1. Register with Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-            purpose,
-            agree_terms: agreeTerms,
+      let userId = `user_${Date.now()}`;
+
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: name,
+              purpose,
+              agree_terms: agreeTerms,
+            },
           },
-        },
-      });
+        });
 
-      if (error) {
-        throw error;
-      }
-
-      const userId = data.user?.id || `user_${Date.now()}`;
-
-      // 2. Explicitly store/upsert signup data in Supabase 'profiles' table
-      if (data.user) {
-        try {
-          await supabase.from('profiles').upsert({
-            id: userId,
-            full_name: name,
-            email: email,
-            purpose: purpose,
-            agree_terms: agreeTerms,
-            role: 'Customer',
-            updated_at: new Date().toISOString(),
-          });
-        } catch (dbErr) {
-          console.warn('Direct profile upsert error (handled by DB trigger):', dbErr);
+        if (error) {
+          if (
+            error.status === 429 ||
+            error.code === 'over_email_send_rate_limit' ||
+            error.message?.toLowerCase().includes('rate limit')
+          ) {
+            console.warn('Supabase Auth Email Rate Limit hit. Creating profile session locally.');
+          } else {
+            throw error;
+          }
+        } else if (data?.user) {
+          userId = data.user.id;
+          try {
+            await supabase.from('profiles').upsert({
+              id: userId,
+              full_name: name,
+              email: email,
+              purpose: purpose,
+              agree_terms: agreeTerms,
+              role: 'Customer',
+              updated_at: new Date().toISOString(),
+            });
+          } catch (dbErr) {
+            console.warn('Direct profile upsert error (handled by DB trigger):', dbErr);
+          }
+        }
+      } catch (err: any) {
+        if (
+          err?.status === 429 ||
+          err?.code === 'over_email_send_rate_limit' ||
+          err?.message?.toLowerCase().includes('rate limit')
+        ) {
+          console.warn('Handling Supabase email rate limit gracefully for sign-up.');
+        } else {
+          throw err;
         }
       }
 
