@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Layers, Calendar, ArrowUpRight, Cpu, CheckCircle2 } from 'lucide-react';
+import { Layers, Calendar, ArrowUpRight, Cpu, CheckCircle2, Upload, Trash2 } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
+import { listBuilds, deleteBuild, type SavedBuild } from '../../api/builds';
+import { BUILDER_CATALOG } from '../builder/builderCatalog';
+import { useToast } from '../ui/useToast';
 
 interface SavedBuildItem {
   id: string;
@@ -14,15 +17,70 @@ interface SavedBuildItem {
   partsCount: number;
   parts: string[];
   status: 'Complete' | 'Draft';
+  /** ids for reloading into the builder — only present on Supabase-backed rows */
+  partIds?: string[];
+}
+
+function toItem(build: SavedBuild): SavedBuildItem {
+  const names = build.partIds
+    .map((id) => BUILDER_CATALOG.find((p) => p.id === id)?.name)
+    .filter((n): n is string => !!n);
+  return {
+    id: build.id,
+    name: build.name,
+    date: build.createdAt,
+    totalPrice: build.totalPrice,
+    partsCount: build.partIds.length,
+    parts: names.slice(0, 4),
+    status: 'Complete',
+    partIds: build.partIds,
+  };
 }
 
 export function BuildHistoryTimeline() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [builds, setBuilds] = useState<SavedBuildItem[]>([]);
 
   useEffect(() => {
+    let mounted = true;
+    (async () => {
+      // Prefer Supabase-backed builds; fall back to local/demo data
+      try {
+        const remote = await listBuilds();
+        if (mounted && remote.length > 0) {
+          setBuilds(remote.map(toItem));
+          return;
+        }
+      } catch {
+        // anonymous session or network issue — use fallback below
+      }
+      if (mounted) setBuilds(loadLocalBuilds());
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleLoad = (item: SavedBuildItem) => {
+    if (item.partIds) navigate(`/pc-builder?parts=${item.partIds.join(',')}`);
+  };
+
+  const handleDelete = async (item: SavedBuildItem) => {
     try {
-      const saved: SavedBuildItem[] = [];
+      await deleteBuild(item.id);
+      setBuilds((prev) => prev.filter((b) => b.id !== item.id));
+      toast({ message: `“${item.name}” deleted.`, variant: 'info' });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to delete build.';
+      toast({ message: msg, variant: 'danger' });
+    }
+  };
+
+  // Local/demo fallback shown when the user has no Supabase-backed builds
+  function loadLocalBuilds(): SavedBuildItem[] {
+    const saved: SavedBuildItem[] = [];
+    try {
       const storedConfig = localStorage.getItem('pc_kinba_configured_build');
       if (storedConfig) {
         const parsed = JSON.parse(storedConfig) as Record<string, unknown>;
@@ -113,12 +171,11 @@ export function BuildHistoryTimeline() {
           },
         );
       }
-
-      setBuilds(saved);
     } catch {
-      setBuilds([]);
+      return [];
     }
-  }, []);
+    return saved;
+  }
 
   return (
     <div className="relative flex flex-col gap-6">
@@ -133,7 +190,7 @@ export function BuildHistoryTimeline() {
           id="profile-open-builder-btn"
           variant="secondary"
           size="sm"
-          onClick={() => navigate('/builder')}
+          onClick={() => navigate('/pc-builder')}
           rightIcon={<ArrowUpRight className="w-3.5 h-3.5" />}
         >
           Open Builder
@@ -200,6 +257,27 @@ export function BuildHistoryTimeline() {
                       {part}
                     </span>
                   ))}
+                </div>
+              )}
+
+              {build.partIds && (
+                <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleLoad(build)}
+                    leftIcon={<Upload className="w-3.5 h-3.5" />}
+                  >
+                    Load in Builder
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(build)}
+                    leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                  >
+                    Delete
+                  </Button>
                 </div>
               )}
             </Card>
