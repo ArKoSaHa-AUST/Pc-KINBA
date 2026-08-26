@@ -98,3 +98,134 @@ export function checkCompatibility(candidate: BuilderProduct, build: BuildSelect
   }
   return { status: 'compatible', message: 'Compatible' };
 }
+
+export type BuildCheckStatus = CompatStatus | 'pending';
+
+export interface BuildCheck {
+  id: string;
+  label: string;
+  status: BuildCheckStatus;
+  detail: string;
+}
+
+/** Whole-build checks for the analytics dashboard (pending = parts not selected yet). */
+export function getBuildChecks(build: BuildSelection): BuildCheck[] {
+  const { cpu, motherboard, ram, psu, cooling } = build;
+  const pcCase = build.case;
+  const draw = estimatePowerDraw(build);
+
+  const socket: BuildCheck =
+    !cpu || !motherboard
+      ? {
+          id: 'socket',
+          label: 'Socket match (CPU ↔ Motherboard)',
+          status: 'pending',
+          detail: 'Select CPU and motherboard',
+        }
+      : cpu.socket === motherboard.socket
+        ? {
+            id: 'socket',
+            label: 'Socket match (CPU ↔ Motherboard)',
+            status: 'compatible',
+            detail: `${cpu.socket} matched`,
+          }
+        : {
+            id: 'socket',
+            label: 'Socket match (CPU ↔ Motherboard)',
+            status: 'incompatible',
+            detail: `${cpu.socket} ≠ ${motherboard.socket}`,
+          };
+
+  const ramType: BuildCheck =
+    !ram || !motherboard
+      ? {
+          id: 'ram',
+          label: 'RAM type compatibility (DDR4/DDR5)',
+          status: 'pending',
+          detail: 'Select RAM and motherboard',
+        }
+      : ram.ramType === motherboard.ramType
+        ? {
+            id: 'ram',
+            label: 'RAM type compatibility (DDR4/DDR5)',
+            status: 'compatible',
+            detail: `${ram.ramType} supported`,
+          }
+        : {
+            id: 'ram',
+            label: 'RAM type compatibility (DDR4/DDR5)',
+            status: 'incompatible',
+            detail: `${ram.ramType} RAM on ${motherboard.ramType} board`,
+          };
+
+  const psuCheck: BuildCheck = !psu?.wattage
+    ? {
+        id: 'psu',
+        label: 'PSU wattage sufficiency',
+        status: 'pending',
+        detail: `Estimated draw ~${draw}W`,
+      }
+    : {
+        id: 'psu',
+        label: 'PSU wattage sufficiency',
+        ...checkPsuHeadroom(psu.wattage, draw),
+        detail: `~${draw}W draw on ${psu.wattage}W PSU`,
+      };
+
+  const formFit: BuildCheck =
+    !motherboard?.formFactor || !pcCase?.formFactor
+      ? {
+          id: 'form',
+          label: 'Form factor fit (Motherboard ↔ Case)',
+          status: 'pending',
+          detail: 'Select motherboard and case',
+        }
+      : FORM_FACTOR_SIZE[motherboard.formFactor] <= FORM_FACTOR_SIZE[pcCase.formFactor]
+        ? {
+            id: 'form',
+            label: 'Form factor fit (Motherboard ↔ Case)',
+            status: 'compatible',
+            detail: `${motherboard.formFactor} fits ${pcCase.formFactor} case`,
+          }
+        : {
+            id: 'form',
+            label: 'Form factor fit (Motherboard ↔ Case)',
+            status: 'incompatible',
+            detail: `${motherboard.formFactor} board won't fit ${pcCase.formFactor} case`,
+          };
+
+  const coolingCheck: BuildCheck = !cpu
+    ? { id: 'cooling', label: 'CPU cooling coverage', status: 'pending', detail: 'Select a CPU' }
+    : cooling
+      ? {
+          id: 'cooling',
+          label: 'CPU cooling coverage',
+          status: 'compatible',
+          detail: `${cooling.name} installed`,
+        }
+      : (cpu.tdp ?? 0) > 105
+        ? {
+            id: 'cooling',
+            label: 'CPU cooling coverage',
+            status: 'warning',
+            detail: `${cpu.tdp}W CPU has no cooler selected`,
+          }
+        : {
+            id: 'cooling',
+            label: 'CPU cooling coverage',
+            status: 'compatible',
+            detail: 'Stock cooling sufficient',
+          };
+
+  return [socket, ramType, psuCheck, formFit, coolingCheck];
+}
+
+export function getCompatibilityScore(checks: BuildCheck[]): number {
+  const applicable = checks.filter((c) => c.status !== 'pending');
+  if (applicable.length === 0) return 100;
+  const points = applicable.reduce(
+    (sum, c) => sum + (c.status === 'compatible' ? 1 : c.status === 'warning' ? 0.5 : 0),
+    0,
+  );
+  return Math.round((points / applicable.length) * 100);
+}
