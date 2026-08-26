@@ -1,6 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Send, RotateCcw, Sparkles, Mic, Paperclip, Cpu, CornerDownLeft, ArrowDownUp } from 'lucide-react';
+import {
+  Bot,
+  Send,
+  RotateCcw,
+  Sparkles,
+  Mic,
+  Paperclip,
+  Cpu,
+  CornerDownLeft,
+  ArrowDownUp,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { use3DTilt } from './use3DTilt';
 import type { BuildComponentItem } from './BuildPreviewHUD';
@@ -19,7 +29,16 @@ interface ChatWorkspaceProps {
   initialPrompt?: string;
   isProcessing?: boolean;
   onSendMessage?: (text: string) => void;
-  onRefineBuild?: (action: 'downgrade_ram' | 'swap_gpu_4060' | 'swap_gpu_4080' | 'upgrade_ram_64' | 'swap_cooler_aio' | 'custom', customQuery?: string) => void;
+  onRefineBuild?: (
+    action:
+      | 'downgrade_ram'
+      | 'swap_gpu_4060'
+      | 'swap_gpu_4080'
+      | 'upgrade_ram_64'
+      | 'swap_cooler_aio'
+      | 'custom',
+    customQuery?: string,
+  ) => void;
   onResetSession?: () => void;
   className?: string;
 }
@@ -30,20 +49,51 @@ const DEFAULT_MESSAGES: ChatMessage[] = [
     sender: 'bot',
     text: 'Hello! I am **Tonima AI**, your next-generation PC Architect. I can craft fully optimized PC configurations, audit motherboard socket clearances, simulate real-time thermal/wattage overhead, and compare live retailer prices across Bangladesh.\n\nWhat kind of PC setup are you planning to build today?',
     highlightChips: [
-      { label: '🎮 1440p Gaming Under ৳150K', actionQuery: 'Build me a white aesthetic gaming PC for 1440p gaming under ৳ 1,50,000' },
-      { label: '🎬 4K Video Editing ৳220K', actionQuery: 'Recommend a high-end 4K video editing workstation with 64GB RAM and fast NVMe storage' },
-      { label: '🧠 AI Deep Learning Rig ৳350K', actionQuery: 'Design an AI deep learning workstation with RTX GPU and high CUDA core density' },
+      {
+        label: '🎮 1440p Gaming Under ৳150K',
+        actionQuery: 'Build me a white aesthetic gaming PC for 1440p gaming under ৳ 1,50,000',
+      },
+      {
+        label: '🎬 4K Video Editing ৳220K',
+        actionQuery:
+          'Recommend a high-end 4K video editing workstation with 64GB RAM and fast NVMe storage',
+      },
+      {
+        label: '🧠 AI Deep Learning Rig ৳350K',
+        actionQuery:
+          'Design an AI deep learning workstation with RTX GPU and high CUDA core density',
+      },
     ],
     timestamp: 'Just now',
   },
 ];
 
 const REFINEMENT_SHORTCUTS = [
-  { label: '📉 Downgrade RAM (-৳5,000)', query: 'Can we downgrade RAM to save ৳5000?', action: 'downgrade_ram' as const },
-  { label: '🎮 Swap GPU to RTX 4060 (-৳28,000)', query: 'Change GPU to RTX 4060 to stay within budget', action: 'swap_gpu_4060' as const },
-  { label: '🚀 Upgrade to RTX 4080 (+৳45,000)', query: 'Upgrade GPU to RTX 4080 Super for 4K Ultra', action: 'swap_gpu_4080' as const },
-  { label: '❄️ Upgrade to 360mm AIO Cooler', query: 'Swap air cooler for a 360mm AIO liquid cooler', action: 'swap_cooler_aio' as const },
-  { label: '💾 Upgrade to 64GB RAM', query: 'Upgrade memory to 64GB DDR5 for heavy multitasking', action: 'upgrade_ram_64' as const },
+  {
+    label: '📉 Downgrade RAM (-৳5,000)',
+    query: 'Can we downgrade RAM to save ৳5000?',
+    action: 'downgrade_ram' as const,
+  },
+  {
+    label: '🎮 Swap GPU to RTX 4060 (-৳28,000)',
+    query: 'Change GPU to RTX 4060 to stay within budget',
+    action: 'swap_gpu_4060' as const,
+  },
+  {
+    label: '🚀 Upgrade to RTX 4080 (+৳45,000)',
+    query: 'Upgrade GPU to RTX 4080 Super for 4K Ultra',
+    action: 'swap_gpu_4080' as const,
+  },
+  {
+    label: '❄️ Upgrade to 360mm AIO Cooler',
+    query: 'Swap air cooler for a 360mm AIO liquid cooler',
+    action: 'swap_cooler_aio' as const,
+  },
+  {
+    label: '💾 Upgrade to 64GB RAM',
+    query: 'Upgrade memory to 64GB DDR5 for heavy multitasking',
+    action: 'upgrade_ram_64' as const,
+  },
 ];
 
 export default function ChatWorkspace({
@@ -107,10 +157,20 @@ export default function ChatWorkspace({
 
     // Determine if user query is a Stage 4 refinement
     const lower = userQuery.toLowerCase();
-    let refinementAction: 'downgrade_ram' | 'swap_gpu_4060' | 'swap_gpu_4080' | 'upgrade_ram_64' | 'swap_cooler_aio' | 'custom' = 'custom';
+    let refinementAction:
+      | 'downgrade_ram'
+      | 'swap_gpu_4060'
+      | 'swap_gpu_4080'
+      | 'upgrade_ram_64'
+      | 'swap_cooler_aio'
+      | 'custom' = 'custom';
     let botReplyText = '';
 
-    if (lower.includes('downgrade ram') || lower.includes('save ৳5000') || lower.includes('save 5000')) {
+    if (
+      lower.includes('downgrade ram') ||
+      lower.includes('save ৳5000') ||
+      lower.includes('save 5000')
+    ) {
       refinementAction = 'downgrade_ram';
       botReplyText = `✅ **Re-optimization complete!** I have downgraded the RAM to **Corsair Vengeance 16GB DDR5 5200MHz**, saving you **৳ 5,000**. \n\nThe updated total is now **৳ 1,99,500**. System compatibility remains **98%** and thermal headroom is fully preserved.`;
     } else if (lower.includes('4060')) {
@@ -143,9 +203,18 @@ export default function ChatWorkspace({
         sender: 'bot',
         text: botReplyText,
         highlightChips: [
-          { label: '📉 Downgrade RAM (-৳5,000)', actionQuery: 'Can we downgrade RAM to save ৳5000?' },
-          { label: '🎮 Swap to RTX 4060', actionQuery: 'Change GPU to RTX 4060 to stay within budget' },
-          { label: '🚀 Upgrade to RTX 4080', actionQuery: 'Upgrade GPU to RTX 4080 Super for 4K Ultra' },
+          {
+            label: '📉 Downgrade RAM (-৳5,000)',
+            actionQuery: 'Can we downgrade RAM to save ৳5000?',
+          },
+          {
+            label: '🎮 Swap to RTX 4060',
+            actionQuery: 'Change GPU to RTX 4060 to stay within budget',
+          },
+          {
+            label: '🚀 Upgrade to RTX 4080',
+            actionQuery: 'Upgrade GPU to RTX 4080 Super for 4K Ultra',
+          },
         ],
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };

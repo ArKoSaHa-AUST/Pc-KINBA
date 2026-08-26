@@ -169,8 +169,12 @@ export default function TonimaFeatureCards() {
                     <span className="text-[10px] text-text-muted">{r.badge}</span>
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className="font-bold text-accent">৳ {r.price.toLocaleString('en-IN')}</span>
-                    <span className={`text-[10px] flex items-center gap-1 ${r.stock ? 'text-green' : 'text-danger'}`}>
+                    <span className="font-bold text-accent">
+                      ৳ {r.price.toLocaleString('en-IN')}
+                    </span>
+                    <span
+                      className={`text-[10px] flex items-center gap-1 ${r.stock ? 'text-green' : 'text-danger'}`}
+                    >
                       {r.stock ? <Check className="w-2.5 h-2.5" /> : null}
                       {r.stock ? 'In Stock' : 'Stockout'}
                     </span>

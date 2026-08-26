@@ -1,6 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Box, List, Activity, ArrowUpRight, Check, Store, FileText, Download, ShieldCheck, X } from 'lucide-react';
+import {
+  Box,
+  List,
+  Activity,
+  ArrowUpRight,
+  Check,
+  Store,
+  FileText,
+  Download,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { use3DTilt } from './use3DTilt';
 import Chassis3DViewer from './Chassis3DViewer';
@@ -346,7 +357,9 @@ export default function BuildPreviewHUD({
                 <span
                   className={`text-[11px] font-bold ${priceDiff < 0 ? 'text-green' : 'text-accent'}`}
                 >
-                  {priceDiff < 0 ? `-৳ ${Math.abs(priceDiff).toLocaleString('en-IN')}` : `+৳ ${priceDiff.toLocaleString('en-IN')}`}
+                  {priceDiff < 0
+                    ? `-৳ ${Math.abs(priceDiff).toLocaleString('en-IN')}`
+                    : `+৳ ${priceDiff.toLocaleString('en-IN')}`}
                 </span>
               )}
             </div>
