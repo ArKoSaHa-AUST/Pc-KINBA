@@ -177,6 +177,7 @@
 }
 
 .component-card-thumb {
+  position: relative;
   width: 64px;
   height: 64px;
   border-radius: 14px;
@@ -186,6 +187,16 @@
   color: var(--accent);
   background: linear-gradient(135deg, rgba(0, 229, 255, 0.12) 0%, rgba(124, 58, 237, 0.12) 100%);
   border: 1px solid var(--glass-border);
+}
+
+.component-card-check {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: flex;
+  color: var(--success);
+  background: var(--bg-secondary);
+  border-radius: 50%;
 }
 
 .component-card-info {

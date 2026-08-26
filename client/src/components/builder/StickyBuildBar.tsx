@@ -1,8 +1,8 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { Cpu, ArrowRight } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowRight, Cpu } from 'lucide-react';
+import { formatTaka } from './buildConfig';
 import { COMPONENT_CATEGORIES } from './builderCatalog';
 import { getBuildChecks, getCompatibilityScore, type BuildSelection } from './compatibility';
-import { formatTaka } from './buildConfig';
 
 interface StickyBuildBarProps {
   build: BuildSelection;

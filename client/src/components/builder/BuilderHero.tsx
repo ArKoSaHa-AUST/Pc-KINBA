@@ -1,9 +1,9 @@
-import { useCallback } from 'react';
-import { motion, useScroll, useTransform, useSpring, type MotionStyle } from 'framer-motion';
+import { motion, useScroll, useSpring, useTransform, type MotionStyle } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
+import { useCallback } from 'react';
 import {
-  BUDGET_MIN,
   BUDGET_MAX,
+  BUDGET_MIN,
   BUDGET_STEP,
   BUILD_PURPOSES,
   formatTaka,

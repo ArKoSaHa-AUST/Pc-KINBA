@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react';
+import { formatTaka } from './buildConfig';
 import { COMPONENT_CATEGORIES, type ComponentCategory } from './builderCatalog';
 import { checkCompatibility, type BuildSelection } from './compatibility';
-import { formatTaka } from './buildConfig';
 
 interface PartsTableProps {
   build: BuildSelection;

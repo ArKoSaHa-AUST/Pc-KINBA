@@ -1,22 +1,22 @@
+import Lenis from 'lenis';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Lenis from 'lenis';
+import { useAuth } from '../auth/useAuth';
+import AIOptimizer from '../components/builder/AIOptimizer';
+import AssemblyViewport3D from '../components/builder/AssemblyViewport3D';
+import BuildSummary from '../components/builder/BuildSummary';
 import BuilderHero from '../components/builder/BuilderHero';
 import ComponentGrid from '../components/builder/ComponentGrid';
 import ComponentSelectModal from '../components/builder/ComponentSelectModal';
-import AssemblyViewport3D from '../components/builder/AssemblyViewport3D';
-import BuildSummary from '../components/builder/BuildSummary';
-import AIOptimizer from '../components/builder/AIOptimizer';
 import ExportActions from '../components/builder/ExportActions';
 import StickyBuildBar from '../components/builder/StickyBuildBar';
-import { BUDGET_MIN, BUDGET_MAX, type BuildPurpose } from '../components/builder/buildConfig';
+import { BUDGET_MAX, BUDGET_MIN, type BuildPurpose } from '../components/builder/buildConfig';
 import {
   BUILDER_CATALOG,
   type BuilderProduct,
   type ComponentCategory,
 } from '../components/builder/builderCatalog';
 import type { BuildSelection } from '../components/builder/compatibility';
-import { useAuth } from '../auth/useAuth';
 import { useToast } from '../components/ui/useToast';
 import './PCBuilderPage.css';
 

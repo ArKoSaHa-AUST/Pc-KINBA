@@ -1,5 +1,5 @@
+import { ArrowLeftRight, Printer, Save, Share2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Share2, Printer, ArrowLeftRight } from 'lucide-react';
 import { useToast } from '../ui/useToast';
 import type { BuildSelection } from './compatibility';
 

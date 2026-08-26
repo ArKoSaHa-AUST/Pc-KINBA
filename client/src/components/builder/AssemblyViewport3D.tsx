@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Expand, Shrink } from 'lucide-react';
+import { useRef, useState } from 'react';
+import './AssemblyViewport3D.css';
+import { formatTaka } from './buildConfig';
 import { COMPONENT_CATEGORIES, type ComponentCategory } from './builderCatalog';
 import { getBuildChecks, getCompatibilityScore, type BuildSelection } from './compatibility';
-import { formatTaka } from './buildConfig';
-import './AssemblyViewport3D.css';
 
 interface AssemblyViewport3DProps {
   build: BuildSelection;

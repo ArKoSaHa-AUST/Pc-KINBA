@@ -1,7 +1,7 @@
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { Plus, X } from 'lucide-react';
-import type { BuilderProduct, CategoryMeta } from './builderCatalog';
+import { CheckCircle2, Plus, X } from 'lucide-react';
 import { formatTaka } from './buildConfig';
+import type { BuilderProduct, CategoryMeta } from './builderCatalog';
 
 interface ComponentCardProps {
   meta: CategoryMeta;
@@ -69,6 +69,14 @@ export default function ComponentCard({ meta, selected, onOpen, onRemove }: Comp
             </button>
             <div className="component-card-thumb">
               <Icon size={28} />
+              <motion.span
+                className="component-card-check"
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3, duration: 0.25 }}
+              >
+                <CheckCircle2 size={18} />
+              </motion.span>
             </div>
             <div className="component-card-info">
               <span className="component-card-category">{meta.label}</span>

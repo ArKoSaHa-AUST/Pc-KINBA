@@ -1,18 +1,18 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import ProtectedRoute from './auth/ProtectedRoute';
 import Layout from './components/Layout';
-import Home from './pages/Home';
-import SearchPage from './pages/SearchPage';
-import ProductDetailsPage from './pages/ProductDetailsPage';
+import AIAssistantPage from './pages/AIAssistantPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
-import VerifyPage from './pages/auth/VerifyPage';
-import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
-import ProfilePage from './pages/ProfilePage';
-import AIAssistantPage from './pages/AIAssistantPage';
+import VerifyPage from './pages/auth/VerifyPage';
 import ComparePage from './pages/ComparePage';
+import Home from './pages/Home';
 import PCBuilderPage from './pages/PCBuilderPage';
-import ProtectedRoute from './auth/ProtectedRoute';
+import ProductDetailsPage from './pages/ProductDetailsPage';
+import ProfilePage from './pages/ProfilePage';
+import SearchPage from './pages/SearchPage';
 
 function App() {
   return (
