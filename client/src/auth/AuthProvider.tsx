@@ -241,6 +241,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const newUser = mapToUserProfile(userId, name, email);
       saveDemoSession(newUser);
+
+      // Trigger Brevo welcome email (non-blocking)
+      try {
+        fetch('http://localhost:3001/api/send-welcome', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim(), name: name.trim() }),
+        }).catch((emailErr) => {
+          console.warn('Welcome email notification dispatch warning:', emailErr);
+        });
+      } catch (emailErr) {
+        console.warn('Welcome email trigger error:', emailErr);
+      }
+
       return newUser;
     },
     [saveDemoSession],

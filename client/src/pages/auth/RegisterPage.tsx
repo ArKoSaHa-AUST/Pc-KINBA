@@ -11,7 +11,7 @@ import { calculatePasswordStrength } from '../../utils/passwordStrength';
 
 export default function RegisterPage() {
   const { t } = useTranslation('auth');
-  const { register } = useAuth();
+  const { register, loginWithOAuth } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -78,8 +78,8 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(
-        name.trim() || 'Demo User',
-        email.trim() || 'demo@example.com',
+        name.trim(),
+        email.trim(),
         password,
         purpose,
         agreeTerms
@@ -93,8 +93,17 @@ export default function RegisterPage() {
     }
   };
 
-  const handleSocialRegister = (provider: string) => {
-    toast({ message: `Initiating ${provider} sign up...`, variant: 'info' });
+  const handleSocialRegister = async (provider: string) => {
+    const p = provider.toLowerCase();
+    if ((p === 'google' || p === 'github' || p === 'discord') && loginWithOAuth) {
+      try {
+        await loginWithOAuth(p as 'google' | 'github' | 'discord');
+      } catch (error) {
+        toast({ message: authErrorMessage(t, error), variant: 'danger' });
+      }
+    } else {
+      toast({ message: `Initiating ${provider} sign up...`, variant: 'info' });
+    }
   };
 
   return (
