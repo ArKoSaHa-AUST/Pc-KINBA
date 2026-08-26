@@ -16,7 +16,7 @@ import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { use3DTilt } from '../ai/use3DTilt';
-import { resizeImageToDataUrl } from '../../utils/image';
+import { resizeImageToDataUrl, sanitizeImageUrl } from '../../utils/image';
 import type { UserProfile } from '../../api/auth';
 
 interface ProfileInfoCardProps {
@@ -153,16 +153,19 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="w-14 h-14 rounded-full overflow-hidden border border-border/80 bg-slate-800 flex items-center justify-center shrink-0">
-                {avatarUrl && !avatarBroken ? (
-                  <img
-                    src={avatarUrl}
-                    alt="Avatar preview"
-                    onError={() => setAvatarBroken(true)}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-text-muted font-bold text-sm">{initials}</span>
-                )}
+                {(() => {
+                  const safeAvatarUrl = sanitizeImageUrl(avatarUrl);
+                  return safeAvatarUrl && !avatarBroken ? (
+                    <img
+                      src={safeAvatarUrl}
+                      alt="Avatar preview"
+                      onError={() => setAvatarBroken(true)}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-text-muted font-bold text-sm">{initials}</span>
+                  );
+                })()}
               </div>
 
               <div className="flex items-center gap-2.5 flex-wrap">

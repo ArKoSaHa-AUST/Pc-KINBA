@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Badge } from '../ui/Badge';
 import { use3DTilt } from '../ai/use3DTilt';
 import { formatDate } from '../../i18n/format';
+import { sanitizeImageUrl } from '../../utils/image';
 import type { UserProfile } from '../../api/auth';
 import './ProfileHero3D.css';
 
@@ -101,18 +102,21 @@ export function ProfileHero3D({ user }: ProfileHero3DProps) {
         <div className="profile-avatar-glow" />
         <div className="profile-avatar-ring" />
         <div className="profile-avatar-inner">
-          {user.avatarUrl && !avatarBroken ? (
-            <img
-              src={user.avatarUrl}
-              alt={user.name}
-              onError={() => setAvatarBroken(true)}
-              className="profile-avatar-img"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-accent/80 via-purple/80 to-blue-600/80 flex items-center justify-center text-white font-black text-2xl tracking-wider select-none">
-              {initials}
-            </div>
-          )}
+          {(() => {
+            const safeAvatarUrl = sanitizeImageUrl(user.avatarUrl);
+            return safeAvatarUrl && !avatarBroken ? (
+              <img
+                src={safeAvatarUrl}
+                alt={user.name}
+                onError={() => setAvatarBroken(true)}
+                className="profile-avatar-img"
+              />
+            ) : (
+              <div className="flex h-full w-full select-none items-center justify-center bg-gradient-to-br from-accent/80 via-purple/80 to-blue-600/80 text-2xl font-black tracking-wider text-white">
+                {initials}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
