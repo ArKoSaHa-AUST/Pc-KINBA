@@ -15,7 +15,7 @@ interface LocationState {
 
 export default function LoginPage() {
   const { t } = useTranslation('auth');
-  const { login } = useAuth();
+  const { login, loginWithOAuth } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,6 +29,26 @@ export default function LoginPage() {
   const [isShaking, setIsShaking] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showRememberTooltip, setShowRememberTooltip] = useState(false);
+
+  const handleSocialClick = async (provider: string) => {
+    const p = provider.toLowerCase();
+    if ((p === 'google' || p === 'github' || p === 'discord') && loginWithOAuth) {
+      try {
+        await loginWithOAuth(p as 'google' | 'github' | 'discord');
+      } catch (error) {
+        triggerCardShake();
+        toast({ message: authErrorMessage(t, error), variant: 'danger' });
+      }
+    } else {
+      toast({
+        message: t('auth.socialInit', {
+          defaultValue: `Connecting to ${provider} authentication gateway...`,
+          provider,
+        }),
+        variant: 'info',
+      });
+    }
+  };
 
   const handleKeyCheck = (e: KeyboardEvent<HTMLInputElement>) => {
     if (typeof e.getModifierState === 'function') {
@@ -85,7 +105,7 @@ export default function LoginPage() {
             </div>
 
             {/* Social OAuth Gateway */}
-            <SocialAuthGroup />
+            <SocialAuthGroup onSocialClick={handleSocialClick} />
 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2" noValidate>

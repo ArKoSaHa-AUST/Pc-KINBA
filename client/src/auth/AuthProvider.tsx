@@ -162,6 +162,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [fetchProfile],
   );
 
+  const loginWithOAuth = useCallback(
+    async (provider: 'google' | 'github' | 'discord') => {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/profile`,
+        },
+      });
+      if (error) {
+        throw error;
+      }
+    },
+    [],
+  );
+
   const register = useCallback(
     async (
       name: string,
@@ -290,6 +305,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       status,
       user,
       login,
+      loginWithOAuth,
       register,
       verifyEmail,
       logout,
@@ -301,6 +317,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       status,
       user,
       login,
+      loginWithOAuth,
       register,
       verifyEmail,
       logout,
