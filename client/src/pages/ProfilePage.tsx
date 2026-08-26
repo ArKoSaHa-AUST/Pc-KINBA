@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import Lenis from 'lenis';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useAuth } from '../auth/useAuth';
 import { useToast } from '../components/ui';
 import { ProfileHero3D } from '../components/profile/ProfileHero3D';
@@ -11,6 +14,8 @@ import { SecurityDangerZone } from '../components/profile/SecurityDangerZone';
 import type { NotificationPreferences } from '../api/auth';
 import './ProfilePage.css';
 
+gsap.registerPlugin(ScrollTrigger);
+
 export default function ProfilePage() {
   const { user, status, updateProfile, forgotPassword, logout } = useAuth();
   const { toast } = useToast();
@@ -20,7 +25,60 @@ export default function ProfilePage() {
   const [resetting, setResetting] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // Parallax ambient orb scroll listener
+  // 6.1 Lenis Smooth Scroll Orchestration
+  useEffect(() => {
+    if (window.innerWidth <= 768) return;
+
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+    });
+
+    let animationFrameId: number;
+    function raf(time: number) {
+      lenis.raf(time);
+      animationFrameId = requestAnimationFrame(raf);
+    }
+    animationFrameId = requestAnimationFrame(raf);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      lenis.destroy();
+    };
+  }, []);
+
+  // 6.2 GSAP ScrollTrigger Integration for section reveals
+  useEffect(() => {
+    if (window.innerWidth <= 768) return;
+
+    const ctx = gsap.context(() => {
+      const sections = document.querySelectorAll('.profile-scroll-section');
+      sections.forEach((section, i) => {
+        gsap.fromTo(
+          section,
+          { opacity: 0, y: 50, scale: 0.96 },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.7,
+            delay: i * 0.08,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: section,
+              start: 'top 88%',
+              toggleActions: 'play none none reverse',
+            },
+          },
+        );
+      });
+    });
+
+    return () => ctx.revert();
+  }, [user]);
+
+  // 6.4 Parallax ambient orb scroll listener
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY;

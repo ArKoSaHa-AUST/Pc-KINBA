@@ -15,7 +15,7 @@ interface ProfileHero3DProps {
 export function ProfileHero3D({ user }: ProfileHero3DProps) {
   const { i18n } = useTranslation('auth');
   const [avatarBroken, setAvatarBroken] = useState(false);
-  const [stats, setStats] = useState({ builds: 0, savedCount: 0, aiScore: 98 });
+  const [stats, setStats] = useState({ builds: 0, savedCount: 0, aiScore: 0 });
 
   const {
     cardRef,
@@ -33,23 +33,33 @@ export function ProfileHero3D({ user }: ProfileHero3DProps) {
     try {
       const storedConfig = localStorage.getItem('pc_kinba_configured_build');
       const savedList = localStorage.getItem('pcbuilder_saved_builds');
-      let builds = 0;
-      let savedCount = 0;
+      const targetBuilds = storedConfig ? 1 : 1;
+      let targetSaved = 2;
 
-      if (storedConfig) {
-        builds += 1;
-      }
       if (savedList) {
         const parsed = JSON.parse(savedList);
         if (Array.isArray(parsed)) {
-          savedCount = parsed.length;
+          targetSaved = parsed.length || 2;
         }
       }
-      setStats({
-        builds: builds || 1,
-        savedCount: savedCount || 2,
-        aiScore: 98,
-      });
+
+      // Smooth count-up micro-animation
+      let currentStep = 0;
+      const totalSteps = 20;
+      const interval = setInterval(() => {
+        currentStep++;
+        const progress = currentStep / totalSteps;
+        setStats({
+          builds: Math.round(targetBuilds * progress),
+          savedCount: Math.round(targetSaved * progress),
+          aiScore: Math.round(98 * progress),
+        });
+        if (currentStep >= totalSteps) {
+          clearInterval(interval);
+        }
+      }, 30);
+
+      return () => clearInterval(interval);
     } catch {
       setStats({ builds: 1, savedCount: 2, aiScore: 98 });
     }
@@ -113,9 +123,15 @@ export function ProfileHero3D({ user }: ProfileHero3DProps) {
             {user.role}
           </Badge>
           {user.emailVerified ? (
-            <Badge variant="success" className="flex items-center gap-1 text-xs">
-              <ShieldCheck className="w-3.5 h-3.5" /> Verified
-            </Badge>
+            <motion.div
+              initial={{ scale: 0.7, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+            >
+              <Badge variant="success" className="flex items-center gap-1 text-xs">
+                <ShieldCheck className="w-3.5 h-3.5" /> Verified
+              </Badge>
+            </motion.div>
           ) : (
             <Badge variant="warning" className="flex items-center gap-1 text-xs">
               <ShieldAlert className="w-3.5 h-3.5" /> Unverified
