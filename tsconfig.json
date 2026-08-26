@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "module": "Node16",
+    "lib": ["es2023"],
+    "skipLibCheck": true,
+    "moduleResolution": "Node16",
+    "esModuleInterop": true,
+    "types": ["node"]
+  },
+  "include": ["utils/**/*"]
+}
