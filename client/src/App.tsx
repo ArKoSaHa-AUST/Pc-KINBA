@@ -11,6 +11,7 @@ import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import ProfilePage from './pages/ProfilePage';
 import AIAssistantPage from './pages/AIAssistantPage';
 import ComparePage from './pages/ComparePage';
+import PCBuilderPage from './pages/PCBuilderPage';
 import ProtectedRoute from './auth/ProtectedRoute';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
           <Route path="/compare" element={<ComparePage />} />
+          <Route path="/pc-builder" element={<PCBuilderPage />} />
           <Route path="/ai-assistant" element={<AIAssistantPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />

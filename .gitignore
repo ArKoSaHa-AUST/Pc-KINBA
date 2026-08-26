@@ -15,14 +15,12 @@ client/dist/
 client/dist-ssr/
 coverage/
 
-# Environment files
+# Environment files (all ignored — only the example template is committed)
 .env
-.env.local
-.env.*.local
+.env.*
 *.env
+*.env.*
 !.env.example
-!.env.development
-!.env.production
 
 # Logs
 logs/
@@ -88,3 +86,11 @@ signin1.md
 signin2.md
 signin3.md
 signin4.md
+dhrubo*.md
+dhrubo (1).md
+
+# Copilot repo memory (local workspace notes)
+.copilot/
+ci-out.txt
+probe.txt
+

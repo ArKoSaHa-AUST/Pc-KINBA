@@ -1,0 +1,211 @@
+/* Section 3: Live 3D Assembly Viewport */
+
+.assembly-viewport {
+  position: relative;
+  height: 600px;
+  margin-top: 48px;
+  border-radius: 24px;
+  border: 1px solid var(--glass-border);
+  background:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px),
+    radial-gradient(ellipse at 50% 40%, rgba(124, 58, 237, 0.1) 0%, transparent 65%),
+    var(--bg-secondary);
+  background-size:
+    48px 48px,
+    48px 48px,
+    100% 100%,
+    100% 100%;
+  overflow: hidden;
+}
+
+.assembly-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1400px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.assembly-stage:active {
+  cursor: grabbing;
+}
+
+.assembly-scene {
+  position: relative;
+  width: 500px;
+  height: 500px;
+  transform-style: preserve-3d;
+}
+
+.assembly-part {
+  position: absolute;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.assembly-part-body {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+}
+
+.assembly-part.is-filled .assembly-part-body {
+  background: linear-gradient(145deg, rgba(0, 229, 255, 0.12) 0%, rgba(124, 58, 237, 0.1) 100%);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  box-shadow: 0 0 18px rgba(0, 229, 255, 0.12);
+}
+
+.assembly-part.is-empty .assembly-part-body {
+  background: transparent;
+  border: 2px dashed var(--border);
+  animation: slot-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes slot-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.assembly-part-body:hover {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 24px rgba(0, 229, 255, 0.45),
+    inset 0 0 12px rgba(0, 229, 255, 0.15);
+  animation: none;
+  opacity: 1;
+}
+
+.assembly-part-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  pointer-events: auto;
+}
+
+/* Case renders as a wireframe outline surrounding the parts */
+.assembly-part-case .assembly-part-body {
+  pointer-events: none;
+  background: transparent !important;
+  border-width: 2px;
+  border-radius: 18px;
+}
+
+.assembly-part-case .assembly-part-label {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+}
+
+/* HUD overlays */
+.assembly-hud {
+  position: absolute;
+  z-index: 2;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.assembly-hud-score {
+  top: 16px;
+  left: 16px;
+}
+
+.assembly-hud-score .is-good {
+  color: var(--success);
+}
+
+.assembly-hud-score .is-warn {
+  color: var(--warning);
+}
+
+.assembly-hud-score .is-bad {
+  color: var(--danger);
+}
+
+.assembly-hud-info {
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 320px;
+}
+
+.assembly-hud-info strong {
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assembly-hud-hint {
+  color: var(--text-muted);
+}
+
+.assembly-explode-toggle {
+  position: absolute;
+  z-index: 2;
+  top: 16px;
+  right: 16px;
+  padding: 0.5rem 1.2rem;
+  font-size: 14px;
+}
+
+@media (max-width: 1024px) {
+  .assembly-viewport {
+    height: 400px;
+  }
+
+  .assembly-scene {
+    transform-origin: center;
+    scale: 0.72;
+  }
+}
+
+@media (max-width: 640px) {
+  .assembly-viewport {
+    height: 300px;
+  }
+
+  .assembly-scene {
+    scale: 0.5;
+  }
+
+  .assembly-hud-info {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assembly-part,
+  .assembly-part.is-empty .assembly-part-body {
+    transition: none;
+    animation: none;
+  }
+}
