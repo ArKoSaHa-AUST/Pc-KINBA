@@ -211,11 +211,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
             console.warn('Direct profile upsert error (handled by DB trigger):', dbErr);
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const authErr = err as { status?: number; code?: string; message?: string } | null;
         if (
-          err?.status === 429 ||
-          err?.code === 'over_email_send_rate_limit' ||
-          err?.message?.toLowerCase().includes('rate limit')
+          authErr?.status === 429 ||
+          authErr?.code === 'over_email_send_rate_limit' ||
+          authErr?.message?.toLowerCase().includes('rate limit')
         ) {
           console.warn('Handling Supabase email rate limit gracefully for sign-up.');
         } else {

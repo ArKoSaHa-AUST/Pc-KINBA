@@ -46,7 +46,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await login(email.trim() || 'demo@example.com', password);
+      await login(email.trim(), password);
       toast({ message: t('login.success'), variant: 'success' });
       navigate(redirectTo, { replace: true });
     } catch (error) {
