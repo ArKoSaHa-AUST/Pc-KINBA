@@ -1,13 +1,13 @@
 import {
-    AlertTriangle,
-    ArrowLeft,
-    CheckCircle2,
-    Circle,
-    ExternalLink,
-    Printer,
-    Share2,
-    ShieldCheck,
-    XCircle,
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Circle,
+  ExternalLink,
+  Printer,
+  Share2,
+  ShieldCheck,
+  XCircle,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
@@ -15,11 +15,11 @@ import PartsTable from '../components/builder/PartsTable';
 import { formatTaka } from '../components/builder/buildConfig';
 import { COMPONENT_CATEGORIES, type ComponentCategory } from '../components/builder/builderCatalog';
 import {
-    getBuildChecks,
-    getCompatibilityScore,
-    selectionFromPartIds,
-    type BuildCheckStatus,
-    type BuildSelection,
+  getBuildChecks,
+  getCompatibilityScore,
+  selectionFromPartIds,
+  type BuildCheckStatus,
+  type BuildSelection,
 } from '../components/builder/compatibility';
 import { useToast } from '../components/ui/useToast';
 import './BuildCheckoutPage.css';

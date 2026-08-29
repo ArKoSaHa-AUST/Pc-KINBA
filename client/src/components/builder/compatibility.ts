@@ -1,8 +1,8 @@
 import {
-    BUILDER_CATALOG,
-    type BuilderProduct,
-    type ComponentCategory,
-    type FormFactor,
+  BUILDER_CATALOG,
+  type BuilderProduct,
+  type ComponentCategory,
+  type FormFactor,
 } from './builderCatalog';
 
 export type BuildSelection = Partial<Record<ComponentCategory, BuilderProduct>>;
