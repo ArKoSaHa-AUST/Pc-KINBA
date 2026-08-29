@@ -3,10 +3,25 @@ import os
 import asyncio
 import re
 from typing import List, Dict, Any
-from playwright.async_api import Page, async_playwright
 
-# Add root directory to sys.path if needed
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add root directory to sys.path
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+# Dynamically locate and add scrapers venv site-packages to sys.path
+venv_lib = os.path.join(BASE_DIR, "scrapers", "venv", "lib")
+if os.path.exists(venv_lib):
+    for py_dir in os.listdir(venv_lib):
+        sp = os.path.join(venv_lib, py_dir, "site-packages")
+        if os.path.exists(sp) and sp not in sys.path:
+            sys.path.insert(0, sp)
+
+try:
+    from playwright.async_api import Page, async_playwright  # type: ignore
+except ImportError:
+    from typing import Any as Page  # type: ignore
+    async_playwright = None
 
 try:
     from scrapers.startech_scraper import parse_brand, parse_price
@@ -16,8 +31,11 @@ except ImportError:
 async def parse_items_from_page(page: Page) -> List[Dict[Any, Any]]:
     """Helper to extract product data from card items on current page."""
     selectors = [
-        ".category-single-product",
-        ".grid-view-main .card"
+        "[class*='category-single-product']",
+        "[class*='product-card']",
+        ".grid-view-main .card",
+        ".cus-col-2",
+        ".card"
     ]
     
     items = []
@@ -42,7 +60,7 @@ async def parse_items_from_page(page: Page) -> List[Dict[Any, Any]]:
             title = re.sub(r'\s+#\s*\.+$', '', title)
             title = re.sub(r'\s+', ' ', title).strip()
             
-            if not title or len(title) < 3 or any(w in title.lower() for w in ["view all", "category", "compare", "add to cart", "no products"]):
+            if not title or len(title) < 3 or any(w in title.lower() for w in ["view all", "category", "compare", "no products"]):
                 continue
                 
             # Product link
@@ -74,54 +92,60 @@ async def parse_items_from_page(page: Page) -> List[Dict[Any, Any]]:
                     "image_url": image_url,
                 })
         except Exception as e:
-            print(f"[parse_items_from_page] Error parsing item: {e}")
             continue
+            
     return results
 
 async def scrape_ryans(page: Page, query: str) -> List[Dict[Any, Any]]:
-    """Scrape product listings from Ryans Computers search results with category fallback."""
+    """Scrape product listings from Ryans Computers search results with universal category fallback."""
     encoded_query = query.replace(" ", "+")
-    search_url = f"https://www.ryans.com/search?q={encoded_query}"
+    search_url = f"https://www.ryans.com/search?search={encoded_query}"
     
-    # Determine fallback category URL if query matches known component types
+    # Universal category mapping dictionary for any tech product
     q_lower = query.lower()
     fallback_url = None
-    if any(k in q_lower for k in ["rtx", "gtx", "rx", "5060", "4060", "3060", "gpu", "graphics", "card"]):
-        fallback_url = "https://www.ryans.com/category/desktop-component-graphics-card"
-    elif any(k in q_lower for k in ["ryzen", "intel", "i7", "i5", "i9", "cpu", "processor"]):
-        fallback_url = "https://www.ryans.com/category/desktop-component-processor"
-    elif any(k in q_lower for k in ["ssd", "nvme", "storage"]):
-        fallback_url = "https://www.ryans.com/category/desktop-component-ssd"
+    category_map = [
+        (["rtx", "gtx", "rx", "5060", "4060", "3060", "gpu", "graphics", "vga"], "https://www.ryans.com/category/desktop-component-graphics-card"),
+        (["ryzen", "intel", "i7", "i5", "i9", "cpu", "processor"], "https://www.ryans.com/category/desktop-component-processor"),
+        (["ssd", "nvme", "m.2"], "https://www.ryans.com/category/desktop-component-ssd"),
+        (["ram", "memory", "ddr4", "ddr5"], "https://www.ryans.com/category/desktop-component-ram"),
+        (["ups", "ips", "online ups", "offline ups"], "https://www.ryans.com/category/desktop-component-ups"),
+        (["pendrive", "pen drive", "flash drive", "usb drive"], "https://www.ryans.com/category/storage-pen-drive"),
+        (["charger", "adapter", "power adapter"], "https://www.ryans.com/category/accessories-power-adapter"),
+        (["psu", "power supply"], "https://www.ryans.com/category/desktop-component-power-supply"),
+        (["motherboard", "mainboard"], "https://www.ryans.com/category/desktop-component-motherboard"),
+        (["monitor"], "https://www.ryans.com/category/desktop-component-monitor"),
+        (["keyboard"], "https://www.ryans.com/category/accessories-keyboard"),
+        (["mouse"], "https://www.ryans.com/category/accessories-mouse"),
+        (["router", "wifi", "access point"], "https://www.ryans.com/category/networking-router"),
+    ]
+    
+    for keywords, cat_url in category_map:
+        if any(k in q_lower for k in keywords):
+            fallback_url = cat_url
+            break
         
-    # Prefer category URL when available for higher reliability on Ryans site structure
-    target_url = fallback_url or search_url
-    print(f"[Ryans Scraper] Fetching: {target_url}")
-    for attempt in range(2):
+    print(f"[Ryans Scraper] Fetching search URL: {search_url}")
+    for attempt in range(3):
         try:
-            await page.goto(target_url, wait_until="domcontentloaded", timeout=30000)
-            await page.wait_for_timeout(3000)
-            if page.url != "about:blank":
+            await page.goto(search_url, wait_until="domcontentloaded", timeout=30000)
+            await page.wait_for_timeout(2500)
+            if page.url != "about:blank" and not page.url.startswith("chrome-error"):
                 break
         except Exception as e:
             print(f"[Ryans Scraper] Navigation attempt {attempt+1} warning: {e}")
-            await asyncio.sleep(2)
+            await asyncio.sleep(1.5)
             
-    if page.url == "about:blank":
-        print("[Ryans Scraper] Failed to navigate to target URL.")
-        return []
-    
     results = await parse_items_from_page(page)
-    print(f"[Ryans Scraper] Primary navigation extracted {len(results)} valid listings.")
     
-    if len(results) == 0 and fallback_url and target_url != fallback_url:
-        print(f"[Ryans Scraper] Search URL yielded 0 items. Retrying category URL: {fallback_url}")
+    if len(results) == 0 and fallback_url:
+        print(f"[Ryans Scraper] Search URL yielded 0 items. Trying fallback category: {fallback_url}")
         try:
-            await page.wait_for_timeout(2000)
             await page.goto(fallback_url, wait_until="domcontentloaded", timeout=30000)
-            await page.wait_for_timeout(3000)
+            await page.wait_for_timeout(2500)
             results = await parse_items_from_page(page)
         except Exception as e:
-            print(f"[Ryans Scraper] Fallback error: {e}")
+            print(f"[Ryans Scraper] Fallback navigation error: {e}")
             
     print(f"[Ryans Scraper] Final extracted {len(results)} valid listings.")
     return results

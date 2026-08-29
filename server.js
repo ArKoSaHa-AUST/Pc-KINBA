@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import Database from "better-sqlite3";
 import path from "path";
+import { execSync } from "child_process";
 import { createClient } from "@supabase/supabase-js";
 import { sendWelcomeEmail } from "./mailer.js";
 
@@ -38,42 +39,154 @@ function getSqliteDb() {
     db.pragma("journal_mode = WAL");
     return db;
   } catch (err) {
+    console.error("[SQLite Connect Error]:", err.message);
     return null;
   }
+}
+
+/**
+ * Normalizes query string into useful search tokens for any tech category.
+ * E.g., "16 gb ram" -> clean: "16 gb ram", norm: "16gb ram", tokens: ["16", "gb", "ram", "16gb"]
+ * E.g., "1000va ups" -> clean: "1000va ups", norm: "1000 va ups", tokens: ["1000", "va", "ups", "1000va"]
+ */
+function getQueryVariations(rawQuery) {
+  const cleanQ = rawQuery.trim();
+  // Join number and unit (e.g. "16 gb" -> "16gb", "1 tb" -> "1tb", "65 w" -> "65w")
+  const normQ = cleanQ.replace(/(\d+)\s+([a-zA-Z]+)/gi, "$1$2");
+  // Separate number and unit (e.g. "16gb" -> "16 gb", "1000va" -> "1000 va")
+  const splitQ = cleanQ.replace(/(\d+)([a-zA-Z]+)/gi, "$1 $2");
+
+  const words = cleanQ.split(/\s+/).concat(normQ.split(/\s+/)).concat(splitQ.split(/\s+/));
+  const tokens = Array.from(new Set(words.map(w => w.toLowerCase()))).filter(t => t.length >= 2);
+  return { cleanQ, normQ, splitQ, tokens };
+}
+
+function searchSqliteListings(query) {
+  const db = getSqliteDb();
+  if (!db) return [];
+
+  const { cleanQ, normQ, tokens } = getQueryVariations(query);
+  let params = [];
+  let conds = [];
+
+  // 1. Full string match
+  conds.push("(l.title LIKE ? OR l.title LIKE ? OR l.brand LIKE ?)");
+  params.push(`%${cleanQ}%`, `%${normQ}%`, `%${cleanQ}%`);
+
+  // 2. Individual key tokens match
+  if (tokens.length > 0) {
+    const tokenSql = tokens.map(t => {
+      params.push(`%${t}%`);
+      return "l.title LIKE ?";
+    }).join(" AND ");
+    conds.push(`(${tokenSql})`);
+  }
+
+  const sql = `
+    SELECT 
+      l.id, 
+      l.title, 
+      l.brand, 
+      l.price, 
+      l.price_str, 
+      l.retailer, 
+      l.product_url, 
+      l.image_url, 
+      l.last_scraped_at,
+      p.name as base_product_name,
+      p.category
+    FROM listings l
+    LEFT JOIN products p ON l.product_id = p.id
+    WHERE ${conds.join(" OR ")}
+    ORDER BY l.price ASC
+  `;
+
+  try {
+    const rows = db.prepare(sql).all(...params);
+    db.close();
+    console.log(`[SQLite Search] Found ${rows.length} listings for "${query}"`);
+    return rows;
+  } catch (err) {
+    console.error("[SQLite Search Error]:", err.message);
+    try { db.close(); } catch (_) {}
+    return [];
+  }
+}
+
+async function searchSupabaseListings(query) {
+  const { cleanQ, normQ } = getQueryVariations(query);
+  try {
+    const { data, error } = await supabase
+      .from("listings")
+      .select(`
+        id, 
+        title, 
+        brand, 
+        price, 
+        price_str, 
+        retailer, 
+        product_url, 
+        image_url, 
+        last_scraped_at,
+        product_id,
+        products ( name, category )
+      `)
+      .or(`title.ilike.%${cleanQ}%,title.ilike.%${normQ}%,brand.ilike.%${cleanQ}%`)
+      .order("price", { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      console.log(`[Supabase Search] Found ${data.length} listings for "${query}"`);
+      return data.map(item => ({
+        id: item.id,
+        title: item.title,
+        brand: item.brand,
+        price: item.price,
+        price_str: item.price_str,
+        retailer: item.retailer,
+        product_url: item.product_url,
+        image_url: item.image_url,
+        last_scraped_at: item.last_scraped_at,
+        base_product_name: item.products?.name || item.brand,
+        category: item.products?.category || "Component"
+      }));
+    }
+  } catch (err) {
+    console.warn("[Supabase Search Warning]:", err.message);
+  }
+  return [];
 }
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Feature 1: Search Autosuggest Endpoint (Strictly DB-only, no live scraping calls)
+// Feature 1: Search Autosuggest Endpoint
 app.get("/api/search/suggest", async (req, res) => {
   const query = (req.query.q || "").toString().trim();
   if (!query || query.length < 1) {
     return res.json({ suggestions: [] });
   }
 
+  const { cleanQ, normQ } = getQueryVariations(query);
   const set = new Set();
 
-  // 1. Try Supabase Queries
+  // 1. Try Supabase
   try {
-    const { data: prodData, error: prodErr } = await supabase
+    const { data: prodData } = await supabase
       .from("products")
       .select("name")
-      .ilike("name", `%${query}%`)
+      .or(`name.ilike.%${cleanQ}%,name.ilike.%${normQ}%`)
       .limit(5);
 
-    if (!prodErr && prodData) {
-      prodData.forEach(r => set.add(r.name));
-    }
+    if (prodData) prodData.forEach(r => set.add(r.name));
 
-    const { data: listData, error: listErr } = await supabase
+    const { data: listData } = await supabase
       .from("listings")
       .select("title")
-      .ilike("title", `%${query}%`)
+      .or(`title.ilike.%${cleanQ}%,title.ilike.%${normQ}%`)
       .limit(5);
 
-    if (!listErr && listData) {
+    if (listData) {
       listData.forEach(r => {
         if (set.size < 8) set.add(r.title);
       });
@@ -82,24 +195,24 @@ app.get("/api/search/suggest", async (req, res) => {
     console.warn("[Autosuggest Supabase Warning]:", err.message);
   }
 
-  // 2. Fallback to local SQLite DB if Supabase returns 0 results
+  // 2. Fallback SQLite
   if (set.size === 0) {
     try {
       const db = getSqliteDb();
       if (db) {
         const productRows = db.prepare(`
           SELECT DISTINCT name FROM products 
-          WHERE name LIKE ? 
+          WHERE name LIKE ? OR name LIKE ?
           ORDER BY name ASC 
           LIMIT 5
-        `).all(`%${query}%`);
+        `).all(`%${cleanQ}%`, `%${normQ}%`);
         
         const listingRows = db.prepare(`
           SELECT DISTINCT title FROM listings 
-          WHERE title LIKE ? OR brand LIKE ? 
+          WHERE title LIKE ? OR title LIKE ? OR brand LIKE ?
           ORDER BY title ASC 
           LIMIT 5
-        `).all(`%${query}%`, `%${query}%`);
+        `).all(`%${cleanQ}%`, `%${normQ}%`, `%${cleanQ}%`);
 
         db.close();
 
@@ -119,83 +232,43 @@ app.get("/api/search/suggest", async (req, res) => {
   });
 });
 
-// Feature 2: Search Results Endpoint (Strictly DB-only, returns pre-scraped products from StarTech & Ryans)
+// Feature 2: Search Results Endpoint (Database Search + Live On-Demand Scraper Trigger)
 app.get("/api/search", async (req, res) => {
   const query = (req.query.q || "").toString().trim();
   if (!query) {
     return res.json({ query: "", count: 0, results: [] });
   }
 
-  let results = [];
+  console.log(`[API Search] Executing search for query: "${query}"`);
 
-  // 1. Try Supabase Postgres Query
-  try {
-    const { data, error } = await supabase
-      .from("listings")
-      .select(`
-        id, 
-        title, 
-        brand, 
-        price, 
-        price_str, 
-        retailer, 
-        product_url, 
-        image_url, 
-        last_scraped_at,
-        product_id,
-        products ( name, category )
-      `)
-      .or(`title.ilike.%${query}%,brand.ilike.%${query}%`)
-      .order("price", { ascending: true });
+  // 1. Check Supabase
+  let results = await searchSupabaseListings(query);
 
-    if (!error && data && data.length > 0) {
-      results = data.map(item => ({
-        id: item.id,
-        title: item.title,
-        brand: item.brand,
-        price: item.price,
-        price_str: item.price_str,
-        retailer: item.retailer,
-        product_url: item.product_url,
-        image_url: item.image_url,
-        last_scraped_at: item.last_scraped_at,
-        base_product_name: item.products?.name || item.brand,
-        category: item.products?.category || "Component"
-      }));
-    }
-  } catch (err) {
-    console.warn("[Search Supabase Warning]:", err.message);
+  // 2. Check SQLite if Supabase returns 0
+  if (results.length === 0) {
+    results = searchSqliteListings(query);
   }
 
-  // 2. Fallback to local SQLite DB if Supabase returns 0 results
+  // 3. If still 0 results in DB, trigger live scraper on-demand
   if (results.length === 0) {
+    console.log(`[Auto-Scraper] 0 DB results found for query "${query}". Triggering live scraper on StarTech & Ryans...`);
     try {
-      const db = getSqliteDb();
-      if (db) {
-        const rows = db.prepare(`
-          SELECT 
-            l.id, 
-            l.title, 
-            l.brand, 
-            l.price, 
-            l.price_str, 
-            l.retailer, 
-            l.product_url, 
-            l.image_url, 
-            l.last_scraped_at,
-            p.name as base_product_name,
-            p.category
-          FROM listings l
-          LEFT JOIN products p ON l.product_id = p.id
-          WHERE l.title LIKE ? OR l.brand LIKE ? OR p.name LIKE ?
-          ORDER BY l.price ASC
-        `).all(`%${query}%`, `%${query}%`, `%${query}%`);
+      const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
+      const runScriptPath = path.join(process.cwd(), "scrapers/run_scrapers.py");
+      const safeQuery = query.replace(/["\\]/g, "");
+      
+      execSync(`"${pythonPath}" "${runScriptPath}" --query "${safeQuery}"`, {
+        timeout: 45000,
+        stdio: "inherit"
+      });
 
-        db.close();
-        results = rows;
+      // Re-search database after live scrape completes
+      results = await searchSupabaseListings(query);
+      if (results.length === 0) {
+        results = searchSqliteListings(query);
       }
     } catch (err) {
-      console.error("[Search SQLite Fallback Error]:", err.message);
+      console.error("[Auto-Scraper Error]:", err.message);
     }
   }
 

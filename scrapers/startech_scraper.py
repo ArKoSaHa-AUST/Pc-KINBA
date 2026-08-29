@@ -1,13 +1,36 @@
+import sys
+import os
 import asyncio
 import re
 from typing import List, Dict, Any
-from playwright.async_api import Page, async_playwright
+
+# Add root directory to sys.path
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+# Dynamically locate and add scrapers venv site-packages to sys.path
+venv_lib = os.path.join(BASE_DIR, "scrapers", "venv", "lib")
+if os.path.exists(venv_lib):
+    for py_dir in os.listdir(venv_lib):
+        sp = os.path.join(venv_lib, py_dir, "site-packages")
+        if os.path.exists(sp) and sp not in sys.path:
+            sys.path.insert(0, sp)
+
+try:
+    from playwright.async_api import Page, async_playwright  # type: ignore
+except ImportError:
+    from typing import Any as Page  # type: ignore
+    async_playwright = None
 
 KNOWN_BRANDS = [
     "MSI", "ASUS", "Gigabyte", "PNY", "ZOTAC", "Sapphire", "PowerColor", 
     "XFX", "Intel", "AMD", "Corsair", "Kingston", "Samsung", "DeepCool", 
     "Antec", "Thermaltake", "Razer", "Logitech", "Lian Li", "Noctua", 
-    "Thermalright", "Crucial", "G.Skill", "ADATA", "Lexar", "Team", "Palit", "Inno3D"
+    "Thermalright", "Crucial", "G.Skill", "ADATA", "Lexar", "Team", "Palit", "Inno3D",
+    "APC", "MaxGreen", "CyberPower", "SanDisk", "Transcend", "Baseus", "Anker", 
+    "TP-Link", "Mercusys", "Hikvision", "Dahua", "Havit", "Fantech", "A4Tech", 
+    "Prolink", "KSTAR", "Apollo", "Value-Top", "Dell", "HP", "Lenovo", "AOC", "ViewSonic"
 ]
 
 def parse_brand(title: str) -> str:
@@ -41,6 +64,8 @@ async def scrape_startech(page: Page, query: str) -> List[Dict[Any, Any]]:
     await page.wait_for_timeout(2000)
     
     items = await page.query_selector_all(".p-item")
+    if not items:
+        items = await page.query_selector_all(".product-layout")
     print(f"[StarTech Scraper] Found {len(items)} product items.")
     
     results = []

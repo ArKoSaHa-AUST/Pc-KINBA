@@ -121,7 +121,7 @@ export default function ProductHero() {
   const [wished, setWished] = useState(false);
 
   return (
-    <section className="relative pt-24 pb-24 lg:pt-28 lg:pb-32 overflow-hidden">
+    <section className="relative pt-4 pb-16 lg:pt-6 lg:pb-20 overflow-hidden">
       {/* Ambient glows */}
       <div className="absolute inset-0 pointer-events-none -z-10">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-cyan-500/6 rounded-full blur-[140px]" />
@@ -134,7 +134,7 @@ export default function ProductHero() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex items-center gap-2 text-sm text-gray-500 mb-10"
+          className="flex items-center gap-2 text-sm text-gray-500 mb-6"
         >
           <Home className="w-3.5 h-3.5" />
           <ChevronRight className="w-3.5 h-3.5 opacity-40" />
