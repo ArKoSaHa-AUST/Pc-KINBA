@@ -91,3 +91,18 @@ signin1.md
 signin2.md
 signin3.md
 signin4.md
+
+
+# Python
+venv/
+.scrapers_venv/
+scrapers/venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Python build
+dist/
+build/
+*.egg-info/
