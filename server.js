@@ -51,14 +51,26 @@ function getSqliteDb() {
  */
 function getQueryVariations(rawQuery) {
   const cleanQ = rawQuery.trim();
-  // Join number and unit (e.g. "16 gb" -> "16gb", "1 tb" -> "1tb", "65 w" -> "65w")
   const normQ = cleanQ.replace(/(\d+)\s+([a-zA-Z]+)/gi, "$1$2");
-  // Separate number and unit (e.g. "16gb" -> "16 gb", "1000va" -> "1000 va")
   const splitQ = cleanQ.replace(/(\d+)([a-zA-Z]+)/gi, "$1 $2");
 
   const words = cleanQ.split(/\s+/).concat(normQ.split(/\s+/)).concat(splitQ.split(/\s+/));
   const tokens = Array.from(new Set(words.map(w => w.toLowerCase()))).filter(t => t.length >= 2);
   return { cleanQ, normQ, splitQ, tokens };
+}
+
+function deriveCategory(title = "") {
+  const t = title.toLowerCase();
+  if (t.includes("rtx") || t.includes("gtx") || t.includes("rx") || t.includes("graphics") || t.includes("gpu")) return "Graphics Card";
+  if (t.includes("ryzen") || t.includes("intel") || t.includes("i5") || t.includes("i7") || t.includes("i9") || t.includes("processor") || t.includes("cpu")) return "Processor";
+  if (t.includes("ssd") || t.includes("nvme")) return "SSD Storage";
+  if (t.includes("ram") || t.includes("ddr4") || t.includes("ddr5") || t.includes("memory")) return "RAM Memory";
+  if (t.includes("ups") || t.includes("ips")) return "UPS & Power";
+  if (t.includes("pendrive") || t.includes("flash drive") || t.includes("usb drive")) return "Pendrive / Storage";
+  if (t.includes("charger") || t.includes("adapter")) return "Chargers & Power";
+  if (t.includes("laptop")) return "Laptop";
+  if (t.includes("monitor")) return "Monitor";
+  return "Components";
 }
 
 function searchSqliteListings(query) {
@@ -147,7 +159,7 @@ async function searchSupabaseListings(query) {
         image_url: item.image_url,
         last_scraped_at: item.last_scraped_at,
         base_product_name: item.products?.name || item.brand,
-        category: item.products?.category || "Component"
+        category: item.products?.category || deriveCategory(item.title)
       }));
     }
   } catch (err) {
@@ -232,7 +244,7 @@ app.get("/api/search/suggest", async (req, res) => {
   });
 });
 
-// Feature 2: Search Results Endpoint (Database Search + Live On-Demand Scraper Trigger)
+// Feature 2: Search Results Endpoint
 app.get("/api/search", async (req, res) => {
   const query = (req.query.q || "").toString().trim();
   if (!query) {
@@ -241,15 +253,12 @@ app.get("/api/search", async (req, res) => {
 
   console.log(`[API Search] Executing search for query: "${query}"`);
 
-  // 1. Check Supabase
   let results = await searchSupabaseListings(query);
 
-  // 2. Check SQLite if Supabase returns 0
   if (results.length === 0) {
     results = searchSqliteListings(query);
   }
 
-  // 3. If still 0 results in DB, trigger live scraper on-demand
   if (results.length === 0) {
     console.log(`[Auto-Scraper] 0 DB results found for query "${query}". Triggering live scraper on StarTech & Ryans...`);
     try {
@@ -262,7 +271,6 @@ app.get("/api/search", async (req, res) => {
         stdio: "inherit"
       });
 
-      // Re-search database after live scrape completes
       results = await searchSupabaseListings(query);
       if (results.length === 0) {
         results = searchSqliteListings(query);
@@ -277,6 +285,118 @@ app.get("/api/search", async (req, res) => {
     count: results.length,
     results
   });
+});
+
+// Feature 3: Dynamic Product Details Endpoint
+app.get("/api/product/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: "Product ID is required" });
+  }
+
+  console.log(`[API Product] Fetching dynamic product details for ID: ${id}`);
+
+  let item = null;
+
+  // 1. Try Supabase
+  try {
+    const { data, error } = await supabase
+      .from("listings")
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (!error && data) {
+      item = data;
+    }
+  } catch (err) {
+    console.warn("[Product Details Supabase Warning]:", err.message);
+  }
+
+  // 2. Fallback SQLite
+  if (!item) {
+    try {
+      const db = getSqliteDb();
+      if (db) {
+        item = db.prepare("SELECT * FROM listings WHERE id = ?").get(id);
+        db.close();
+      }
+    } catch (err) {
+      console.error("[Product Details SQLite Error]:", err.message);
+    }
+  }
+
+  if (!item) {
+    return res.status(404).json({ error: "Product not found" });
+  }
+
+  // Find related comparison listings from both StarTech BD & Ryans Computers
+  const category = deriveCategory(item.title);
+  const titleWords = item.title.split(/\s+/).filter(w => w.length > 2);
+  const mainKeywords = titleWords.slice(0, 3).join(" ");
+
+  let rawShops = await searchSupabaseListings(mainKeywords);
+  if (rawShops.length === 0) {
+    rawShops = searchSqliteListings(mainKeywords);
+  }
+
+  // Group or map retailer prices
+  const shopsMap = new Map();
+  
+  // Ensure the primary scraped item is included
+  shopsMap.set(item.retailer, {
+    name: item.retailer,
+    logo: item.retailer.includes("StarTech") ? "ST" : "RY",
+    price: item.price,
+    price_str: item.price_str,
+    stock: true,
+    delivery: "In Stock (1-2 Days)",
+    color: item.retailer.includes("StarTech") ? "#00e5ff" : "#a855f7",
+    trust: 4.9,
+    product_url: item.product_url
+  });
+
+  rawShops.forEach(r => {
+    if (!shopsMap.has(r.retailer)) {
+      shopsMap.set(r.retailer, {
+        name: r.retailer,
+        logo: r.retailer.includes("StarTech") ? "ST" : "RY",
+        price: r.price,
+        price_str: r.price_str,
+        stock: true,
+        delivery: "In Stock (1-2 Days)",
+        color: r.retailer.includes("StarTech") ? "#00e5ff" : "#a855f7",
+        trust: 4.8,
+        product_url: r.product_url
+      });
+    }
+  });
+
+  // Construct dynamic key features
+  const keyFeatures = [
+    { label: "Brand", value: item.brand || "Generic" },
+    { label: "Model / Title", value: item.title },
+    { label: "Category", value: category },
+    { label: "Source Retailer", value: item.retailer },
+    { label: "Last Verified Price", value: item.price_str },
+    { label: "Scraped Date", value: new Date(item.last_scraped_at || Date.now()).toLocaleDateString() }
+  ];
+
+  const responsePayload = {
+    id: item.id,
+    title: item.title,
+    brand: item.brand || "Generic",
+    price: item.price,
+    price_str: item.price_str,
+    retailer: item.retailer,
+    product_url: item.product_url,
+    image_url: item.image_url,
+    category: category,
+    last_scraped_at: item.last_scraped_at,
+    keyFeatures: keyFeatures,
+    shops: Array.from(shopsMap.values())
+  };
+
+  return res.json(responsePayload);
 });
 
 app.post("/api/send-welcome", async (req, res) => {

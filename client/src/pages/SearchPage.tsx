@@ -47,7 +47,7 @@ export default function SearchPage() {
   const [isFocused, setIsFocused] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<'All' | 'StarTech BD' | 'Ryans Computers'>('All');
+  const [activeFilter, setActiveFilter] = useState<string>('All');
   
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -100,6 +100,7 @@ export default function SearchPage() {
       if (res.ok) {
         const data = await res.json();
         setResults(data.results || []);
+        setActiveFilter('All');
       }
     } catch (err) {
       console.error('Error executing search:', err);
@@ -123,8 +124,13 @@ export default function SearchPage() {
     return item.retailer === activeFilter;
   });
 
-  const startechCount = results.filter((r) => r.retailer === 'StarTech BD').length;
-  const ryansCount = results.filter((r) => r.retailer === 'Ryans Computers').length;
+  // Calculate unique retailers and counts
+  const retailerCounts = results.reduce((acc: Record<string, number>, item) => {
+    acc[item.retailer] = (acc[item.retailer] || 0) + 1;
+    return acc;
+  }, {});
+
+  const availableRetailers = Object.keys(retailerCounts);
 
   return (
     <div className="min-h-screen pt-[40px] pb-[120px] relative overflow-hidden">
@@ -143,10 +149,10 @@ export default function SearchPage() {
           transition={{ duration: 0.6 }}
         >
           <h1 className="text-hero mb-4">
-            Compare <span className="gradient-text">StarTech & Ryans</span> Prices
+            Compare <span className="gradient-text">StarTech & BD Retailers</span> Prices
           </h1>
           <p className="text-subtitle max-w-2xl mx-auto">
-            Real-time component search across top BD retailers. Live prices updated automatically.
+            Real-time component search across top BD retailers (StarTech, Ryans, UCC, EIT, PCB Store & Techland).
           </p>
         </motion.div>
 
@@ -198,7 +204,7 @@ export default function SearchPage() {
                 {suggestions.length > 0 && (
                   <div className="p-3 border-b border-border/50">
                     <div className="px-3 py-2 text-xs font-semibold text-cyan-400 flex items-center gap-2 uppercase tracking-wider">
-                      <Zap className="w-3.5 h-3.5" /> Database Live Suggestions
+                      <Zap className="w-3.5 h-3.5" /> Live Hardware Suggestions
                     </div>
                     {suggestions.map((suggestion, idx) => (
                       <button
@@ -253,12 +259,12 @@ export default function SearchPage() {
                     Results for "<span className="gradient-text">{query}</span>"
                   </h2>
                   <p className="text-sm text-text-muted mt-1">
-                    Found {results.length} listings ({startechCount} from StarTech BD, {ryansCount} from Ryans Computers)
+                    Found {results.length} listings across {availableRetailers.length} Bangladeshi retailers
                   </p>
                 </div>
 
-                {/* Retailer Filter Buttons */}
-                <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-xl border border-white/10">
+                {/* Dynamic Retailer Filter Buttons */}
+                <div className="flex flex-wrap items-center gap-2 bg-white/5 p-1.5 rounded-xl border border-white/10">
                   <button
                     onClick={() => setActiveFilter('All')}
                     className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
@@ -269,26 +275,19 @@ export default function SearchPage() {
                   >
                     All ({results.length})
                   </button>
-                  <button
-                    onClick={() => setActiveFilter('StarTech BD')}
-                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                      activeFilter === 'StarTech BD'
-                        ? 'bg-red-500 text-white shadow-lg shadow-red-500/25'
-                        : 'text-text-muted hover:text-text-primary'
-                    }`}
-                  >
-                    StarTech ({startechCount})
-                  </button>
-                  <button
-                    onClick={() => setActiveFilter('Ryans Computers')}
-                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                      activeFilter === 'Ryans Computers'
-                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25'
-                        : 'text-text-muted hover:text-text-primary'
-                    }`}
-                  >
-                    Ryans ({ryansCount})
-                  </button>
+                  {availableRetailers.map((store) => (
+                    <button
+                      key={store}
+                      onClick={() => setActiveFilter(store)}
+                      className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                        activeFilter === store
+                          ? 'bg-cyan-400 text-black shadow-lg shadow-cyan-400/25 font-bold'
+                          : 'text-text-muted hover:text-text-primary'
+                      }`}
+                    >
+                      {store} ({retailerCounts[store]})
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -298,13 +297,13 @@ export default function SearchPage() {
                   <ShoppingBag className="w-12 h-12 text-text-muted mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-text-primary mb-2">No listings found</h3>
                   <p className="text-text-muted text-sm mb-6">
-                    We couldn't find any pre-scraped products matching "{query}" under {activeFilter}.
+                    We couldn't find any products matching "{query}" under {activeFilter}.
                   </p>
                   <button
-                    onClick={() => executeSearch('rtx 5060')}
+                    onClick={() => executeSearch('rtx 4060')}
                     className="button-primary px-6 py-2.5 text-sm"
                   >
-                    Try "rtx 5060"
+                    Try "rtx 4060"
                   </button>
                 </div>
               )}
@@ -316,7 +315,7 @@ export default function SearchPage() {
                     key={product.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: idx * 0.05 }}
+                    transition={{ duration: 0.4, delay: idx * 0.03 }}
                     onClick={() => navigate(`/product/${product.id}`)}
                     className="group relative flex flex-col glass border border-border rounded-2xl overflow-hidden hover:border-cyan-500/50 transition-all duration-300 shadow-xl cursor-pointer"
                   >

@@ -170,8 +170,11 @@ def get_or_create_product_sqlite(conn: sqlite3.Connection, title: str, brand: st
 def upsert_listings(listings: List[Dict[str, Any]]):
     """
     Upsert scraped listings into database with product matching and last_scraped_at timestamp.
-    Supports both Supabase Postgres and local SQLite persistence.
+    Supports both Supabase Postgres and local SQLite persistence with batching.
     """
+    if not listings:
+        return
+
     # 1. Local SQLite Sync
     init_sqlite_db()
     conn = get_sqlite_conn()
@@ -179,7 +182,7 @@ def upsert_listings(listings: List[Dict[str, Any]]):
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     
     sqlite_upserted = 0
-    supabase_upserted = 0
+    supabase_payloads = []
     
     for item in listings:
         product_url = item["product_url"]
@@ -213,32 +216,34 @@ def upsert_listings(listings: List[Dict[str, Any]]):
         except Exception as e:
             print(f"[SQLite Upsert Error] {e}")
             
-        # Supabase Upsert
         if supabase_client:
-            try:
-                p_id_sb = get_or_create_product_supabase(title, brand)
-                listing_payload = {
-                    "product_id": p_id_sb,
-                    "retailer": retailer,
-                    "title": title,
-                    "brand": brand,
-                    "price": price,
-                    "price_str": price_str,
-                    "product_url": product_url,
-                    "image_url": image_url,
-                    "last_scraped_at": now_iso
-                }
-                supabase_client.table("listings").upsert(listing_payload, on_conflict="product_url").execute()
-                supabase_upserted += 1
-            except Exception as e:
-                # Log warning if Supabase table is not created yet
-                pass
+            supabase_payloads.append({
+                "retailer": retailer,
+                "title": title,
+                "brand": brand,
+                "price": price,
+                "price_str": price_str,
+                "product_url": product_url,
+                "image_url": image_url,
+                "last_scraped_at": now_iso
+            })
 
     conn.commit()
     conn.close()
     print(f"[DB Handler] Successfully synced {sqlite_upserted} listings to SQLite database.")
-    if supabase_upserted > 0:
-        print(f"[DB Handler] Successfully synced {supabase_upserted} listings to Supabase Postgres.")
+
+    # 2. Batch Supabase Upsert
+    if supabase_client and supabase_payloads:
+        try:
+            # Batch in chunks of 50
+            for i in range(0, len(supabase_payloads), 50):
+                chunk = supabase_payloads[i:i+50]
+                supabase_client.table("listings").upsert(chunk, on_conflict="product_url").execute()
+            print(f"[DB Handler] Successfully batch synced {len(supabase_payloads)} listings to Supabase Postgres.")
+        except Exception as e:
+            err_str = str(e)
+            if "PGRST" not in err_str:
+                print(f"[Supabase Batch Upsert Warning] {e}")
 
 if __name__ == "__main__":
     init_sqlite_db()
