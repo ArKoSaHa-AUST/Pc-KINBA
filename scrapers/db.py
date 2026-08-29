@@ -36,16 +36,20 @@ def get_sqlite_conn():
     return conn
 
 def init_sqlite_db():
-    """Initialize local SQLite database tables."""
+    """Initialize local SQLite database tables for products and product_offers."""
     conn = get_sqlite_conn()
     cursor = conn.cursor()
     
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
+        canonical_name TEXT NOT NULL,
+        fingerprint TEXT UNIQUE NOT NULL,
         brand TEXT NOT NULL DEFAULT '',
-        category TEXT NOT NULL DEFAULT 'Component',
+        type TEXT NOT NULL DEFAULT '',
+        capacity TEXT NOT NULL DEFAULT '',
+        speed TEXT NOT NULL DEFAULT '',
+        model TEXT NOT NULL DEFAULT '',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );
@@ -69,10 +73,54 @@ def init_sqlite_db():
     );
     """)
     
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);")
+    # Ensure existing SQLite tables are upgraded with new fingerprint & attribute columns
+    cursor.execute("PRAGMA table_info(products)")
+    existing_cols = [row[1] for row in cursor.fetchall()]
+    
+    for col, col_type in [
+        ('canonical_name', "TEXT NOT NULL DEFAULT ''"),
+        ('fingerprint', "TEXT NOT NULL DEFAULT ''"),
+        ('manufacturer', "TEXT NOT NULL DEFAULT 'Generic'"),
+        ('base_model', "TEXT NOT NULL DEFAULT ''"),
+        ('type', "TEXT NOT NULL DEFAULT ''"),
+        ('capacity', "TEXT NOT NULL DEFAULT ''"),
+        ('speed', "TEXT NOT NULL DEFAULT ''"),
+        ('model', "TEXT NOT NULL DEFAULT ''")
+    ]:
+        if col not in existing_cols:
+            try:
+                cursor.execute(f"ALTER TABLE products ADD COLUMN {col} {col_type}")
+            except Exception:
+                pass
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS product_aliases (
+        id TEXT PRIMARY KEY,
+        product_id TEXT NOT NULL,
+        alias_text TEXT NOT NULL UNIQUE,
+        confidence REAL NOT NULL DEFAULT 1.0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    );
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS merge_history (
+        id TEXT PRIMARY KEY,
+        source_product_id TEXT NOT NULL,
+        target_product_id TEXT NOT NULL,
+        confidence REAL NOT NULL DEFAULT 1.0,
+        timestamp TEXT NOT NULL
+    );
+    """)
+    
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_products_fingerprint ON products(fingerprint);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_products_canonical ON products(canonical_name);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_products_mfg ON products(manufacturer);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_listings_title ON listings(title);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_listings_retailer ON listings(retailer);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_listings_product_id ON listings(product_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_aliases_text ON product_aliases(alias_text);")
     
     conn.commit()
     conn.close()
@@ -141,12 +189,16 @@ def get_or_create_product_supabase(title: str, brand: str) -> Optional[str]:
     return None
 
 def get_or_create_product_sqlite(conn: sqlite3.Connection, title: str, brand: str) -> str:
-    """Find or create matching base product record in SQLite."""
+    """Find or create matching base product record in SQLite via normalizer fingerprint."""
+    from scrapers.normalizer import generate_fingerprint
     cursor = conn.cursor()
-    base_model = extract_base_model(title, brand)
-    product_name = f"{brand} {base_model}".strip() if brand and not base_model.startswith(brand) else base_model
     
-    cursor.execute("SELECT id FROM products WHERE LOWER(name) = LOWER(?) OR LOWER(name) = LOWER(?)", (product_name, base_model))
+    fp_data = generate_fingerprint(title, brand)
+    fp = fp_data['fingerprint']
+    canonical_name = fp_data['canonical_name']
+    attrs = fp_data['attributes']
+    
+    cursor.execute("SELECT id FROM products WHERE fingerprint = ?", (fp,))
     row = cursor.fetchone()
     
     if row:
@@ -156,15 +208,31 @@ def get_or_create_product_sqlite(conn: sqlite3.Connection, title: str, brand: st
     product_id = str(uuid.uuid4())
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     
-    category = "GPU" if "RTX" in base_model or "RX" in base_model or "GTX" in base_model else "Component"
-    if "Ryzen" in base_model or "i7" in base_model or "i5" in base_model or "i9" in base_model:
-        category = "CPU"
+    try:
+        cursor.execute("""
+        INSERT INTO products (id, canonical_name, fingerprint, brand, type, capacity, speed, model, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (product_id, canonical_name, fp, attrs['brand'] or brand, attrs['type'], attrs['capacity'], attrs['speed'], attrs['model'], now_iso, now_iso))
         
-    cursor.execute("""
-    INSERT INTO products (id, name, brand, category, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-    """, (product_id, base_model, brand, category, now_iso, now_iso))
-    
+        # Populate Master Product Dictionary (product_aliases)
+        aliases = list(set([canonical_name, title, attrs['baseModel'], attrs['model']]))
+        for alias in aliases:
+            if alias and len(alias) > 2:
+                try:
+                    alias_id = str(uuid.uuid4())
+                    cursor.execute("""
+                    INSERT OR IGNORE INTO product_aliases (id, product_id, alias_text, confidence, created_at)
+                    VALUES (?, ?, ?, 1.0, ?)
+                    """, (alias_id, product_id, alias.strip(), now_iso))
+                except Exception:
+                    pass
+
+    except sqlite3.IntegrityError:
+        cursor.execute("SELECT id FROM products WHERE fingerprint = ?", (fp,))
+        row = cursor.fetchone()
+        if row:
+            return row["id"]
+            
     return product_id
 
 def upsert_listings(listings: List[Dict[str, Any]]):

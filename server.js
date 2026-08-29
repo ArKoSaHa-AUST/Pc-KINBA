@@ -6,6 +6,7 @@ import path from "path";
 import { execSync } from "child_process";
 import { createClient } from "@supabase/supabase-js";
 import { sendWelcomeEmail } from "./mailer.js";
+import { extractAttributes, generateFingerprint, isSameProductVariant, group5StoreOffers } from "./lib/normalizer.js";
 
 dotenv.config();
 
@@ -81,9 +82,9 @@ function searchSqliteListings(query) {
   let params = [];
   let conds = [];
 
-  // 1. Full string match
-  conds.push("(l.title LIKE ? OR l.title LIKE ? OR l.brand LIKE ?)");
-  params.push(`%${cleanQ}%`, `%${normQ}%`, `%${cleanQ}%`);
+  // 1. Full title/brand match
+  conds.push("(l.title LIKE ? OR l.title LIKE ? OR l.brand LIKE ? OR p.canonical_name LIKE ? OR a.alias_text LIKE ?)");
+  params.push(`%${cleanQ}%`, `%${normQ}%`, `%${cleanQ}%`, `%${cleanQ}%`, `%${cleanQ}%`);
 
   // 2. Individual key tokens match
   if (tokens.length > 0) {
@@ -95,7 +96,7 @@ function searchSqliteListings(query) {
   }
 
   const sql = `
-    SELECT 
+    SELECT DISTINCT
       l.id, 
       l.title, 
       l.brand, 
@@ -105,10 +106,12 @@ function searchSqliteListings(query) {
       l.product_url, 
       l.image_url, 
       l.last_scraped_at,
-      p.name as base_product_name,
+      p.canonical_name as base_product_name,
+      p.fingerprint,
       p.category
     FROM listings l
     LEFT JOIN products p ON l.product_id = p.id
+    LEFT JOIN product_aliases a ON a.product_id = p.id
     WHERE ${conds.join(" OR ")}
     ORDER BY l.price ASC
   `;
@@ -287,7 +290,39 @@ app.get("/api/search", async (req, res) => {
   });
 });
 
-// Feature 3: Dynamic Product Details Endpoint
+// Feature 2b: Parallel Live Scraping + Matching Endpoint
+app.get("/api/search/live", async (req, res) => {
+  const query = (req.query.q || "").toString().trim();
+  if (!query) {
+    return res.status(400).json({ error: "Query parameter 'q' is required" });
+  }
+
+  console.log(`[API Live Search] Running parallel Google web search & live scraper for: "${query}"`);
+
+  try {
+    const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
+    const scriptPath = path.join(process.cwd(), "scrapers/parallel_engine.py");
+    const safeQuery = query.replace(/["\\]/g, "");
+
+    const stdout = execSync(`PYTHONPATH=. "${pythonPath}" "${scriptPath}" "${safeQuery}"`, {
+      timeout: 30000,
+      encoding: "utf-8"
+    });
+
+    const jsonStart = stdout.indexOf("{");
+    if (jsonStart !== -1) {
+      const parsed = JSON.parse(stdout.slice(jsonStart));
+      return res.json(parsed);
+    }
+    
+    return res.status(500).json({ error: "Failed to parse parallel engine output" });
+  } catch (err) {
+    console.error("[Live Search API Error]:", err.message);
+    return res.status(500).json({ error: "Live search failed", details: err.message });
+  }
+});
+
+// Feature 3: Dynamic Product Details Endpoint with 5-Store Comparison & Normalization
 app.get("/api/product/:id", async (req, res) => {
   const { id } = req.params;
   if (!id) {
@@ -329,74 +364,90 @@ app.get("/api/product/:id", async (req, res) => {
     return res.status(404).json({ error: "Product not found" });
   }
 
-  // Find related comparison listings from both StarTech BD & Ryans Computers
+  // Extract canonical attributes & fingerprint
+  const { fingerprint, canonical_name, attributes } = generateFingerprint(item.title, item.brand);
   const category = deriveCategory(item.title);
+
+  // Search candidate matching listings across DB
   const titleWords = item.title.split(/\s+/).filter(w => w.length > 2);
   const mainKeywords = titleWords.slice(0, 3).join(" ");
 
-  let rawShops = await searchSupabaseListings(mainKeywords);
-  if (rawShops.length === 0) {
-    rawShops = searchSqliteListings(mainKeywords);
+  let rawCandidates = await searchSupabaseListings(mainKeywords);
+  if (rawCandidates.length === 0) {
+    rawCandidates = searchSqliteListings(mainKeywords);
   }
 
-  // Group or map retailer prices
-  const shopsMap = new Map();
-  
-  // Ensure the primary scraped item is included
-  shopsMap.set(item.retailer, {
-    name: item.retailer,
-    logo: item.retailer.includes("StarTech") ? "ST" : "RY",
-    price: item.price,
-    price_str: item.price_str,
-    stock: true,
-    delivery: "In Stock (1-2 Days)",
-    color: item.retailer.includes("StarTech") ? "#00e5ff" : "#a855f7",
-    trust: 4.9,
-    product_url: item.product_url
+  // Filter candidates using 85% fuzzy match & variant safety checks (prevent merging 8GB vs 16GB)
+  const matchedListings = rawCandidates.filter((cand) => {
+    if (cand.id === item.id) return false;
+    return isSameProductVariant(item.title, cand.title, 0.85);
   });
 
-  rawShops.forEach(r => {
-    if (!shopsMap.has(r.retailer)) {
-      shopsMap.set(r.retailer, {
-        name: r.retailer,
-        logo: r.retailer.includes("StarTech") ? "ST" : "RY",
-        price: r.price,
-        price_str: r.price_str,
-        stock: true,
-        delivery: "In Stock (1-2 Days)",
-        color: r.retailer.includes("StarTech") ? "#00e5ff" : "#a855f7",
-        trust: 4.8,
-        product_url: r.product_url
-      });
-    }
-  });
+  // Group offers across 5 target stores (StarTech BD, Ryans Computers, Techland, PCB Store, UCC BD)
+  const groupedResult = group5StoreOffers(item, matchedListings);
 
   // Construct dynamic key features
   const keyFeatures = [
-    { label: "Brand", value: item.brand || "Generic" },
-    { label: "Model / Title", value: item.title },
+    { label: "Brand", value: attributes.brand || item.brand || "Generic" },
+    { label: "Model", value: attributes.model || item.title },
+    { label: "Capacity / Storage", value: attributes.capacity || "N/A" },
+    { label: "Spec / Type", value: attributes.type || "Standard" },
+    { label: "Speed / Clock", value: attributes.speed || "Standard" },
+    { label: "Canonical Key", value: fingerprint },
     { label: "Category", value: category },
-    { label: "Source Retailer", value: item.retailer },
-    { label: "Last Verified Price", value: item.price_str },
-    { label: "Scraped Date", value: new Date(item.last_scraped_at || Date.now()).toLocaleDateString() }
+    { label: "Last Verified Price", value: item.price_str }
   ];
 
   const responsePayload = {
     id: item.id,
     title: item.title,
-    brand: item.brand || "Generic",
+    canonical_name: canonical_name,
+    fingerprint: fingerprint,
+    brand: attributes.brand || item.brand || "Generic",
     price: item.price,
     price_str: item.price_str,
+    best_price: groupedResult.best_price,
+    best_price_str: groupedResult.best_price_str,
+    product: {
+      id: item.id,
+      canonical_name: canonical_name,
+      fingerprint: fingerprint,
+      manufacturer: attributes.manufacturer || "Generic",
+      base_model: attributes.baseModel || attributes.model,
+      type: attributes.type || "",
+      capacity: attributes.capacity || "",
+      speed: attributes.speed || "",
+      mpn: attributes.mpn || ""
+    },
     retailer: item.retailer,
     product_url: item.product_url,
     image_url: item.image_url,
     category: category,
     last_scraped_at: item.last_scraped_at,
     keyFeatures: keyFeatures,
-    shops: Array.from(shopsMap.values())
+    offers: groupedResult.shops,
+    shops: groupedResult.shops
   };
 
   return res.json(responsePayload);
+});
+
+app.post("/api/reconcile", (req, res) => {
+  console.log("[Reconcile API] Triggering background product reconciliation job...");
+  try {
+    const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
+    const scriptPath = path.join(process.cwd(), "scrapers/reconcile.py");
+    
+    execSync(`PYTHONPATH=. "${pythonPath}" "${scriptPath}"`, {
+      timeout: 60000,
+      stdio: "inherit"
+    });
+
+    return res.json({ success: true, message: "Reconciliation sweep completed successfully." });
+  } catch (err) {
+    console.error("[Reconcile API Error]:", err.message);
+    return res.status(500).json({ error: "Reconciliation failed", details: err.message });
+  }
 });
 
 app.post("/api/send-welcome", async (req, res) => {
