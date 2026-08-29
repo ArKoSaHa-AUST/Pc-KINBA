@@ -25,7 +25,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  perspective: 1400px;
+  perspective: 1100px;
   cursor: grab;
   touch-action: none;
 }
@@ -39,6 +39,18 @@
   width: 500px;
   height: 500px;
   transform-style: preserve-3d;
+  transition: scale 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Shrink the whole scene while exploded so flying parts and labels stay in view */
+.assembly-scene.is-exploded {
+  scale: 0.72;
+}
+
+.assembly-scene-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
 }
 
 .assembly-part {
@@ -47,7 +59,14 @@
   transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+.assembly-part-entry {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
 .assembly-part-body {
+  position: relative;
   width: 100%;
   height: 100%;
   border-radius: 10px;
@@ -55,16 +74,64 @@
   align-items: flex-start;
   padding: 8px 10px;
   cursor: pointer;
+  overflow: hidden;
   transition:
     border-color 0.25s ease,
     box-shadow 0.25s ease,
     background 0.25s ease;
 }
 
+/* Leader pin: diagonal line rising from the part with a billboarded name tag
+   (height + lean angle are set inline per category) */
+.part-pin-line {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  pointer-events: none;
+  transform-origin: top left;
+  background: linear-gradient(0deg, var(--accent) 0%, transparent 100%);
+  opacity: 0.75;
+}
+
+.part-pin-line::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: -2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.part-pin-label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: 230px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  background: rgba(8, 12, 22, 0.85);
+  color: var(--text-primary);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.18);
+}
+
 .assembly-part.is-filled .assembly-part-body {
-  background: linear-gradient(145deg, rgba(0, 229, 255, 0.12) 0%, rgba(124, 58, 237, 0.1) 100%);
-  border: 1px solid rgba(0, 229, 255, 0.4);
-  box-shadow: 0 0 18px rgba(0, 229, 255, 0.12);
+  background: linear-gradient(160deg, #1a2332 0%, #10141f 60%, #0b0e17 100%);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  box-shadow:
+    0 22px 34px rgba(0, 0, 0, 0.45),
+    0 0 18px rgba(0, 229, 255, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .assembly-part.is-empty .assembly-part-body {
@@ -93,12 +160,269 @@
 }
 
 .assembly-part-label {
+  position: relative;
+  z-index: 2;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-secondary);
   pointer-events: auto;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* ---- Hardware-styled part faces ---- */
+.part-visual {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.part-visual i {
+  display: block;
+  position: absolute;
+}
+
+/* Shared spinning fan */
+.fan-blades {
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(160, 180, 205, 0.55) 0deg 24deg,
+    rgba(20, 26, 38, 0.9) 24deg 45deg
+  );
+  -webkit-mask: radial-gradient(circle, transparent 18%, #000 20%, #000 92%, transparent 94%);
+  mask: radial-gradient(circle, transparent 18%, #000 20%, #000 92%, transparent 94%);
+  animation: fan-spin 1.6s linear infinite;
+}
+
+.fan-hub {
+  top: 50%;
+  left: 50%;
+  width: 30%;
+  height: 30%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #4a5668, #171d29 70%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+@keyframes fan-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Motherboard: PCB traces, socket, PCIe slots, chipset */
+.visual-mobo {
+  background:
+    repeating-linear-gradient(0deg, transparent 0 23px, rgba(0, 229, 255, 0.07) 23px 24px),
+    repeating-linear-gradient(90deg, transparent 0 23px, rgba(0, 229, 255, 0.07) 23px 24px),
+    linear-gradient(150deg, #0d1b2a 0%, #0a1420 100%);
+}
+
+.mobo-socket {
+  top: 22%;
+  left: 34%;
+  width: 22%;
+  height: 22%;
+  border: 2px solid rgba(150, 170, 195, 0.35);
+  border-radius: 4px;
+  background: rgba(10, 14, 22, 0.8);
+}
+
+.mobo-slots {
+  left: 8%;
+  bottom: 10%;
+  width: 62%;
+  height: 20%;
+  background: repeating-linear-gradient(0deg, rgba(140, 160, 185, 0.3) 0 6px, transparent 6px 18px);
+  border-radius: 2px;
+}
+
+.mobo-chipset {
+  right: 10%;
+  bottom: 14%;
+  width: 13%;
+  height: 13%;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #2c3a4d, #141c29);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.25);
+}
+
+/* CPU: brushed metal heat spreader */
+.visual-cpu {
+  background: linear-gradient(135deg, #97a3b4 0%, #5c6879 45%, #8994a6 100%);
+}
+
+.cpu-ihs {
+  inset: 14%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 2px, transparent 2px 4px),
+    linear-gradient(160deg, #7e8b9e, #46536a);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+/* Cooler: AIO pump with spinning fan + glow ring */
+.visual-cooler {
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #202b3d, #0c111c 75%);
+  box-shadow:
+    inset 0 0 0 3px rgba(0, 229, 255, 0.3),
+    0 0 22px rgba(0, 229, 255, 0.25);
+  animation: rgb-shift 6s linear infinite;
+}
+
+.visual-cooler .fan-blades {
+  inset: 12%;
+}
+
+/* RAM: two sticks with animated RGB strips */
+.visual-ram {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.ram-stick {
+  position: relative !important;
+  flex: 1;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #232c3c 0%, #141b28 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ram-stick::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(90deg, #00e5ff, #7c3aed, #00ffb2, #00e5ff);
+  background-size: 300% 100%;
+  animation: rgb-flow 3s linear infinite;
+}
+
+/* GPU: shroud with twin fans, RGB strip, gold PCIe fingers */
+.visual-gpu {
+  background: linear-gradient(170deg, #1c2534 0%, #0e131d 70%);
+}
+
+.gpu-fan {
+  top: 12%;
+  width: 30%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #0a0e16;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.gpu-fan:first-child {
+  left: 8%;
+}
+
+.gpu-fan + .gpu-fan {
+  left: 44%;
+}
+
+.gpu-led {
+  top: 18%;
+  right: 4%;
+  width: 3%;
+  height: 55%;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #00e5ff, #7c3aed);
+  background-size: 100% 300%;
+  animation: rgb-flow 3s linear infinite;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+}
+
+.gpu-fingers {
+  left: 10%;
+  bottom: 0;
+  width: 55%;
+  height: 7%;
+  background: repeating-linear-gradient(90deg, #c9a648 0 4px, #7d6420 4px 6px, transparent 6px 9px);
+}
+
+/* Storage: NVMe stick with controller chip + gold pins */
+.visual-storage {
+  background: linear-gradient(180deg, #14202e 0%, #0d1420 100%);
+}
+
+.storage-chip {
+  top: 14%;
+  left: 20%;
+  width: 60%;
+  height: 30%;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #2b3648, #161e2c);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.storage-pins {
+  left: 15%;
+  bottom: 0;
+  width: 70%;
+  height: 6%;
+  background: repeating-linear-gradient(90deg, #c9a648 0 3px, transparent 3px 6px);
+}
+
+/* PSU: fan grill + rating sticker */
+.visual-psu {
+  background: linear-gradient(160deg, #171d28 0%, #0c1018 100%);
+}
+
+.psu-fan {
+  top: 12%;
+  left: 6%;
+  height: 76%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #0a0e16;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.psu-fan .fan-blades {
+  animation-duration: 2.4s;
+}
+
+.psu-sticker {
+  right: 8%;
+  top: 28%;
+  width: 34%;
+  height: 44%;
+  border-radius: 3px;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(124, 58, 237, 0.25));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+@keyframes rgb-flow {
+  to {
+    background-position: 300% 300%;
+  }
+}
+
+@keyframes rgb-shift {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 3px rgba(0, 229, 255, 0.35),
+      0 0 22px rgba(0, 229, 255, 0.3);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 3px rgba(124, 58, 237, 0.4),
+      0 0 22px rgba(124, 58, 237, 0.35);
+  }
 }
 
 /* Case renders as a wireframe outline surrounding the parts */
@@ -186,6 +510,10 @@
     transform-origin: center;
     scale: 0.72;
   }
+
+  .assembly-scene.is-exploded {
+    scale: 0.52;
+  }
 }
 
 @media (max-width: 640px) {
@@ -197,6 +525,10 @@
     scale: 0.5;
   }
 
+  .assembly-scene.is-exploded {
+    scale: 0.36;
+  }
+
   .assembly-hud-info {
     display: none;
   }
@@ -204,7 +536,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .assembly-part,
-  .assembly-part.is-empty .assembly-part-body {
+  .assembly-part.is-empty .assembly-part-body,
+  .fan-blades,
+  .ram-stick::before,
+  .gpu-led,
+  .visual-cooler {
     transition: none;
     animation: none;
   }

@@ -1,14 +1,15 @@
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Search, X, XCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, X, Search, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { formatTaka } from './buildConfig';
 import {
   COMPONENT_CATEGORIES,
   productsByCategory,
   type BuilderProduct,
   type ComponentCategory,
+  type FormFactor,
 } from './builderCatalog';
 import { checkCompatibility, type BuildSelection, type CompatResult } from './compatibility';
-import { formatTaka } from './buildConfig';
 
 type SortKey = 'price-asc' | 'price-desc' | 'popularity' | 'performance';
 
@@ -18,6 +19,15 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'popularity', label: 'Popularity' },
   { key: 'performance', label: 'Performance' },
 ];
+
+const PRICE_BUCKETS = [
+  { key: 'under-10k', label: 'Under ৳10k', min: 0, max: 10000 },
+  { key: '10-30k', label: '৳10k–30k', min: 10000, max: 30000 },
+  { key: '30-80k', label: '৳30k–80k', min: 30000, max: 80000 },
+  { key: '80k-plus', label: '৳80k+', min: 80000, max: Infinity },
+] as const;
+
+type PriceBucketKey = (typeof PRICE_BUCKETS)[number]['key'];
 
 interface ComponentSelectModalProps {
   category: ComponentCategory | null;
@@ -51,6 +61,9 @@ export default function ComponentSelectModal({
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [brand, setBrand] = useState<string | null>(null);
+  const [priceBucket, setPriceBucket] = useState<PriceBucketKey | null>(null);
+  const [socket, setSocket] = useState<string | null>(null);
+  const [formFactor, setFormFactor] = useState<FormFactor | null>(null);
   const [sort, setSort] = useState<SortKey>('popularity');
 
   // Debounced real-time search (300ms)
@@ -64,6 +77,9 @@ export default function ComponentSelectModal({
     setQuery('');
     setDebouncedQuery('');
     setBrand(null);
+    setPriceBucket(null);
+    setSocket(null);
+    setFormFactor(null);
     setSort('popularity');
     if (!category) return;
     document.body.style.overflow = 'hidden';
@@ -80,12 +96,29 @@ export default function ComponentSelectModal({
   const meta = COMPONENT_CATEGORIES.find((c) => c.id === category);
   const products = useMemo(() => (category ? productsByCategory(category) : []), [category]);
   const brands = useMemo(() => [...new Set(products.map((p) => p.brand))], [products]);
+  // Socket / form factor pills only appear for categories whose products carry those attributes
+  const sockets = useMemo(
+    () => [...new Set(products.map((p) => p.socket).filter((s): s is string => !!s))],
+    [products],
+  );
+  const formFactors = useMemo(
+    () => [...new Set(products.map((p) => p.formFactor).filter((f): f is FormFactor => !!f))],
+    [products],
+  );
+  const priceBuckets = useMemo(
+    () => PRICE_BUCKETS.filter((b) => products.some((p) => p.price >= b.min && p.price < b.max)),
+    [products],
+  );
 
   const results = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase();
+    const bucket = PRICE_BUCKETS.find((b) => b.key === priceBucket);
     const filtered = products.filter(
       (p) =>
         (!brand || p.brand === brand) &&
+        (!bucket || (p.price >= bucket.min && p.price < bucket.max)) &&
+        (!socket || p.socket === socket) &&
+        (!formFactor || p.formFactor === formFactor) &&
         (!q || p.name.toLowerCase().includes(q) || p.keySpec.toLowerCase().includes(q)),
     );
     const sorted = [...filtered];
@@ -103,7 +136,7 @@ export default function ComponentSelectModal({
         sorted.sort((a, b) => b.popularity - a.popularity);
     }
     return sorted;
-  }, [products, debouncedQuery, brand, sort]);
+  }, [products, debouncedQuery, brand, priceBucket, socket, formFactor, sort]);
 
   return (
     <AnimatePresence>
@@ -174,6 +207,39 @@ export default function ComponentSelectModal({
                     onClick={() => setBrand(brand === b ? null : b)}
                   >
                     {b}
+                  </button>
+                ))}
+                <span className="builder-pill-divider" />
+                {priceBuckets.map((b) => (
+                  <button
+                    key={b.key}
+                    type="button"
+                    className={`builder-pill${priceBucket === b.key ? ' is-active' : ''}`}
+                    onClick={() => setPriceBucket(priceBucket === b.key ? null : b.key)}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+                {sockets.length > 0 && <span className="builder-pill-divider" />}
+                {sockets.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`builder-pill${socket === s ? ' is-active' : ''}`}
+                    onClick={() => setSocket(socket === s ? null : s)}
+                  >
+                    {s}
+                  </button>
+                ))}
+                {formFactors.length > 0 && <span className="builder-pill-divider" />}
+                {formFactors.map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    className={`builder-pill${formFactor === f ? ' is-active' : ''}`}
+                    onClick={() => setFormFactor(formFactor === f ? null : f)}
+                  >
+                    {f}
                   </button>
                 ))}
               </div>

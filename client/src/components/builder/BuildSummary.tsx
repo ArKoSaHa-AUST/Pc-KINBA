@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
 import { motion, useSpring, useTransform } from 'framer-motion';
 import {
-  Wallet,
-  Zap,
+  AlertTriangle,
+  CheckCircle2,
+  Circle,
   Gauge,
   ShieldCheck,
-  CheckCircle2,
-  AlertTriangle,
+  Wallet,
   XCircle,
-  Circle,
+  Zap,
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { formatTaka } from './buildConfig';
 import type { ComponentCategory } from './builderCatalog';
 import {
   estimatePowerDraw,
@@ -17,7 +18,6 @@ import {
   getCompatibilityScore,
   type BuildSelection,
 } from './compatibility';
-import { formatTaka } from './buildConfig';
 import MetricCard, { ProgressRing } from './MetricCard';
 import PartsTable from './PartsTable';
 

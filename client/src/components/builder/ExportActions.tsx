@@ -1,11 +1,12 @@
+import { ArrowLeftRight, ArrowRight, Printer, Save, Share2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Share2, Printer, ArrowLeftRight } from 'lucide-react';
 import { useToast } from '../ui/useToast';
 import type { BuildSelection } from './compatibility';
 
 interface ExportActionsProps {
   build: BuildSelection;
   onSave: () => void;
+  onCheckout: () => void;
 }
 
 function buildShareUrl(build: BuildSelection): string {
@@ -15,7 +16,7 @@ function buildShareUrl(build: BuildSelection): string {
   return `${window.location.origin}/pc-builder?parts=${ids.join(',')}`;
 }
 
-export default function ExportActions({ build, onSave }: ExportActionsProps) {
+export default function ExportActions({ build, onSave, onCheckout }: ExportActionsProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const hasParts = Object.keys(build).length > 0;
@@ -47,6 +48,9 @@ export default function ExportActions({ build, onSave }: ExportActionsProps) {
       </button>
       <button type="button" className="button-secondary" onClick={() => navigate('/compare')}>
         <ArrowLeftRight size={16} /> Compare Builds
+      </button>
+      <button type="button" className="button-primary" onClick={onCheckout} disabled={!hasParts}>
+        Checkout <ArrowRight size={16} />
       </button>
     </div>
   );

@@ -1,8 +1,8 @@
+import { AlertTriangle, Coins, Sparkles, TrendingUp, Zap, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
-import { Sparkles, TrendingUp, Coins, AlertTriangle, Zap, type LucideIcon } from 'lucide-react';
+import { formatTaka } from './buildConfig';
 import { BUILDER_CATALOG, type BuilderProduct } from './builderCatalog';
 import { estimatePowerDraw, type BuildSelection } from './compatibility';
-import { formatTaka } from './buildConfig';
 
 interface Suggestion {
   id: string;

@@ -1,36 +1,24 @@
+import Lenis from 'lenis';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Lenis from 'lenis';
+import { saveBuild } from '../api/builds';
+import { useAuth } from '../auth/useAuth';
+import AIOptimizer from '../components/builder/AIOptimizer';
+import AssemblyViewport3D from '../components/builder/AssemblyViewport3D';
+import BuildSummary from '../components/builder/BuildSummary';
 import BuilderHero from '../components/builder/BuilderHero';
 import ComponentGrid from '../components/builder/ComponentGrid';
 import ComponentSelectModal from '../components/builder/ComponentSelectModal';
-import AssemblyViewport3D from '../components/builder/AssemblyViewport3D';
-import BuildSummary from '../components/builder/BuildSummary';
-import AIOptimizer from '../components/builder/AIOptimizer';
 import ExportActions from '../components/builder/ExportActions';
-import StickyBuildBar from '../components/builder/StickyBuildBar';
-import { BUDGET_MIN, BUDGET_MAX, type BuildPurpose } from '../components/builder/buildConfig';
-import {
-  BUILDER_CATALOG,
-  type BuilderProduct,
-  type ComponentCategory,
-} from '../components/builder/builderCatalog';
-import type { BuildSelection } from '../components/builder/compatibility';
-import { useAuth } from '../auth/useAuth';
+import { BUDGET_MAX, BUDGET_MIN, type BuildPurpose } from '../components/builder/buildConfig';
+import type { BuilderProduct, ComponentCategory } from '../components/builder/builderCatalog';
+import { selectionFromPartIds, type BuildSelection } from '../components/builder/compatibility';
 import { useToast } from '../components/ui/useToast';
 import './PCBuilderPage.css';
 
-const SAVED_BUILD_KEY = 'pckinba.savedBuild';
-
 // Hydrate from a share link: /pc-builder?parts=id1,id2,…
 function buildFromShareLink(): BuildSelection {
-  const ids = new URLSearchParams(window.location.search).get('parts')?.split(',') ?? [];
-  const selection: BuildSelection = {};
-  for (const id of ids) {
-    const product = BUILDER_CATALOG.find((p) => p.id === id);
-    if (product) selection[product.category] = product;
-  }
-  return selection;
+  return selectionFromPartIds(new URLSearchParams(window.location.search).get('parts'));
 }
 
 export default function PCBuilderPage() {
@@ -88,28 +76,27 @@ export default function PCBuilderPage() {
     });
   }, []);
 
-  const handleSaveBuild = useCallback(() => {
+  const handleSaveBuild = useCallback(async () => {
     if (status !== 'authenticated') {
       toast({ message: 'Sign in to save your build.', variant: 'info' });
       navigate('/login');
       return;
     }
+    try {
+      const saved = await saveBuild(build);
+      toast({ message: `“${saved.name}” saved to your profile.`, variant: 'success' });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to save build.';
+      toast({ message: msg, variant: 'danger' });
+    }
+  }, [status, build, navigate, toast]);
+
+  const handleCheckout = useCallback(() => {
     const ids = Object.values(build)
       .filter((p) => p !== undefined)
       .map((p) => p.id);
-    localStorage.setItem(SAVED_BUILD_KEY, JSON.stringify(ids));
-    toast({ message: 'Build saved to your profile.', variant: 'success' });
-  }, [status, build, navigate, toast]);
-
-  const scrollToSummary = useCallback(() => {
-    const target = document.getElementById('build-summary');
-    if (!target) return;
-    if (lenisRef.current) {
-      lenisRef.current.scrollTo(target, { offset: -24 });
-    } else {
-      target.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, []);
+    navigate(`/pc-builder/checkout?parts=${ids.join(',')}`);
+  }, [build, navigate]);
 
   return (
     <div className="pc-builder-page">
@@ -176,11 +163,9 @@ export default function PCBuilderPage() {
             Let AI fine-tune your build, then save, share or export it.
           </p>
           <AIOptimizer build={build} onApply={handleSelectProduct} />
-          <ExportActions build={build} onSave={handleSaveBuild} />
+          <ExportActions build={build} onSave={handleSaveBuild} onCheckout={handleCheckout} />
         </div>
       </section>
-
-      <StickyBuildBar build={build} onSave={handleSaveBuild} onCheckout={scrollToSummary} />
 
       <ComponentSelectModal
         category={activeCategory}

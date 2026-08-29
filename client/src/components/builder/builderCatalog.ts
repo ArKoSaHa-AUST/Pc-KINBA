@@ -1,12 +1,12 @@
 import {
-  Cpu,
-  MonitorPlay,
-  CircuitBoard,
-  MemoryStick,
-  HardDrive,
-  Zap,
   Box,
+  CircuitBoard,
+  Cpu,
   Fan,
+  HardDrive,
+  MemoryStick,
+  MonitorPlay,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
 
