@@ -42,7 +42,7 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^15.13.0",
-    "oxlint": "^1.71.0",
+    "oxlint": "^1.80.0",
     "pg": "^8.23.0",
     "postcss": "^8.5.26",
     "prettier": "^3.4.2",
