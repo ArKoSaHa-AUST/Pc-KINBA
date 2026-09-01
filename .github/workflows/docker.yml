@@ -16,12 +16,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Lint Client Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: docker/client/Dockerfile
 
       - name: Lint AI Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: docker/ai/Dockerfile
 
