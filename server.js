@@ -53,47 +53,218 @@ function getSqliteDb() {
  */
 function getQueryVariations(rawQuery) {
   const cleanQ = rawQuery.trim();
-  const normQ = cleanQ.replace(/(\d+)\s+([a-zA-Z]+)/gi, "$1$2");
-  const splitQ = cleanQ.replace(/(\d+)([a-zA-Z]+)/gi, "$1 $2");
+  const normalized = cleanQ.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  const rawWords = normalized.split(/\s+/).filter(w => w.length > 0);
 
-  const words = cleanQ.split(/\s+/).concat(normQ.split(/\s+/)).concat(splitQ.split(/\s+/));
-  const tokens = Array.from(new Set(words.map(w => w.toLowerCase()))).filter(t => t.length >= 2);
+  // Natural search tokens from the user's actual typed words
+  const tokens = rawWords.filter(w => w.length >= 2 || (w.length === 1 && /\d/.test(w)));
+
+  // Useful variations for full phrase matching (e.g. 16 gb <-> 16gb)
+  const normQ = cleanQ.replace(/(\d+)\s+([a-zA-Z]+)/gi, "$1$2");
+  const splitQ = cleanQ.replace(/([a-zA-Z]+)(\d+)/gi, "$1 $2").replace(/(\d+)([a-zA-Z]+)/gi, "$1 $2");
+
   return { cleanQ, normQ, splitQ, tokens };
+}
+
+function detectSearchIntent(query = "") {
+  const q = query.toLowerCase().trim();
+
+  // 1. Explicit Laptop query
+  if (/\b(laptop|notebook|macbook|zenbook|ideapad|thinkpad|legion|victus|tuf gaming)\b/.test(q)) {
+    return { type: "laptop", category: "Laptop", excludes: [] };
+  }
+
+  // 2. Explicit PC Build / Combo query
+  if (/\b(desktop pc|gaming pc|budget pc|pc build|combo|prebuilt|all-in-one|aio pc)\b/.test(q)) {
+    return { type: "pc_build", category: "Desktop PC", excludes: [] };
+  }
+
+  // 3. Motherboard query (checked before CPU so 'amd b650' or 'intel b760' is Motherboard)
+  if (/\b(motherboard|mainboard|b650|b760|z790|b550|x670|z890|a620|b450|h610)\b/.test(q)) {
+    return {
+      type: "motherboard",
+      category: "Motherboard",
+      excludes: ["desktop pc", "gaming pc", "laptop", "combo", "pc-deal", "budget pc", "pc build"]
+    };
+  }
+
+  // 4. GPU / Graphics Card query (e.g. rtx 4060, rtx 5060, gtx 1650, rx 7600, graphics card, gpu, geforce, radeon)
+  if (/\b(rtx|gtx|rx\s*\d{4}|graphics\s*card|gpu|geforce|radeon|arc\s*a\d{3})\b/.test(q)) {
+    return {
+      type: "gpu",
+      category: "Graphics Card",
+      excludes: ["laptop", "notebook", "desktop pc", "gaming pc", "pc build", "budget pc", "combo", "custom pc", "prebuilt", "all-in-one"]
+    };
+  }
+
+  // 5. CPU / Processor query (e.g. ryzen, core i3/i5/i7/i9, amd 7 7700, processor, cpu, intel, threadripper)
+  if (/\b(ryzen|processor|cpu|threadripper|pentium|celeron)\b/.test(q) ||
+      /\b(core\s*i[3579]|intel\s*i[3579]|i[3579][\s-]\d{4,5}[a-z]?)\b/.test(q) ||
+      /\b(amd\s*(ryzen\s*)?[3579]|\b7700\b|\b7600\b|\b7800x3d\b|\b5600\b|\b5700\b|\b5800\b|\b9800x3d\b|\b9700\b|\b9600\b)/.test(q)) {
+    return {
+      type: "cpu",
+      category: "Processor",
+      excludes: ["laptop", "notebook", "desktop pc", "gaming pc", "budget pc", "pc build", "combo", "bundle", "ram", "motherboard", "cooler", "casing"]
+    };
+  }
+
+  // 6. RAM Memory query
+  if (/\b(ram|ddr4|ddr5|sodimm|memory)\b/.test(q)) {
+    return {
+      type: "ram",
+      category: "RAM Memory",
+      excludes: ["desktop pc", "gaming pc", "combo"]
+    };
+  }
+
+  // 7. SSD Storage query
+  if (/\b(ssd|nvme|m\.2|sata ssd)\b/.test(q)) {
+    return {
+      type: "ssd",
+      category: "SSD Storage",
+      excludes: ["desktop pc", "gaming pc", "laptop", "notebook", "combo"]
+    };
+  }
+
+  // 8. UPS & Power query
+  if (/\b(ups|ips|voltage regulator|stabilizer)\b/.test(q)) {
+    return { type: "ups", category: "UPS & Power", excludes: [] };
+  }
+
+  // 9. Pendrive / Flash drive query
+  if (/\b(pendrive|pen drive|flash drive|usb drive|thumb drive)\b/.test(q)) {
+    return { type: "pendrive", category: "Pendrive / Storage", excludes: [] };
+  }
+
+  // 10. Monitor query
+  if (/\b(monitor|display)\b/.test(q)) {
+    return { type: "monitor", category: "Monitor", excludes: ["laptop"] };
+  }
+
+  // 11. Casing query
+  if (/\b(casing|chassis)\b/.test(q)) {
+    return { type: "casing", category: "Casing", excludes: ["desktop pc", "gaming pc"] };
+  }
+
+  // 12. Power Supply query
+  if (/\b(power supply|psu)\b/.test(q)) {
+    return { type: "power_supply", category: "Power Supply", excludes: ["desktop pc", "gaming pc"] };
+  }
+
+  // 13. Cooler query
+  if (/\b(cooler|liquid cooler|aio)\b/.test(q)) {
+    return { type: "cooler", category: "Cooler", excludes: ["desktop pc", "gaming pc"] };
+  }
+
+  return { type: "general", category: "All", excludes: [] };
 }
 
 function deriveCategory(title = "") {
   const t = title.toLowerCase();
-  if (t.includes("rtx") || t.includes("gtx") || t.includes("rx") || t.includes("graphics") || t.includes("gpu")) return "Graphics Card";
-  if (t.includes("ryzen") || t.includes("intel") || t.includes("i5") || t.includes("i7") || t.includes("i9") || t.includes("processor") || t.includes("cpu")) return "Processor";
-  if (t.includes("ssd") || t.includes("nvme")) return "SSD Storage";
+  // Check composite/full systems first so they don't get misclassified by component keywords
+  if (t.includes("laptop") || t.includes("notebook") || t.includes("macbook") || t.includes("zenbook") || t.includes("ideapad")) return "Laptop";
+  if (t.includes("gaming pc") || t.includes("desktop pc") || t.includes("budget pc") || t.includes("pc build") || t.includes("combo offer") || t.includes("all-in-one") || t.includes("aio pc")) return "Desktop PC";
+  if (t.includes("motherboard") || t.includes("mainboard")) return "Motherboard";
+  if (t.includes("rtx") || t.includes("gtx") || t.includes("rx ") || t.includes("graphics card") || t.includes("graphics") || t.includes("gpu") || t.includes("geforce") || t.includes("radeon")) return "Graphics Card";
+  if (t.includes("processor") || t.includes("cpu") || t.includes("ryzen") || t.includes("core i") || t.includes("threadripper") || t.includes("intel") || t.includes("amd")) return "Processor";
+  if (t.includes("ssd") || t.includes("nvme") || t.includes("m.2")) return "SSD Storage";
   if (t.includes("ram") || t.includes("ddr4") || t.includes("ddr5") || t.includes("memory")) return "RAM Memory";
-  if (t.includes("ups") || t.includes("ips")) return "UPS & Power";
-  if (t.includes("pendrive") || t.includes("flash drive") || t.includes("usb drive")) return "Pendrive / Storage";
-  if (t.includes("charger") || t.includes("adapter")) return "Chargers & Power";
-  if (t.includes("laptop")) return "Laptop";
+  if (t.includes("casing") || t.includes("chassis")) return "Casing";
+  if (t.includes("power supply") || t.includes("psu")) return "Power Supply";
+  if (t.includes("cooler") || t.includes("liquid cooler") || t.includes("fan")) return "Cooler";
   if (t.includes("monitor")) return "Monitor";
+  if (t.includes("ups") || t.includes("ips")) return "UPS & Power";
+  if (t.includes("pendrive") || t.includes("pen drive") || t.includes("flash drive") || t.includes("usb drive")) return "Pendrive / Storage";
+  if (t.includes("keyboard")) return "Keyboard";
+  if (t.includes("mouse")) return "Mouse";
+  if (t.includes("headphone") || t.includes("headset") || t.includes("speaker")) return "Audio";
+  if (t.includes("router")) return "Networking";
   return "Components";
 }
 
-function searchSqliteListings(query) {
+function searchSqliteListings(query, requestedCategory = null) {
   const db = getSqliteDb();
   if (!db) return [];
 
   const { cleanQ, normQ, tokens } = getQueryVariations(query);
-  let params = [];
+  const intent = detectSearchIntent(query);
+  let whereParams = [];
   let conds = [];
 
   // 1. Full title/brand match
   conds.push("(l.title LIKE ? OR l.title LIKE ? OR l.brand LIKE ? OR p.canonical_name LIKE ? OR a.alias_text LIKE ?)");
-  params.push(`%${cleanQ}%`, `%${normQ}%`, `%${cleanQ}%`, `%${cleanQ}%`, `%${cleanQ}%`);
+  whereParams.push(`%${cleanQ}%`, `%${normQ}%`, `%${cleanQ}%`, `%${cleanQ}%`, `%${cleanQ}%`);
 
   // 2. Individual key tokens match
   if (tokens.length > 0) {
     const tokenSql = tokens.map(t => {
-      params.push(`%${t}%`);
+      whereParams.push(`%${t}%`);
       return "l.title LIKE ?";
     }).join(" AND ");
     conds.push(`(${tokenSql})`);
+  }
+
+  // 3. Category & Negative Exclusion Filters
+  let extraFilters = [];
+
+  if (requestedCategory && requestedCategory !== "All") {
+    if (requestedCategory === "Graphics Card") {
+      extraFilters.push("LOWER(l.title) NOT LIKE '%laptop%' AND LOWER(l.title) NOT LIKE '%notebook%' AND LOWER(l.title) NOT LIKE '%desktop pc%' AND LOWER(l.title) NOT LIKE '%gaming pc%' AND LOWER(l.title) NOT LIKE '%combo%'");
+    } else if (requestedCategory === "Processor") {
+      extraFilters.push("LOWER(l.title) NOT LIKE '%laptop%' AND LOWER(l.title) NOT LIKE '%desktop pc%' AND LOWER(l.title) NOT LIKE '%gaming pc%' AND LOWER(l.title) NOT LIKE '%budget pc%' AND LOWER(l.title) NOT LIKE '%pc build%' AND LOWER(l.title) NOT LIKE '%combo%' AND LOWER(l.title) NOT LIKE '%ram%' AND LOWER(l.title) NOT LIKE '%motherboard%'");
+    } else if (requestedCategory === "Motherboard") {
+      extraFilters.push("LOWER(l.title) NOT LIKE '%laptop%' AND LOWER(l.title) NOT LIKE '%desktop pc%' AND LOWER(l.title) NOT LIKE '%gaming pc%' AND LOWER(l.title) NOT LIKE '%combo%'");
+    } else if (requestedCategory === "Laptop") {
+      extraFilters.push("(LOWER(l.title) LIKE '%laptop%' OR LOWER(l.title) LIKE '%notebook%' OR LOWER(l.title) LIKE '%macbook%')");
+    } else if (requestedCategory === "RAM Memory") {
+      extraFilters.push("(LOWER(l.title) LIKE '%ram%' OR LOWER(l.title) LIKE '%ddr%') AND LOWER(l.title) NOT LIKE '%desktop pc%' AND LOWER(l.title) NOT LIKE '%gaming pc%'");
+    } else if (requestedCategory === "SSD Storage") {
+      extraFilters.push("(LOWER(l.title) LIKE '%ssd%' OR LOWER(l.title) LIKE '%nvme%') AND LOWER(l.title) NOT LIKE '%laptop%'");
+    } else if (requestedCategory === "UPS & Power") {
+      extraFilters.push("(LOWER(l.title) LIKE '%ups%' OR LOWER(l.title) LIKE '%ips%')");
+    } else if (requestedCategory === "Pendrive / Storage") {
+      extraFilters.push("(LOWER(l.title) LIKE '%pendrive%' OR LOWER(l.title) LIKE '%pen drive%' OR LOWER(l.title) LIKE '%flash drive%' OR LOWER(l.title) LIKE '%usb%')");
+    } else if (requestedCategory === "Monitor") {
+      extraFilters.push("(LOWER(l.title) LIKE '%monitor%' OR LOWER(l.title) LIKE '%display%') AND LOWER(l.title) NOT LIKE '%laptop%'");
+    }
+  } else if (intent.excludes && intent.excludes.length > 0) {
+    // Automatically apply negative exclusions from detected intent!
+    const negativeSql = intent.excludes.map(e => `LOWER(l.title) NOT LIKE '%${e}%'`).join(" AND ");
+    extraFilters.push(`(${negativeSql})`);
+  }
+
+  const whereClause = conds.join(" OR ");
+  const filterClause = extraFilters.length > 0 ? ` AND ${extraFilters.join(" AND ")}` : "";
+
+  // Dynamic ranking: boost actual component names
+  let bonusRankSql = "3";
+  if (intent.type === "gpu") {
+    bonusRankSql = `CASE 
+      WHEN LOWER(l.title) LIKE '%graphics card%' OR LOWER(l.title) LIKE '%gddr%' OR LOWER(l.title) LIKE '%oc edition%' THEN 0
+      WHEN LOWER(l.title) LIKE '%graphics%' OR LOWER(l.title) LIKE '%edition%' THEN 1
+      ELSE 2
+    END`;
+  } else if (intent.type === "cpu") {
+    bonusRankSql = `CASE 
+      WHEN LOWER(l.title) LIKE '%processor%' OR LOWER(l.title) LIKE '%cpu%' THEN 0
+      WHEN LOWER(l.title) LIKE '%tray%' OR LOWER(l.title) LIKE '%am5%' OR LOWER(l.title) LIKE '%am4%' THEN 1
+      ELSE 2
+    END`;
+  } else if (intent.type === "motherboard") {
+    bonusRankSql = `CASE 
+      WHEN LOWER(l.title) LIKE '%motherboard%' OR LOWER(l.title) LIKE '%mainboard%' THEN 0
+      ELSE 1
+    END`;
+  } else if (intent.type === "ups") {
+    bonusRankSql = `CASE 
+      WHEN LOWER(l.title) LIKE '%ups%' OR LOWER(l.title) LIKE '%ips%' THEN 0
+      ELSE 1
+    END`;
+  } else if (intent.type === "pendrive") {
+    bonusRankSql = `CASE 
+      WHEN LOWER(l.title) LIKE '%pendrive%' OR LOWER(l.title) LIKE '%flash drive%' THEN 0
+      ELSE 1
+    END`;
   }
 
   const sql = `
@@ -115,22 +286,31 @@ function searchSqliteListings(query) {
         WHEN LOWER(l.title) LIKE ? THEN 1
         WHEN LOWER(l.title) LIKE ? THEN 2
         ELSE 3
-      END as match_rank
+      END as match_rank,
+      ${bonusRankSql} as category_priority
     FROM listings l
     LEFT JOIN products p ON l.product_id = p.id
     LEFT JOIN product_aliases a ON a.product_id = p.id
-    WHERE ${conds.join(" OR ")}
-    ORDER BY match_rank ASC, l.price ASC
+    WHERE (${whereClause}) ${filterClause}
+    ORDER BY match_rank ASC, category_priority ASC, l.price ASC
   `;
 
-  // Append ordering parameters for match_rank
-  params.push(cleanQ, `${cleanQ.toLowerCase()}%`, `%${cleanQ.toLowerCase()}%`);
+  // Prepend match_rank ordering parameters to align with SELECT clause
+  const allParams = [
+    cleanQ,
+    `${cleanQ.toLowerCase()}%`,
+    `%${cleanQ.toLowerCase()}%`,
+    ...whereParams
+  ];
 
   try {
-    const rows = db.prepare(sql).all(...params);
+    const rows = db.prepare(sql).all(...allParams);
     db.close();
-    console.log(`[SQLite Search] Found ${rows.length} listings for "${query}"`);
-    return rows;
+    console.log(`[SQLite Search] Found ${rows.length} listings for "${query}" (Intent: ${intent.category})`);
+    return rows.map(r => ({
+      ...r,
+      category: deriveCategory(r.title)
+    }));
   } catch (err) {
     console.error("[SQLite Search Error]:", err.message);
     try { db.close(); } catch (_) {}
@@ -249,13 +429,15 @@ app.get("/api/search/suggest", async (req, res) => {
 // Feature 2: Search Results Endpoint
 app.get("/api/search", async (req, res) => {
   const query = (req.query.q || "").toString().trim();
+  const category = (req.query.category || "").toString().trim();
   if (!query) {
-    return res.json({ query: "", count: 0, results: [] });
+    return res.json({ query: "", count: 0, detected_category: "All", results: [] });
   }
 
-  console.log(`[API Search] Executing search for query: "${query}"`);
+  const intent = detectSearchIntent(query);
+  console.log(`[API Search] Executing search for query: "${query}" (Intent: ${intent.category}, Filter: ${category || 'Auto'})`);
 
-  let results = searchSqliteListings(query);
+  let results = searchSqliteListings(query, category);
 
   if (results.length === 0) {
     results = await searchSupabaseListings(query);
@@ -274,7 +456,7 @@ app.get("/api/search", async (req, res) => {
         stdio: "inherit"
       });
 
-      results = searchSqliteListings(query);
+      results = searchSqliteListings(query, category);
       if (results.length === 0) {
         results = await searchSupabaseListings(query);
       }
@@ -285,6 +467,7 @@ app.get("/api/search", async (req, res) => {
 
   return res.json({
     query,
+    detected_category: intent.category,
     count: results.length,
     results
   });

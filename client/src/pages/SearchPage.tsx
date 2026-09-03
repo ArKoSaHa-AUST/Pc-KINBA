@@ -48,6 +48,8 @@ export default function SearchPage() {
   const [hasSearched, setHasSearched] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('All');
+  const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [detectedCategory, setDetectedCategory] = useState<string>('All');
   
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -88,7 +90,7 @@ export default function SearchPage() {
   }, [debouncedQuery]);
 
   // Perform DB search
-  const executeSearch = useCallback(async (searchQuery: string) => {
+  const executeSearch = useCallback(async (searchQuery: string, categoryFilter = 'All') => {
     if (!searchQuery.trim()) return;
     setIsLoading(true);
     setHasSearched(true);
@@ -96,11 +98,14 @@ export default function SearchPage() {
     inputRef.current?.blur();
 
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      const catParam = categoryFilter !== 'All' ? `&category=${encodeURIComponent(categoryFilter)}` : '';
+      const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery.trim())}${catParam}`);
       if (res.ok) {
         const data = await res.json();
         setResults(data.results || []);
+        setDetectedCategory(data.detected_category || 'All');
         setActiveFilter('All');
+        setActiveCategory(categoryFilter);
       }
     } catch (err) {
       console.error('Error executing search:', err);
@@ -253,41 +258,91 @@ export default function SearchPage() {
               transition={{ duration: 0.5 }}
             >
               {/* Results Top Filter Header */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-border">
-                <div>
-                  <h2 className="text-title text-2xl font-bold">
-                    Results for "<span className="gradient-text">{query}</span>"
-                  </h2>
-                  <p className="text-sm text-text-muted mt-1">
-                    Found {results.length} listings across {availableRetailers.length} Bangladeshi retailers
-                  </p>
-                </div>
+              <div className="flex flex-col gap-5 mb-8 pb-6 border-b border-border">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-title text-2xl font-bold">
+                      Results for "<span className="gradient-text">{query}</span>"
+                    </h2>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-sm text-text-muted">
+                        Found {results.length} listings across {availableRetailers.length} Bangladeshi retailers
+                      </p>
+                      {detectedCategory !== 'All' && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                          Target Component: {detectedCategory}
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
-                {/* Dynamic Retailer Filter Buttons */}
-                <div className="flex flex-wrap items-center gap-2 bg-white/5 p-1.5 rounded-xl border border-white/10">
-                  <button
-                    onClick={() => setActiveFilter('All')}
-                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                      activeFilter === 'All'
-                        ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/25'
-                        : 'text-text-muted hover:text-text-primary'
-                    }`}
-                  >
-                    All ({results.length})
-                  </button>
-                  {availableRetailers.map((store) => (
+                  {/* Dynamic Retailer Filter Buttons */}
+                  <div className="flex flex-wrap items-center gap-2 bg-white/5 p-1.5 rounded-xl border border-white/10">
                     <button
-                      key={store}
-                      onClick={() => setActiveFilter(store)}
+                      onClick={() => setActiveFilter('All')}
                       className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                        activeFilter === store
-                          ? 'bg-cyan-400 text-black shadow-lg shadow-cyan-400/25 font-bold'
+                        activeFilter === 'All'
+                          ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/25'
                           : 'text-text-muted hover:text-text-primary'
                       }`}
                     >
-                      {store} ({retailerCounts[store]})
+                      All Stores ({results.length})
                     </button>
-                  ))}
+                    {availableRetailers.map((store) => (
+                      <button
+                        key={store}
+                        onClick={() => setActiveFilter(store)}
+                        className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                          activeFilter === store
+                            ? 'bg-cyan-400 text-black shadow-lg shadow-cyan-400/25 font-bold'
+                            : 'text-text-muted hover:text-text-primary'
+                        }`}
+                      >
+                        {store} ({retailerCounts[store]})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Category Filter Pills */}
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/5">
+                  <span className="text-xs font-semibold text-text-muted mr-1">Component Filter:</span>
+                  {[
+                    'All',
+                    'Graphics Card',
+                    'Processor',
+                    'Motherboard',
+                    'RAM Memory',
+                    'SSD Storage',
+                    'Monitor',
+                    'UPS & Power',
+                    'Pendrive / Storage',
+                    'Power Supply',
+                    'Casing',
+                    'Cooler',
+                    'Laptop',
+                    'Desktop PC'
+                  ].map((cat) => {
+                    const isSelected = activeCategory === cat;
+                    const isDetected = detectedCategory === cat && activeCategory === 'All';
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => executeSearch(query, cat)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/25 font-bold'
+                            : isDetected
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                            : 'bg-white/5 text-text-muted hover:text-text-primary hover:bg-white/10'
+                        }`}
+                      >
+                        {cat}
+                        {isDetected && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -343,11 +398,18 @@ export default function SearchPage() {
                     {/* Content Details */}
                     <div className="p-5 flex-1 flex flex-col justify-between">
                       <div>
-                        {product.brand && (
-                          <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest block mb-1">
-                            {product.brand}
-                          </span>
-                        )}
+                        <div className="flex items-center justify-between mb-1.5">
+                          {product.brand && (
+                            <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest block">
+                              {product.brand}
+                            </span>
+                          )}
+                          {product.category && (
+                            <span className="text-[10px] font-semibold text-cyan-300/90 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                              {product.category}
+                            </span>
+                          )}
+                        </div>
                         <h3 className="text-sm font-semibold text-text-primary line-clamp-2 leading-snug group-hover:text-cyan-300 transition-colors mb-3">
                           {product.title}
                         </h3>

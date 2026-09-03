@@ -13,9 +13,7 @@ import {
   TrendingDown,
   Loader2,
   PackageCheck,
-  RefreshCw,
-  Sparkles,
-  Search
+  RefreshCw
 } from 'lucide-react';
 
 interface ProductHeroProps {
