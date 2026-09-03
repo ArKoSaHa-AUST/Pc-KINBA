@@ -3,7 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import Database from "better-sqlite3";
 import path from "path";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
+import rateLimit from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import { sendWelcomeEmail } from "./mailer.js";
 import { extractAttributes, generateFingerprint, isSameProductVariant, group5StoreOffers } from "./lib/normalizer.js";
@@ -18,7 +19,17 @@ dotenv.config();
  */
 const sanitizeLog = (str) => {
   if (typeof str !== "string") return "";
-  return str.replace(/[\r\n\t\x00-\x1F\x7F]/g, " ").slice(0, 100);
+  return str.replace(/[\r\n\t\x00-\x1F\x7F]/g, " ").slice(0, 100).trim();
+};
+
+/**
+ * Sanitizes input string strictly for command line execution to prevent shell/command injection.
+ * @param {string} str 
+ * @returns {string}
+ */
+const sanitizeCliArg = (str) => {
+  if (typeof str !== "string") return "";
+  return str.replace(/[^a-zA-Z0-9\s.\-_+]/g, " ").replace(/\s+/g, " ").slice(0, 100).trim();
 };
 
 // Initialize Supabase Client
@@ -306,13 +317,13 @@ function searchSqliteListings(query, requestedCategory = null) {
   try {
     const rows = db.prepare(sql).all(...allParams);
     db.close();
-    console.log(`[SQLite Search] Found ${rows.length} listings for "${query}" (Intent: ${intent.category})`);
+    console.log(`[SQLite Search] Found ${rows.length} listings for "${sanitizeLog(query)}" (Intent: ${intent.category})`);
     return rows.map(r => ({
       ...r,
       category: deriveCategory(r.title)
     }));
   } catch (err) {
-    console.error("[SQLite Search Error]:", err.message);
+    console.error("[SQLite Search Error]:", sanitizeLog(err.message));
     try { db.close(); } catch (_) {}
     return [];
   }
@@ -320,6 +331,8 @@ function searchSqliteListings(query, requestedCategory = null) {
 
 async function searchSupabaseListings(query) {
   const { cleanQ, normQ } = getQueryVariations(query);
+  const safeCleanQ = cleanQ.replace(/[^a-zA-Z0-9\s]/g, " ").trim();
+  const safeNormQ = normQ.replace(/[^a-zA-Z0-9\s]/g, " ").trim();
   try {
     const { data, error } = await supabase
       .from("listings")
@@ -336,11 +349,11 @@ async function searchSupabaseListings(query) {
         product_id,
         products ( name, category )
       `)
-      .or(`title.ilike.%${cleanQ}%,title.ilike.%${normQ}%,brand.ilike.%${cleanQ}%`)
+      .or(`title.ilike.%${safeCleanQ}%,title.ilike.%${safeNormQ}%,brand.ilike.%${safeCleanQ}%`)
       .order("price", { ascending: true });
 
     if (!error && data && data.length > 0) {
-      console.log(`[Supabase Search] Found ${data.length} listings for "${query}"`);
+      console.log(`[Supabase Search] Found ${data.length} listings for "${sanitizeLog(query)}"`);
       return data.map(item => ({
         id: item.id,
         title: item.title,
@@ -356,7 +369,7 @@ async function searchSupabaseListings(query) {
       }));
     }
   } catch (err) {
-    console.warn("[Supabase Search Warning]:", err.message);
+    console.warn("[Supabase Search Warning]:", sanitizeLog(err.message));
   }
   return [];
 }
@@ -365,8 +378,36 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Rate Limiters to protect database & system command executions from abuse (CodeQL compliance)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300, // Limit each IP to 300 requests per 15 minutes
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests from this IP, please try again after 15 minutes." }
+});
+
+const commandLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 30, // Limit each IP to 30 command / scan executions per 5 minutes
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Rate limit exceeded for live scanning and background processes. Please try again later." }
+});
+
+const authActionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // Limit each IP to 20 emails per 15 minutes
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many email requests, please try again later." }
+});
+
+// Apply default API limiter to all API endpoints
+app.use("/api/", apiLimiter);
+
 // Feature 1: Search Autosuggest Endpoint (Combines SQLite DB & Groq AI Key-Rotation)
-app.get("/api/search/suggest", async (req, res) => {
+app.get("/api/search/suggest", apiLimiter, async (req, res) => {
   const query = (req.query.q || "").toString().trim();
   if (!query || query.length < 1) {
     return res.json({ suggestions: [] });
@@ -405,7 +446,7 @@ app.get("/api/search/suggest", async (req, res) => {
       });
     }
   } catch (err) {
-    console.error("[Autosuggest SQLite Error]:", err.message);
+    console.error("[Autosuggest SQLite Error]:", sanitizeLog(err.message));
   }
 
   // 2. Complement with Groq AI suggestions (fast sub-second LLM inference with 17-key pool)
@@ -417,7 +458,7 @@ app.get("/api/search/suggest", async (req, res) => {
       });
     }
   } catch (err) {
-    console.warn("[Autosuggest Groq Warning]:", err.message);
+    console.warn("[Autosuggest Groq Warning]:", sanitizeLog(err.message));
   }
 
   return res.json({
@@ -427,7 +468,7 @@ app.get("/api/search/suggest", async (req, res) => {
 });
 
 // Feature 2: Search Results Endpoint
-app.get("/api/search", async (req, res) => {
+app.get("/api/search", apiLimiter, async (req, res) => {
   const query = (req.query.q || "").toString().trim();
   const category = (req.query.category || "").toString().trim();
   if (!query) {
@@ -435,7 +476,7 @@ app.get("/api/search", async (req, res) => {
   }
 
   const intent = detectSearchIntent(query);
-  console.log(`[API Search] Executing search for query: "${query}" (Intent: ${intent.category}, Filter: ${category || 'Auto'})`);
+  console.log(`[API Search] Executing search for query: "${sanitizeLog(query)}" (Intent: ${intent.category}, Filter: ${category ? sanitizeLog(category) : 'Auto'})`);
 
   let results = searchSqliteListings(query, category);
 
@@ -445,15 +486,16 @@ app.get("/api/search", async (req, res) => {
 
   // If fewer than 2 results found in DB, auto-trigger live scrapers across all 12 retailers
   if (results.length < 2) {
-    console.log(`[Auto-Scraper] Insufficient DB results (${results.length}) for query "${query}". Triggering live scraper on 12 retailers...`);
+    console.log(`[Auto-Scraper] Insufficient DB results (${results.length}) for query "${sanitizeLog(query)}". Triggering live scraper on 12 retailers...`);
     try {
       const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
       const runScriptPath = path.join(process.cwd(), "scrapers/run_scrapers.py");
-      const safeQuery = query.replace(/["\\]/g, "");
+      const safeQuery = sanitizeCliArg(query);
       
-      execSync(`"${pythonPath}" "${runScriptPath}" --query "${safeQuery}"`, {
+      execFileSync(pythonPath, [runScriptPath, "--query", safeQuery], {
         timeout: 45000,
-        stdio: "inherit"
+        stdio: "inherit",
+        env: { ...process.env, PYTHONPATH: "." }
       });
 
       results = searchSqliteListings(query, category);
@@ -461,7 +503,7 @@ app.get("/api/search", async (req, res) => {
         results = await searchSupabaseListings(query);
       }
     } catch (err) {
-      console.error("[Auto-Scraper Error]:", err.message);
+      console.error("[Auto-Scraper Error]:", sanitizeLog(err.message));
     }
   }
 
@@ -474,22 +516,23 @@ app.get("/api/search", async (req, res) => {
 });
 
 // Feature 2b: Parallel Live Scraping + Matching Endpoint
-app.get("/api/search/live", async (req, res) => {
+app.get("/api/search/live", commandLimiter, async (req, res) => {
   const query = (req.query.q || "").toString().trim();
   if (!query) {
     return res.status(400).json({ error: "Query parameter 'q' is required" });
   }
 
-  console.log(`[API Live Search] Running parallel Google web search & live scraper for: "${query}"`);
+  console.log(`[API Live Search] Running parallel Google web search & live scraper for: "${sanitizeLog(query)}"`);
 
   try {
     const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
     const scriptPath = path.join(process.cwd(), "scrapers/parallel_engine.py");
-    const safeQuery = query.replace(/["\\]/g, "");
+    const safeQuery = sanitizeCliArg(query);
 
-    const stdout = execSync(`PYTHONPATH=. "${pythonPath}" "${scriptPath}" "${safeQuery}"`, {
+    const stdout = execFileSync(pythonPath, [scriptPath, safeQuery], {
       timeout: 30000,
-      encoding: "utf-8"
+      encoding: "utf-8",
+      env: { ...process.env, PYTHONPATH: "." }
     });
 
     const jsonStart = stdout.indexOf("{");
@@ -500,19 +543,19 @@ app.get("/api/search/live", async (req, res) => {
     
     return res.status(500).json({ error: "Failed to parse parallel engine output" });
   } catch (err) {
-    console.error("[Live Search API Error]:", err.message);
+    console.error("[Live Search API Error]:", sanitizeLog(err.message));
     return res.status(500).json({ error: "Live search failed", details: err.message });
   }
 });
 
 // Feature 3: Dynamic Product Details Endpoint with 5-Store Comparison & Normalization
-app.get("/api/product/:id", async (req, res) => {
-  const { id } = req.params;
-  if (!id) {
-    return res.status(400).json({ error: "Product ID is required" });
+app.get("/api/product/:id", apiLimiter, async (req, res) => {
+  const id = (req.params.id || "").trim();
+  if (!id || !/^[a-zA-Z0-9\-_]{1,64}$/.test(id)) {
+    return res.status(400).json({ error: "Valid product ID format required" });
   }
 
-  console.log(`[API Product] Fetching dynamic product details for ID: ${id}`);
+  console.log(`[API Product] Fetching dynamic product details for ID: ${sanitizeLog(id)}`);
 
   let item = null;
 
@@ -527,7 +570,7 @@ app.get("/api/product/:id", async (req, res) => {
       item = data;
     }
   } catch (err) {
-    console.warn("[Product Details Supabase Warning]:", err.message);
+    console.warn("[Product Details Supabase Warning]:", sanitizeLog(err.message));
   }
 
   // 2. Fallback SQLite
@@ -539,7 +582,7 @@ app.get("/api/product/:id", async (req, res) => {
         db.close();
       }
     } catch (err) {
-      console.error("[Product Details SQLite Error]:", err.message);
+      console.error("[Product Details SQLite Error]:", sanitizeLog(err.message));
     }
   }
 
@@ -573,14 +616,15 @@ app.get("/api/product/:id", async (req, res) => {
   const pricedShopsCount = groupedResult.shops.filter(s => s.price > 0).length;
   if (pricedShopsCount < 2 || req.query.live === 'true') {
     try {
-      console.log(`[API Product] Running Google Live Scanner for "${item.title}"...`);
+      console.log(`[API Product] Running Google Live Scanner for "${sanitizeLog(item.title)}"...`);
       const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
       const scannerScript = path.join(process.cwd(), "scrapers/google_live_scanner.py");
-      const safeTitle = (item.title || item.canonical_name || "").replace(/["\\]/g, "");
+      const safeTitle = sanitizeCliArg(item.title || item.canonical_name || "");
 
-      const stdout = execSync(`PYTHONPATH=. "${pythonPath}" "${scannerScript}" "${safeTitle}"`, {
+      const stdout = execFileSync(pythonPath, [scannerScript, safeTitle], {
         timeout: 35000,
-        encoding: "utf-8"
+        encoding: "utf-8",
+        env: { ...process.env, PYTHONPATH: "." }
       });
 
       const jsonMatch = stdout.match(/\{[\s\S]*\}/);
@@ -595,7 +639,7 @@ app.get("/api/product/:id", async (req, res) => {
         }
       }
     } catch (e) {
-      console.warn("[Live Scanner Auto-Trigger Warning]:", e.message);
+      console.warn("[Live Scanner Auto-Trigger Warning]:", sanitizeLog(e.message));
     }
   }
 
@@ -646,8 +690,12 @@ app.get("/api/product/:id", async (req, res) => {
 });
 
 // Dedicated On-Demand Live Google Price Scan Endpoint
-app.get("/api/product/:id/live-prices", async (req, res) => {
-  const { id } = req.params;
+app.get("/api/product/:id/live-prices", commandLimiter, async (req, res) => {
+  const id = (req.params.id || "").trim();
+  if (!id || !/^[a-zA-Z0-9\-_]{1,64}$/.test(id)) {
+    return res.status(400).json({ error: "Valid product ID format required" });
+  }
+
   let item = null;
 
   try {
@@ -657,7 +705,7 @@ app.get("/api/product/:id/live-prices", async (req, res) => {
       db.close();
     }
   } catch (err) {
-    console.error("[Live Scan API Error]:", err.message);
+    console.error("[Live Scan API Error]:", sanitizeLog(err.message));
   }
 
   if (!item) {
@@ -667,11 +715,12 @@ app.get("/api/product/:id/live-prices", async (req, res) => {
   try {
     const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
     const scannerScript = path.join(process.cwd(), "scrapers/google_live_scanner.py");
-    const safeTitle = (item.title || item.canonical_name || "").replace(/["\\]/g, "");
+    const safeTitle = sanitizeCliArg(item.title || item.canonical_name || "");
 
-    const stdout = execSync(`PYTHONPATH=. "${pythonPath}" "${scannerScript}" "${safeTitle}"`, {
+    const stdout = execFileSync(pythonPath, [scannerScript, safeTitle], {
       timeout: 45000,
-      encoding: "utf-8"
+      encoding: "utf-8",
+      env: { ...process.env, PYTHONPATH: "." }
     });
 
     const jsonMatch = stdout.match(/\{[\s\S]*\}/);
@@ -681,13 +730,13 @@ app.get("/api/product/:id/live-prices", async (req, res) => {
     }
     return res.status(500).json({ error: "Failed to parse live scanner output" });
   } catch (err) {
-    console.error("[Live Scan Error]:", err.message);
+    console.error("[Live Scan Error]:", sanitizeLog(err.message));
     return res.status(500).json({ error: "Live scan failed", details: err.message });
   }
 });
 
 // Standalone Live Market Scan Endpoint (search any product on demand)
-app.get("/api/live-scan", async (req, res) => {
+app.get("/api/live-scan", commandLimiter, async (req, res) => {
   const query = req.query.q || req.query.query;
   if (!query || typeof query !== "string") {
     return res.status(400).json({ error: "Query parameter 'q' is required" });
@@ -696,11 +745,12 @@ app.get("/api/live-scan", async (req, res) => {
   try {
     const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
     const scannerScript = path.join(process.cwd(), "scrapers/google_live_scanner.py");
-    const safeTitle = query.replace(/["\\]/g, "");
+    const safeTitle = sanitizeCliArg(query);
 
-    const stdout = execSync(`PYTHONPATH=. "${pythonPath}" "${scannerScript}" "${safeTitle}"`, {
+    const stdout = execFileSync(pythonPath, [scannerScript, safeTitle], {
       timeout: 45000,
-      encoding: "utf-8"
+      encoding: "utf-8",
+      env: { ...process.env, PYTHONPATH: "." }
     });
 
     const jsonMatch = stdout.match(/\{[\s\S]*\}/);
@@ -710,30 +760,31 @@ app.get("/api/live-scan", async (req, res) => {
     }
     return res.status(500).json({ error: "Failed to parse live scanner output" });
   } catch (err) {
-    console.error("[Live Scan Error]:", err.message);
+    console.error("[Live Scan Error]:", sanitizeLog(err.message));
     return res.status(500).json({ error: "Live scan failed", details: err.message });
   }
 });
 
-app.post("/api/reconcile", (req, res) => {
+app.post("/api/reconcile", commandLimiter, (req, res) => {
   console.log("[Reconcile API] Triggering background product reconciliation job...");
   try {
     const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
     const scriptPath = path.join(process.cwd(), "scrapers/reconcile.py");
     
-    execSync(`PYTHONPATH=. "${pythonPath}" "${scriptPath}"`, {
+    execFileSync(pythonPath, [scriptPath], {
       timeout: 60000,
-      stdio: "inherit"
+      stdio: "inherit",
+      env: { ...process.env, PYTHONPATH: "." }
     });
 
     return res.json({ success: true, message: "Reconciliation sweep completed successfully." });
   } catch (err) {
-    console.error("[Reconcile API Error]:", err.message);
+    console.error("[Reconcile API Error]:", sanitizeLog(err.message));
     return res.status(500).json({ error: "Reconciliation failed", details: err.message });
   }
 });
 
-app.post("/api/send-welcome", async (req, res) => {
+app.post("/api/send-welcome", authActionLimiter, async (req, res) => {
   const { email, name } = req.body;
   if (!email || typeof email !== "string") {
     return res.status(400).json({ error: "Valid email is required" });
