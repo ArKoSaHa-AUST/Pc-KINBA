@@ -152,7 +152,7 @@ export default function SearchPage() {
             Compare <span className="gradient-text">StarTech & BD Retailers</span> Prices
           </h1>
           <p className="text-subtitle max-w-2xl mx-auto">
-            Real-time component search across top BD retailers (StarTech, Ryans, UCC, EIT, PCB Store & Techland).
+            Real-time component search across top BD retailers (StarTech, Ryans, Techland, Global Brand, Skyland, PCB Store, Binary Logic, Sell Tech, Computer Village, PC House, UltraTech & Computer Mania).
           </p>
         </motion.div>
 
