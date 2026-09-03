@@ -31,27 +31,37 @@ from scrapers.fast_scrapers import scrape_all_fast
 TARGET_DOMAINS = [
     'startech.com.bd',
     'ryans.com',
+    'ryanscomputers.com',
+    'globalbrand.com.bd',
     'techlandbd.com',
+    'skyland.com.bd',
     'pcbstore.com.bd',
-    'ucc.com.bd',
+    'computermania.com.bd',
     'binarylogic.com.bd',
-    'eit.com.bd',
-    'applegadgetsbd.com',
-    'vibegaming.com.bd',
-    'globalbrand.com.bd'
+    'selltech.com.bd',
+    'computervillage.com.bd',
+    'pchouse.com.bd',
+    'ultratech.com.bd',
+    'ucc.com.bd',
+    'eit.com.bd'
 ]
 
 STORE_NAMES = {
     'startech.com.bd': 'StarTech BD',
     'ryans.com': 'Ryans Computers',
+    'ryanscomputers.com': 'Ryans Computers',
+    'globalbrand.com.bd': 'Global Brand',
     'techlandbd.com': 'Techland BD',
+    'skyland.com.bd': 'Skyland BD',
     'pcbstore.com.bd': 'PCB Store',
-    'ucc.com.bd': 'UCC BD',
+    'computermania.com.bd': 'Computer Mania BD',
     'binarylogic.com.bd': 'Binary Logic',
-    'eit.com.bd': 'Eastern IT',
-    'applegadgetsbd.com': 'Apple Gadgets',
-    'vibegaming.com.bd': 'Vibe Gaming',
-    'globalbrand.com.bd': 'Global Brand'
+    'selltech.com.bd': 'Sell Tech BD',
+    'computervillage.com.bd': 'Computer Village',
+    'pchouse.com.bd': 'PC House BD',
+    'ultratech.com.bd': 'Ultra Technology',
+    'ucc.com.bd': 'UCC BD',
+    'eit.com.bd': 'Eastern IT'
 }
 
 HEADERS = {

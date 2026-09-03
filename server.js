@@ -7,6 +7,7 @@ import { execSync } from "child_process";
 import { createClient } from "@supabase/supabase-js";
 import { sendWelcomeEmail } from "./mailer.js";
 import { extractAttributes, generateFingerprint, isSameProductVariant, group5StoreOffers } from "./lib/normalizer.js";
+import { getGroqSuggestions } from "./lib/groq.js";
 
 dotenv.config();
 
@@ -108,13 +109,22 @@ function searchSqliteListings(query) {
       l.last_scraped_at,
       p.canonical_name as base_product_name,
       p.fingerprint,
-      p.category
+      p.category,
+      CASE 
+        WHEN LOWER(l.title) = LOWER(?) THEN 0
+        WHEN LOWER(l.title) LIKE ? THEN 1
+        WHEN LOWER(l.title) LIKE ? THEN 2
+        ELSE 3
+      END as match_rank
     FROM listings l
     LEFT JOIN products p ON l.product_id = p.id
     LEFT JOIN product_aliases a ON a.product_id = p.id
     WHERE ${conds.join(" OR ")}
-    ORDER BY l.price ASC
+    ORDER BY match_rank ASC, l.price ASC
   `;
+
+  // Append ordering parameters for match_rank
+  params.push(cleanQ, `${cleanQ.toLowerCase()}%`, `%${cleanQ.toLowerCase()}%`);
 
   try {
     const rows = db.prepare(sql).all(...params);
@@ -175,7 +185,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Feature 1: Search Autosuggest Endpoint
+// Feature 1: Search Autosuggest Endpoint (Combines SQLite DB & Groq AI Key-Rotation)
 app.get("/api/search/suggest", async (req, res) => {
   const query = (req.query.q || "").toString().trim();
   if (!query || query.length < 1) {
@@ -185,60 +195,49 @@ app.get("/api/search/suggest", async (req, res) => {
   const { cleanQ, normQ } = getQueryVariations(query);
   const set = new Set();
 
-  // 1. Try Supabase
+  // 1. Fetch DB product & listing titles
   try {
-    const { data: prodData } = await supabase
-      .from("products")
-      .select("name")
-      .or(`name.ilike.%${cleanQ}%,name.ilike.%${normQ}%`)
-      .limit(5);
+    const db = getSqliteDb();
+    if (db) {
+      const listingRows = db.prepare(`
+        SELECT DISTINCT title FROM listings 
+        WHERE title LIKE ? OR title LIKE ? OR brand LIKE ?
+        ORDER BY 
+          CASE WHEN LOWER(title) LIKE ? THEN 0 ELSE 1 END,
+          title ASC 
+        LIMIT 6
+      `).all(`%${cleanQ}%`, `%${normQ}%`, `%${cleanQ}%`, `${cleanQ.toLowerCase()}%`);
 
-    if (prodData) prodData.forEach(r => set.add(r.name));
+      const productRows = db.prepare(`
+        SELECT DISTINCT name FROM products 
+        WHERE name LIKE ? OR name LIKE ?
+        ORDER BY name ASC 
+        LIMIT 4
+      `).all(`%${cleanQ}%`, `%${normQ}%`);
 
-    const { data: listData } = await supabase
-      .from("listings")
-      .select("title")
-      .or(`title.ilike.%${cleanQ}%,title.ilike.%${normQ}%`)
-      .limit(5);
+      db.close();
 
-    if (listData) {
-      listData.forEach(r => {
-        if (set.size < 8) set.add(r.title);
+      listingRows.forEach(r => {
+        if (set.size < 6) set.add(r.title);
+      });
+      productRows.forEach(r => {
+        if (set.size < 8) set.add(r.name);
       });
     }
   } catch (err) {
-    console.warn("[Autosuggest Supabase Warning]:", err.message);
+    console.error("[Autosuggest SQLite Error]:", err.message);
   }
 
-  // 2. Fallback SQLite
-  if (set.size === 0) {
-    try {
-      const db = getSqliteDb();
-      if (db) {
-        const productRows = db.prepare(`
-          SELECT DISTINCT name FROM products 
-          WHERE name LIKE ? OR name LIKE ?
-          ORDER BY name ASC 
-          LIMIT 5
-        `).all(`%${cleanQ}%`, `%${normQ}%`);
-        
-        const listingRows = db.prepare(`
-          SELECT DISTINCT title FROM listings 
-          WHERE title LIKE ? OR title LIKE ? OR brand LIKE ?
-          ORDER BY title ASC 
-          LIMIT 5
-        `).all(`%${cleanQ}%`, `%${normQ}%`, `%${cleanQ}%`);
-
-        db.close();
-
-        productRows.forEach(r => set.add(r.name));
-        listingRows.forEach(r => {
-          if (set.size < 8) set.add(r.title);
-        });
-      }
-    } catch (err) {
-      console.error("[Autosuggest SQLite Fallback Error]:", err.message);
+  // 2. Complement with Groq AI suggestions (fast sub-second LLM inference with 17-key pool)
+  try {
+    const groqSuggestions = await getGroqSuggestions(query);
+    if (Array.isArray(groqSuggestions)) {
+      groqSuggestions.forEach(s => {
+        if (set.size < 10) set.add(s);
+      });
     }
+  } catch (err) {
+    console.warn("[Autosuggest Groq Warning]:", err.message);
   }
 
   return res.json({
@@ -256,14 +255,15 @@ app.get("/api/search", async (req, res) => {
 
   console.log(`[API Search] Executing search for query: "${query}"`);
 
-  let results = await searchSupabaseListings(query);
+  let results = searchSqliteListings(query);
 
   if (results.length === 0) {
-    results = searchSqliteListings(query);
+    results = await searchSupabaseListings(query);
   }
 
-  if (results.length === 0) {
-    console.log(`[Auto-Scraper] 0 DB results found for query "${query}". Triggering live scraper on StarTech & Ryans...`);
+  // If fewer than 2 results found in DB, auto-trigger live scrapers across all 12 retailers
+  if (results.length < 2) {
+    console.log(`[Auto-Scraper] Insufficient DB results (${results.length}) for query "${query}". Triggering live scraper on 12 retailers...`);
     try {
       const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
       const runScriptPath = path.join(process.cwd(), "scrapers/run_scrapers.py");
@@ -274,9 +274,9 @@ app.get("/api/search", async (req, res) => {
         stdio: "inherit"
       });
 
-      results = await searchSupabaseListings(query);
+      results = searchSqliteListings(query);
       if (results.length === 0) {
-        results = searchSqliteListings(query);
+        results = await searchSupabaseListings(query);
       }
     } catch (err) {
       console.error("[Auto-Scraper Error]:", err.message);
