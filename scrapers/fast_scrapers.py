@@ -3,14 +3,13 @@ import sys
 import os
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from bs4 import BeautifulSoup
 
-# Ensure scrapers module can be imported
+# Ensure scrapers module and venv can be imported
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-# Dynamically locate scrapers venv site-packages
+# Dynamically locate scrapers venv site-packages before third-party imports
 venv_lib = os.path.join(BASE_DIR, "scrapers", "venv", "lib")
 if os.path.exists(venv_lib):
     for py_dir in os.listdir(venv_lib):
@@ -19,10 +18,15 @@ if os.path.exists(venv_lib):
             sys.path.insert(0, sp)
 
 try:
-    from curl_cffi import requests as c_requests
-    CURL_CFFI_AVAILABLE = True
+    from bs4 import BeautifulSoup  # type: ignore[import-not-found, import-untyped]
 except ImportError:
-    import requests as c_requests
+    from bs4 import BeautifulSoup  # type: ignore
+
+try:
+    import curl_cffi.requests as c_requests  # type: ignore[import-not-found, import-untyped]
+    CURL_CFFI_AVAILABLE = True
+except Exception:
+    c_requests = None
     CURL_CFFI_AVAILABLE = False
 
 import requests as std_requests
@@ -57,27 +61,31 @@ def clean_price(price_str: str):
     if any(k in lower_str for k in ['call for price', 'up coming', 'upcoming', 'out of stock', 'tba', '019', '017', '018', '016']):
         if 'up coming' in lower_str or 'upcoming' in lower_str:
             return 0, 'Up Coming'
-        if 'tba' in lower_str:
-            return 0, 'TBA'
         return 0, 'Call for Price'
 
-    # Extract digits, handling cases with decimals or currency signs
-    clean_str = re.sub(r'\.\d{2}$', '', clean_str)
-    digits = re.sub(r'[^\d]', '', clean_str)
-    if digits and len(digits) <= 8:
-        try:
-            val = int(digits)
-            if val > 50:
-                return val, f'{val:,}৳'
-        except ValueError:
-            pass
+    # Reject if it looks like specs text, discount badges, or EMI rather than price
+    if any(term in lower_str for term in ['core', 'gen', 'ghz', 'mhz', 'ssd', 'ram', 'inch', 'display', 'save:', 'save ৳', 'discount', 'emi']):
+        return 0, 'Call for Price'
+
+    # Extract price with optional currency symbol or comma separation
+    m = re.search(r'(?:৳|bdt|tk\.?)?\s*([\d,]{4,8})\s*(?:৳|bdt|tk\.?)?', clean_str, re.IGNORECASE)
+    if m:
+        digits = re.sub(r'[^\d]', '', m.group(1))
+        if digits:
+            try:
+                val = int(digits)
+                if 200 <= val <= 2500000:
+                    return val, f'{val:,}৳'
+            except ValueError:
+                pass
     
     return 0, 'Call for Price'
 
 def get_session():
     """Returns requests session with browser impersonation if available."""
-    if CURL_CFFI_AVAILABLE:
-        return c_requests.Session(impersonate='chrome120')
+    if CURL_CFFI_AVAILABLE and c_requests is not None:
+        session_cls = getattr(c_requests, 'Session')
+        return session_cls(impersonate='chrome120')
     session = std_requests.Session()
     session.headers.update({
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
@@ -253,7 +261,7 @@ def scrape_techland_fast(query: str):
             items = soup.select('.v2-card-lift, [class*="search-grid"] > div')
             for item in items:
                 title_el = item.select_one('a.font-medium, a.text-gray-900, h4 a, .v2-img-wrap ~ a') or item.select_one('a[href*="-"]')
-                price_el = item.select_one('.text-primary, [class*="text-rose"], [class*="font-semibold"]')
+                price_el = item.select_one('.mt-auto .text-red-600, .mt-auto [class*="font-bold"], .price-new, .special-price, .price')
                 img_el = item.select_one('img')
                 link_el = title_el or item.select_one('a')
 

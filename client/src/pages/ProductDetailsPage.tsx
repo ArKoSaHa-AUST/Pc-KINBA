@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import ProductHero from '../components/product/ProductHero';
+import ProductHero, { type ProductDetails } from '../components/product/ProductHero';
 import ProductReviews from '../components/product/ProductReviews';
 import AlternativePartsSection from '../components/product/AlternativeParts/AlternativePartsSection';
 
 export default function ProductDetailsPage() {
   const { id } = useParams<{ id: string }>();
-  const [product, setProduct] = useState<any>(null);
+  const [product, setProduct] = useState<ProductDetails | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {

@@ -17,13 +17,7 @@ interface ProductListing {
   category?: string;
 }
 
-const DEFAULT_TRENDING = [
-  'RTX 5060',
-  'RTX 5060 Ti',
-  'Ryzen 7',
-  'Intel i7',
-  'Samsung 990 Pro',
-];
+const DEFAULT_TRENDING = ['RTX 5060', 'RTX 5060 Ti', 'Ryzen 7', 'Intel i7', 'Samsung 990 Pro'];
 
 function formatTimeAgo(isoString: string): string {
   if (!isoString) return 'Just now';
@@ -50,7 +44,7 @@ export default function SearchPage() {
   const [activeFilter, setActiveFilter] = useState<string>('All');
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [detectedCategory, setDetectedCategory] = useState<string>('All');
-  
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Debounce query (~300ms)
@@ -71,7 +65,9 @@ export default function SearchPage() {
     let isMounted = true;
     const fetchSuggestions = async () => {
       try {
-        const res = await fetch(`/api/search/suggest?q=${encodeURIComponent(debouncedQuery.trim())}`);
+        const res = await fetch(
+          `/api/search/suggest?q=${encodeURIComponent(debouncedQuery.trim())}`,
+        );
         if (res.ok) {
           const data = await res.json();
           if (isMounted) {
@@ -98,7 +94,8 @@ export default function SearchPage() {
     inputRef.current?.blur();
 
     try {
-      const catParam = categoryFilter !== 'All' ? `&category=${encodeURIComponent(categoryFilter)}` : '';
+      const catParam =
+        categoryFilter !== 'All' ? `&category=${encodeURIComponent(categoryFilter)}` : '';
       const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery.trim())}${catParam}`);
       if (res.ok) {
         const data = await res.json();
@@ -157,7 +154,9 @@ export default function SearchPage() {
             Compare <span className="gradient-text">StarTech & BD Retailers</span> Prices
           </h1>
           <p className="text-subtitle max-w-2xl mx-auto">
-            Real-time component search across top BD retailers (StarTech, Ryans, Techland, Global Brand, Skyland, PCB Store, Binary Logic, Sell Tech, Computer Village, PC House, UltraTech & Computer Mania).
+            Real-time component search across top BD retailers (StarTech, Ryans, Techland, Global
+            Brand, Skyland, PCB Store, Binary Logic, Sell Tech, Computer Village, PC House,
+            UltraTech & Computer Mania).
           </p>
         </motion.div>
 
@@ -190,7 +189,11 @@ export default function SearchPage() {
                 type="submit"
                 className="mr-3 p-4 rounded-xl bg-[var(--fill-subtle)] hover:bg-[var(--fill-muted)] transition-colors text-text-primary flex items-center gap-2 font-medium"
               >
-                {isLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5 text-cyan-400" />}
+                {isLoading ? (
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                ) : (
+                  <ArrowRight className="w-5 h-5 text-cyan-400" />
+                )}
               </button>
             </div>
           </form>
@@ -266,7 +269,8 @@ export default function SearchPage() {
                     </h2>
                     <div className="flex items-center gap-2 mt-1">
                       <p className="text-sm text-text-muted">
-                        Found {results.length} listings across {availableRetailers.length} Bangladeshi retailers
+                        Found {results.length} listings across {availableRetailers.length}{' '}
+                        Bangladeshi retailers
                       </p>
                       {detectedCategory !== 'All' && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
@@ -307,7 +311,9 @@ export default function SearchPage() {
 
                 {/* Category Filter Pills */}
                 <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/5">
-                  <span className="text-xs font-semibold text-text-muted mr-1">Component Filter:</span>
+                  <span className="text-xs font-semibold text-text-muted mr-1">
+                    Component Filter:
+                  </span>
                   {[
                     'All',
                     'Graphics Card',
@@ -322,7 +328,7 @@ export default function SearchPage() {
                     'Casing',
                     'Cooler',
                     'Laptop',
-                    'Desktop PC'
+                    'Desktop PC',
                   ].map((cat) => {
                     const isSelected = activeCategory === cat;
                     const isDetected = detectedCategory === cat && activeCategory === 'All';
@@ -334,12 +340,14 @@ export default function SearchPage() {
                           isSelected
                             ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/25 font-bold'
                             : isDetected
-                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                            : 'bg-white/5 text-text-muted hover:text-text-primary hover:bg-white/10'
+                              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                              : 'bg-white/5 text-text-muted hover:text-text-primary hover:bg-white/10'
                         }`}
                       >
                         {cat}
-                        {isDetected && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>}
+                        {isDetected && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+                        )}
                       </button>
                     );
                   })}
@@ -385,7 +393,10 @@ export default function SearchPage() {
                     {/* Product Image Area */}
                     <div className="relative h-48 p-4 flex items-center justify-center bg-black/20 overflow-hidden">
                       <img
-                        src={product.image_url || 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?auto=format&fit=crop&q=80&w=800'}
+                        src={
+                          product.image_url ||
+                          'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?auto=format&fit=crop&q=80&w=800'
+                        }
                         alt={product.title}
                         className="object-contain h-full max-w-full transform group-hover:scale-105 transition-transform duration-500 ease-out"
                         onError={(e) => {
@@ -418,7 +429,9 @@ export default function SearchPage() {
                       {/* Price and Action Button */}
                       <div className="pt-4 border-t border-white/10 flex items-center justify-between mt-auto">
                         <div>
-                          <span className="text-[10px] text-text-muted block uppercase tracking-wider font-semibold">Price (BDT)</span>
+                          <span className="text-[10px] text-text-muted block uppercase tracking-wider font-semibold">
+                            Price (BDT)
+                          </span>
                           <span className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">
                             {product.price_str || `${product.price.toLocaleString()}৳`}
                           </span>

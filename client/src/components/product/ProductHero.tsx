@@ -13,11 +13,57 @@ import {
   TrendingDown,
   Loader2,
   PackageCheck,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
+  Globe,
 } from 'lucide-react';
 
+export interface ShopOffer {
+  name: string;
+  store: string;
+  logo?: string;
+  color?: string;
+  price: number;
+  price_str: string;
+  product_url: string;
+  stock?: boolean;
+  availability?: string;
+  is_verified?: boolean;
+  source?: string;
+}
+
+export interface KeyFeature {
+  label: string;
+  value: string;
+}
+
+export interface ScanMeta {
+  total: number;
+  verified: number;
+  discovered: number;
+}
+
+export interface ProductDetails {
+  id?: string;
+  title?: string;
+  canonical_name?: string;
+  fingerprint?: string;
+  brand?: string;
+  category?: string;
+  price?: number;
+  price_str?: string;
+  image_url?: string;
+  product_url?: string;
+  retailer?: string;
+  shops?: ShopOffer[];
+  keyFeatures?: KeyFeature[];
+  best_price?: number;
+  best_price_str?: string;
+  error?: string;
+}
+
 interface ProductHeroProps {
-  product?: any;
+  product?: ProductDetails | null;
   loading?: boolean;
 }
 
@@ -32,8 +78,9 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
   const [wished, setWished] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [liveShops, setLiveShops] = useState<any[]>([]);
+  const [liveShops, setLiveShops] = useState<ShopOffer[]>([]);
   const [bestPriceStr, setBestPriceStr] = useState<string>('');
+  const [scanMeta, setScanMeta] = useState<ScanMeta | null>(null);
 
   useEffect(() => {
     if (product?.image_url) {
@@ -60,6 +107,11 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
           if (data.best_price_str) {
             setBestPriceStr(data.best_price_str);
           }
+          setScanMeta({
+            total: data.total_stores || data.shops.length,
+            verified: data.verified_stores || 0,
+            discovered: data.discovered_stores || 0,
+          });
         }
       }
     } catch (err) {
@@ -83,20 +135,23 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
   const title = product?.title || 'Component Product Details';
   const brand = product?.brand || 'Generic';
   const category = product?.category || 'Components';
-  const displayPrice = product?.price_str || (product?.price ? `${product.price.toLocaleString()}৳` : 'Price on Request');
+  const displayPrice =
+    product?.price_str ||
+    (product?.price ? `${product.price.toLocaleString()}৳` : 'Price on Request');
   const primaryImageUrl = !imgError && activeImage ? activeImage : defaultThumbnails[0];
-  const shops = liveShops.length > 0 ? liveShops : (product?.shops || []);
+  const shops = liveShops.length > 0 ? liveShops : product?.shops || [];
   const keyFeatures = product?.keyFeatures || [
     { label: 'Brand', value: brand },
     { label: 'Model', value: title },
     { label: 'Category', value: category },
-    { label: 'Source', value: product?.retailer || 'StarTech BD / Ryans' }
+    { label: 'Source', value: product?.retailer || 'StarTech BD / Ryans' },
   ];
 
-  const validPricedShops = shops.filter((s: any) => s.price && s.price > 0);
-  const lowestPriceNum = validPricedShops.length > 0
-    ? Math.min(...validPricedShops.map((s: any) => s.price))
-    : (product?.price || 0);
+  const validPricedShops = shops.filter((s: ShopOffer) => s.price && s.price > 0);
+  const lowestPriceNum =
+    validPricedShops.length > 0
+      ? Math.min(...validPricedShops.map((s: ShopOffer) => s.price))
+      : product?.price || 0;
 
   return (
     <section className="relative pt-4 pb-16 lg:pt-6 lg:pb-20 overflow-hidden">
@@ -118,9 +173,7 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
           <ChevronRight className="w-3.5 h-3.5 opacity-40" />
           <span className="hover:text-gray-300 cursor-pointer transition-colors">Components</span>
           <ChevronRight className="w-3.5 h-3.5 opacity-40" />
-          <span className="hover:text-gray-300 cursor-pointer transition-colors">
-            {category}
-          </span>
+          <span className="hover:text-gray-300 cursor-pointer transition-colors">{category}</span>
           <ChevronRight className="w-3.5 h-3.5 opacity-40" />
           <span className="text-gray-300 font-medium truncate max-w-[300px]">{title}</span>
         </motion.nav>
@@ -144,7 +197,10 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                   <Activity className="w-3 h-3" /> Verified In Stock
                 </span>
                 <span className="text-xs text-gray-400 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">
-                  Source: <span className="text-cyan-300 font-semibold">{product?.retailer || 'Partner Retailer'}</span>
+                  Source:{' '}
+                  <span className="text-cyan-300 font-semibold">
+                    {product?.retailer || 'Partner Retailer'}
+                  </span>
                 </span>
               </div>
               {/* Wishlist + Share */}
@@ -203,7 +259,7 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                 Key Specifications
               </h3>
               <div className="flex flex-col divide-y divide-white/5">
-                {keyFeatures.map((feat: any, i: number) => (
+                {keyFeatures.map((feat: KeyFeature, i: number) => (
                   <div key={i} className="flex items-start gap-4 py-3">
                     <CheckCircle className="w-3.5 h-3.5 text-cyan-400/60 mt-0.5 shrink-0" />
                     <span className="text-xs text-gray-500 w-36 shrink-0 font-semibold">
@@ -274,29 +330,55 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                   onClick={handleLiveGoogleScan}
                   disabled={isScanning}
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition-all shadow-sm hover:scale-105 active:scale-95 disabled:opacity-50"
-                  title="Run real-time Google search across all BD tech stores"
+                  title="Run real-time Google search across all online tech stores in Bangladesh"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${isScanning ? 'animate-spin' : ''}`} />
-                  {isScanning ? 'Scanning Google Live...' : 'Live Google Scan'}
+                  <RefreshCw
+                    className={`w-3.5 h-3.5 text-cyan-400 ${isScanning ? 'animate-spin' : ''}`}
+                  />
+                  {isScanning ? 'Scanning Market Live...' : 'Live Google Scan'}
                 </button>
               </div>
               <p className="text-sm text-gray-400 mt-1.5 flex items-center gap-1.5">
                 <TrendingDown className="w-4 h-4 text-green-400" />
                 Best Price Available:{' '}
                 <span className="text-green-400 font-bold text-lg">
-                  {bestPriceStr || (lowestPriceNum > 0 ? `৳${lowestPriceNum.toLocaleString()}` : displayPrice)}
+                  {bestPriceStr ||
+                    (lowestPriceNum > 0 ? `৳${lowestPriceNum.toLocaleString()}` : displayPrice)}
                 </span>
               </p>
             </div>
-            <span className="text-xs text-gray-400 px-3 py-1.5 bg-white/5 rounded-full border border-white/10">
-              Comparing {shops.length > 0 ? shops.length : 1} verified retailer(s)
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-400 px-3 py-1.5 bg-white/5 rounded-full border border-white/10 flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                Comparing {validPricedShops.length > 0
+                  ? validPricedShops.length
+                  : shops.length}{' '}
+                active store(s)
+              </span>
+              {Boolean(scanMeta && scanMeta.discovered > 0) && (
+                <span className="text-xs text-purple-400 px-2.5 py-1 bg-purple-500/10 rounded-full border border-purple-500/20 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  {scanMeta?.discovered} from Google AI
+                </span>
+              )}
+            </div>
           </div>
+
+          {/* Scanning Live Feedback */}
+          {isScanning && (
+            <div className="mb-4 p-4 rounded-2xl bg-cyan-500/5 border border-cyan-500/20 flex items-center gap-3 animate-pulse text-xs text-cyan-300">
+              <Loader2 className="w-4 h-4 animate-spin text-cyan-400 shrink-0" />
+              <span>
+                AI Agent is searching Google, DuckDuckGo & Bing across all online computer shops in
+                Bangladesh, extracting live prices and verifying stock...
+              </span>
+            </div>
+          )}
 
           {/* Store Rows */}
           <div className="flex flex-col gap-3">
             {shops.length > 0 ? (
-              shops.map((shop: any, idx: number) => {
+              shops.map((shop: ShopOffer, idx: number) => {
                 const isBestDeal = shop.price > 0 && shop.price === lowestPriceNum;
                 return (
                   <motion.div
@@ -318,7 +400,7 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                         {shop.logo || shop.name.slice(0, 2).toUpperCase()}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="text-sm font-bold text-white">{shop.name}</h4>
                           {isBestDeal && (
                             <span className="px-2 py-0.5 rounded-full bg-green-500/20 border border-green-500/30 text-green-400 text-[10px] font-extrabold uppercase tracking-wider">
@@ -326,12 +408,20 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-400">Direct Retailer Listing</p>
+                        {shop.is_verified ? (
+                          <p className="text-[11px] text-cyan-400/90 font-semibold inline-flex items-center gap-1 mt-0.5">
+                            <Shield className="w-3 h-3" /> Verified Partner
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-purple-400/90 font-semibold inline-flex items-center gap-1 mt-0.5">
+                            <Sparkles className="w-3 h-3" /> Discovered via Google AI
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div>
-                      {shop.price > 0 && (shop.stock !== false) ? (
+                      {shop.price > 0 && shop.stock !== false ? (
                         <span className="text-xs font-semibold text-green-400 bg-green-400/10 border border-green-400/20 px-2.5 py-1 rounded-full inline-flex items-center gap-1">
                           <PackageCheck className="w-3 h-3" /> In Stock
                         </span>
@@ -343,8 +433,11 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                     </div>
 
                     <div>
-                      <span className={`text-lg font-extrabold ${isBestDeal ? 'text-green-400' : 'text-white'}`}>
-                        {shop.price_str || (shop.price > 0 ? `${shop.price?.toLocaleString()}৳` : 'Call for Price')}
+                      <span
+                        className={`text-lg font-extrabold ${isBestDeal ? 'text-green-400' : 'text-white'}`}
+                      >
+                        {shop.price_str ||
+                          (shop.price > 0 ? `${shop.price?.toLocaleString()}৳` : 'Call for Price')}
                       </span>
                     </div>
 
@@ -362,25 +455,21 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                 );
               })
             ) : (
-              <div className="px-6 py-4 rounded-2xl border border-white/10 bg-white/[0.02] flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center font-bold text-sm text-slate-950">
-                    {product?.retailer?.slice(0, 2).toUpperCase() || 'ST'}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-white">{product?.retailer || 'StarTech BD'}</h4>
-                    <p className="text-xs text-gray-400">Verified Retailer</p>
-                  </div>
-                </div>
-                <div className="text-lg font-extrabold text-white">{displayPrice}</div>
-                <a
-                  href={product?.product_url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-cyan-500/20"
+              <div className="p-8 text-center rounded-2xl border border-white/10 bg-white/[0.02] flex flex-col items-center justify-center gap-3">
+                <Globe className="w-8 h-8 text-cyan-400/50" />
+                <h4 className="text-sm font-bold text-white">No Live Prices Synced Yet</h4>
+                <p className="text-xs text-gray-400 max-w-md">
+                  Click "Live Google Scan" to let our AI agent search Google and discover every
+                  online shop selling this product in Bangladesh.
+                </p>
+                <button
+                  onClick={handleLiveGoogleScan}
+                  disabled={isScanning}
+                  className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-cyan-500/20"
                 >
-                  Buy Direct <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+                  <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
+                  Search Market Now
+                </button>
               </div>
             )}
           </div>

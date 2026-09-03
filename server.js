@@ -579,7 +579,7 @@ app.get("/api/product/:id", async (req, res) => {
       const safeTitle = (item.title || item.canonical_name || "").replace(/["\\]/g, "");
 
       const stdout = execSync(`PYTHONPATH=. "${pythonPath}" "${scannerScript}" "${safeTitle}"`, {
-        timeout: 25000,
+        timeout: 35000,
         encoding: "utf-8"
       });
 
@@ -670,7 +670,36 @@ app.get("/api/product/:id/live-prices", async (req, res) => {
     const safeTitle = (item.title || item.canonical_name || "").replace(/["\\]/g, "");
 
     const stdout = execSync(`PYTHONPATH=. "${pythonPath}" "${scannerScript}" "${safeTitle}"`, {
-      timeout: 30000,
+      timeout: 45000,
+      encoding: "utf-8"
+    });
+
+    const jsonMatch = stdout.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const liveData = JSON.parse(jsonMatch[0]);
+      return res.json({ success: true, ...liveData });
+    }
+    return res.status(500).json({ error: "Failed to parse live scanner output" });
+  } catch (err) {
+    console.error("[Live Scan Error]:", err.message);
+    return res.status(500).json({ error: "Live scan failed", details: err.message });
+  }
+});
+
+// Standalone Live Market Scan Endpoint (search any product on demand)
+app.get("/api/live-scan", async (req, res) => {
+  const query = req.query.q || req.query.query;
+  if (!query || typeof query !== "string") {
+    return res.status(400).json({ error: "Query parameter 'q' is required" });
+  }
+
+  try {
+    const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
+    const scannerScript = path.join(process.cwd(), "scrapers/google_live_scanner.py");
+    const safeTitle = query.replace(/["\\]/g, "");
+
+    const stdout = execSync(`PYTHONPATH=. "${pythonPath}" "${scannerScript}" "${safeTitle}"`, {
+      timeout: 45000,
       encoding: "utf-8"
     });
 
