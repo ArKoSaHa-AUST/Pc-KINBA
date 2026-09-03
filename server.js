@@ -383,8 +383,38 @@ app.get("/api/product/:id", async (req, res) => {
     return isSameProductVariant(item.title, cand.title, 0.85);
   });
 
-  // Group offers across 5 target stores (StarTech BD, Ryans Computers, Techland, PCB Store, UCC BD)
-  const groupedResult = group5StoreOffers(item, matchedListings);
+  // Group offers across target stores
+  let groupedResult = group5StoreOffers(item, matchedListings);
+
+  // Automatic Real-Time Price Comparison: If fewer than 2 stores have prices or ?live=true, trigger live Google scanner
+  const pricedShopsCount = groupedResult.shops.filter(s => s.price > 0).length;
+  if (pricedShopsCount < 2 || req.query.live === 'true') {
+    try {
+      console.log(`[API Product] Running Google Live Scanner for "${item.title}"...`);
+      const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
+      const scannerScript = path.join(process.cwd(), "scrapers/google_live_scanner.py");
+      const safeTitle = (item.title || item.canonical_name || "").replace(/["\\]/g, "");
+
+      const stdout = execSync(`PYTHONPATH=. "${pythonPath}" "${scannerScript}" "${safeTitle}"`, {
+        timeout: 25000,
+        encoding: "utf-8"
+      });
+
+      const jsonMatch = stdout.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const liveData = JSON.parse(jsonMatch[0]);
+        if (liveData && Array.isArray(liveData.shops) && liveData.shops.length > 0) {
+          groupedResult.shops = liveData.shops;
+          if (liveData.best_price > 0) {
+            groupedResult.best_price = liveData.best_price;
+            groupedResult.best_price_str = liveData.best_price_str;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[Live Scanner Auto-Trigger Warning]:", e.message);
+    }
+  }
 
   // Construct dynamic key features
   const keyFeatures = [
@@ -430,6 +460,47 @@ app.get("/api/product/:id", async (req, res) => {
   };
 
   return res.json(responsePayload);
+});
+
+// Dedicated On-Demand Live Google Price Scan Endpoint
+app.get("/api/product/:id/live-prices", async (req, res) => {
+  const { id } = req.params;
+  let item = null;
+
+  try {
+    const db = getSqliteDb();
+    if (db) {
+      item = db.prepare("SELECT * FROM listings WHERE id = ?").get(id);
+      db.close();
+    }
+  } catch (err) {
+    console.error("[Live Scan API Error]:", err.message);
+  }
+
+  if (!item) {
+    return res.status(404).json({ error: "Product not found" });
+  }
+
+  try {
+    const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
+    const scannerScript = path.join(process.cwd(), "scrapers/google_live_scanner.py");
+    const safeTitle = (item.title || item.canonical_name || "").replace(/["\\]/g, "");
+
+    const stdout = execSync(`PYTHONPATH=. "${pythonPath}" "${scannerScript}" "${safeTitle}"`, {
+      timeout: 30000,
+      encoding: "utf-8"
+    });
+
+    const jsonMatch = stdout.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const liveData = JSON.parse(jsonMatch[0]);
+      return res.json({ success: true, ...liveData });
+    }
+    return res.status(500).json({ error: "Failed to parse live scanner output" });
+  } catch (err) {
+    console.error("[Live Scan Error]:", err.message);
+    return res.status(500).json({ error: "Live scan failed", details: err.message });
+  }
 });
 
 app.post("/api/reconcile", (req, res) => {

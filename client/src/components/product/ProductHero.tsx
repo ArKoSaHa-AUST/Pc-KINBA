@@ -12,7 +12,10 @@ import {
   ExternalLink,
   TrendingDown,
   Loader2,
-  PackageCheck
+  PackageCheck,
+  RefreshCw,
+  Sparkles,
+  Search
 } from 'lucide-react';
 
 interface ProductHeroProps {
@@ -30,13 +33,43 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
   const [activeImage, setActiveImage] = useState<string>('');
   const [wished, setWished] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [liveShops, setLiveShops] = useState<any[]>([]);
+  const [bestPriceStr, setBestPriceStr] = useState<string>('');
 
   useEffect(() => {
     if (product?.image_url) {
       setActiveImage(product.image_url);
       setImgError(false);
     }
+    if (product?.shops) {
+      setLiveShops(product.shops);
+    }
+    if (product?.best_price_str) {
+      setBestPriceStr(product.best_price_str);
+    }
   }, [product]);
+
+  const handleLiveGoogleScan = async () => {
+    if (!product?.id || isScanning) return;
+    setIsScanning(true);
+    try {
+      const res = await fetch(`http://localhost:3001/api/product/${product.id}/live-prices`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.shops && data.shops.length > 0) {
+          setLiveShops(data.shops);
+          if (data.best_price_str) {
+            setBestPriceStr(data.best_price_str);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error during live Google price scan:', err);
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -54,7 +87,7 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
   const category = product?.category || 'Components';
   const displayPrice = product?.price_str || (product?.price ? `${product.price.toLocaleString()}৳` : 'Price on Request');
   const primaryImageUrl = !imgError && activeImage ? activeImage : defaultThumbnails[0];
-  const shops = product?.shops || [];
+  const shops = liveShops.length > 0 ? liveShops : (product?.shops || []);
   const keyFeatures = product?.keyFeatures || [
     { label: 'Brand', value: brand },
     { label: 'Model', value: title },
@@ -62,8 +95,9 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
     { label: 'Source', value: product?.retailer || 'StarTech BD / Ryans' }
   ];
 
-  const lowestPriceNum = shops.length > 0
-    ? Math.min(...shops.map((s: any) => s.price || product?.price || 0))
+  const validPricedShops = shops.filter((s: any) => s.price && s.price > 0);
+  const lowestPriceNum = validPricedShops.length > 0
+    ? Math.min(...validPricedShops.map((s: any) => s.price))
     : (product?.price || 0);
 
   return (
@@ -234,14 +268,25 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
         <div className="mt-16 pt-8 border-t border-white/10">
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <div>
-              <h3 className="text-xl font-black text-cyan-400 tracking-tight">
-                Live Store Price Comparison
-              </h3>
-              <p className="text-sm text-gray-400 mt-1 flex items-center gap-1.5">
+              <div className="flex items-center gap-3">
+                <h3 className="text-xl font-black text-cyan-400 tracking-tight">
+                  Live Store Price Comparison
+                </h3>
+                <button
+                  onClick={handleLiveGoogleScan}
+                  disabled={isScanning}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition-all shadow-sm hover:scale-105 active:scale-95 disabled:opacity-50"
+                  title="Run real-time Google search across all BD tech stores"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${isScanning ? 'animate-spin' : ''}`} />
+                  {isScanning ? 'Scanning Google Live...' : 'Live Google Scan'}
+                </button>
+              </div>
+              <p className="text-sm text-gray-400 mt-1.5 flex items-center gap-1.5">
                 <TrendingDown className="w-4 h-4 text-green-400" />
                 Best Price Available:{' '}
                 <span className="text-green-400 font-bold text-lg">
-                  ৳{lowestPriceNum > 0 ? lowestPriceNum.toLocaleString() : displayPrice}
+                  {bestPriceStr || (lowestPriceNum > 0 ? `৳${lowestPriceNum.toLocaleString()}` : displayPrice)}
                 </span>
               </p>
             </div>
@@ -253,51 +298,71 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
           {/* Store Rows */}
           <div className="flex flex-col gap-3">
             {shops.length > 0 ? (
-              shops.map((shop: any, idx: number) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: idx * 0.05 }}
-                  className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] items-center gap-4 px-6 py-4 rounded-2xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm text-white shrink-0 shadow-md"
-                      style={{ backgroundColor: shop.color || '#00e5ff' }}
-                    >
-                      {shop.logo || shop.name.slice(0, 2).toUpperCase()}
+              shops.map((shop: any, idx: number) => {
+                const isBestDeal = shop.price > 0 && shop.price === lowestPriceNum;
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: idx * 0.04 }}
+                    className={`grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] items-center gap-4 px-6 py-4 rounded-2xl border transition-all ${
+                      isBestDeal
+                        ? 'border-cyan-500/40 bg-cyan-500/[0.04] shadow-lg shadow-cyan-500/10'
+                        : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm text-white shrink-0 shadow-md"
+                        style={{ backgroundColor: shop.color || '#00e5ff' }}
+                      >
+                        {shop.logo || shop.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-white">{shop.name}</h4>
+                          {isBestDeal && (
+                            <span className="px-2 py-0.5 rounded-full bg-green-500/20 border border-green-500/30 text-green-400 text-[10px] font-extrabold uppercase tracking-wider">
+                              Best Deal
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400">Direct Retailer Listing</p>
+                      </div>
                     </div>
+
                     <div>
-                      <h4 className="text-sm font-bold text-white">{shop.name}</h4>
-                      <p className="text-xs text-gray-400">Direct Retailer Listing</p>
+                      {shop.price > 0 && (shop.stock !== false) ? (
+                        <span className="text-xs font-semibold text-green-400 bg-green-400/10 border border-green-400/20 px-2.5 py-1 rounded-full inline-flex items-center gap-1">
+                          <PackageCheck className="w-3 h-3" /> In Stock
+                        </span>
+                      ) : (
+                        <span className="text-xs font-semibold text-gray-400 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full inline-flex items-center gap-1">
+                          Check Retailer
+                        </span>
+                      )}
                     </div>
-                  </div>
 
-                  <div>
-                    <span className="text-xs font-semibold text-green-400 bg-green-400/10 border border-green-400/20 px-2.5 py-1 rounded-full inline-flex items-center gap-1">
-                      <PackageCheck className="w-3 h-3" /> In Stock
-                    </span>
-                  </div>
+                    <div>
+                      <span className={`text-lg font-extrabold ${isBestDeal ? 'text-green-400' : 'text-white'}`}>
+                        {shop.price_str || (shop.price > 0 ? `${shop.price?.toLocaleString()}৳` : 'Call for Price')}
+                      </span>
+                    </div>
 
-                  <div>
-                    <span className="text-lg font-extrabold text-white">
-                      {shop.price_str || `${shop.price?.toLocaleString()}৳`}
-                    </span>
-                  </div>
-
-                  <div>
-                    <a
-                      href={shop.product_url || product?.product_url || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-cyan-500/20 hover:scale-105"
-                    >
-                      Buy Direct <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                </motion.div>
-              ))
+                    <div>
+                      <a
+                        href={shop.product_url || product?.product_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-cyan-500/20 hover:scale-105"
+                      >
+                        Buy Direct <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  </motion.div>
+                );
+              })
             ) : (
               <div className="px-6 py-4 rounded-2xl border border-white/10 bg-white/[0.02] flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
