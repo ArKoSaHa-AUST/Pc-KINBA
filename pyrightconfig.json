@@ -1,0 +1,9 @@
+{
+  "venvPath": "scrapers",
+  "venv": "venv",
+  "extraPaths": [
+    "scrapers/venv/lib/python3.12/site-packages",
+    "scrapers",
+    "."
+  ]
+}
