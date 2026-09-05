@@ -58,6 +58,41 @@ function getSqliteDb() {
   }
 }
 
+function initReviewsDatabase() {
+  try {
+    const db = getSqliteDb();
+    if (db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS reviews (
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL,
+          user_id TEXT,
+          user_name TEXT NOT NULL,
+          user_avatar TEXT,
+          user_country TEXT DEFAULT 'Bangladesh',
+          user_country_code TEXT DEFAULT 'BD',
+          rating INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          content TEXT NOT NULL,
+          pros TEXT DEFAULT '[]',
+          cons TEXT DEFAULT '[]',
+          images TEXT DEFAULT '[]',
+          verified INTEGER DEFAULT 0,
+          helpful_count INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON reviews (product_id);
+        CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews (created_at DESC);
+      `);
+      db.close();
+    }
+  } catch (err) {
+    console.error("[SQLite Init Reviews Error]:", sanitizeLog(err.message));
+  }
+}
+initReviewsDatabase();
+
 /**
  * Normalizes query string into useful search tokens for any tech category.
  * E.g., "16 gb ram" -> clean: "16 gb ram", norm: "16gb ram", tokens: ["16", "gb", "ram", "16gb"]
@@ -865,6 +900,315 @@ app.post("/api/reconcile", commandLimiter, (req, res) => {
     console.error("[Reconcile API Error]:", sanitizeLog(err.message));
     return res.status(500).json({ error: "Reconciliation failed", details: err.message });
   }
+});
+
+function formatReviewDate(isoString) {
+  if (!isoString) return "Recently";
+  try {
+    const d = new Date(isoString);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "1 day ago";
+    if (diffDays < 30) return `${diffDays} days ago`;
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths === 1) return "1 month ago";
+    if (diffMonths < 12) return `${diffMonths} months ago`;
+    const diffYears = Math.floor(diffDays / 365);
+    return diffYears <= 1 ? "1 year ago" : `${diffYears} years ago`;
+  } catch {
+    return "Recently";
+  }
+}
+
+// Feature: Dynamic Product Reviews - GET reviews & stats
+app.get("/api/product/:id/reviews", apiLimiter, async (req, res) => {
+  const id = (req.params.id || "").trim();
+  if (!id || !/^[a-zA-Z0-9\-_]{1,64}$/.test(id)) {
+    return res.status(400).json({ error: "Valid product ID format required" });
+  }
+
+  let reviews = [];
+
+  // 1. Fetch from Supabase
+  try {
+    const { data, error } = await supabase
+      .from("reviews")
+      .select("*")
+      .eq("product_id", id)
+      .order("created_at", { ascending: false });
+
+    if (!error && Array.isArray(data)) {
+      reviews = data;
+    }
+  } catch (err) {
+    console.warn("[Reviews Supabase Fetch Warning]:", sanitizeLog(err.message));
+  }
+
+  // 2. Fetch/Merge from SQLite fallback
+  try {
+    const db = getSqliteDb();
+    if (db) {
+      const localRows = db.prepare("SELECT * FROM reviews WHERE product_id = ? ORDER BY created_at DESC").all(id);
+      db.close();
+      if (localRows && localRows.length > 0) {
+        const existingIds = new Set(reviews.map(r => r.id));
+        for (const lr of localRows) {
+          if (!existingIds.has(lr.id)) {
+            reviews.push(lr);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[Reviews SQLite Error]:", sanitizeLog(err.message));
+  }
+
+  // Format reviews
+  const formattedReviews = reviews.map(r => {
+    let pros = [];
+    let cons = [];
+    let images = [];
+    try {
+      pros = Array.isArray(r.pros) ? r.pros : JSON.parse(r.pros || "[]");
+    } catch { pros = []; }
+    try {
+      cons = Array.isArray(r.cons) ? r.cons : JSON.parse(r.cons || "[]");
+    } catch { cons = []; }
+    try {
+      images = Array.isArray(r.images) ? r.images : JSON.parse(r.images || "[]");
+    } catch { images = []; }
+
+    return {
+      id: r.id,
+      productId: r.product_id,
+      user: {
+        id: r.user_id,
+        name: r.user_name || "Verified User",
+        avatar: r.user_avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(r.user_name || "User")}`,
+        country: r.user_country || "Bangladesh",
+        countryCode: r.user_country_code || "BD"
+      },
+      verified: Boolean(r.verified),
+      date: formatReviewDate(r.created_at),
+      createdAt: r.created_at,
+      rating: Number(r.rating) || 5,
+      title: r.title || "",
+      content: r.content || "",
+      pros,
+      cons,
+      images,
+      helpfulCount: Number(r.helpful_count) || 0
+    };
+  });
+
+  const totalReviews = formattedReviews.length;
+  const averageRating = totalReviews > 0
+    ? Number((formattedReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews).toFixed(1))
+    : 0;
+
+  const recommendCount = formattedReviews.filter(r => r.rating >= 4).length;
+  const recommendPercent = totalReviews > 0
+    ? Math.round((recommendCount / totalReviews) * 100)
+    : 0;
+
+  const ratingDistribution = [5, 4, 3, 2, 1].map(stars => {
+    const count = formattedReviews.filter(r => Math.round(r.rating) === stars).length;
+    const percentage = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+    return { stars, count, percentage };
+  });
+
+  const verifiedCount = formattedReviews.filter(r => r.verified).length;
+  const helpfulCount = formattedReviews.reduce((sum, r) => sum + (r.helpfulCount || 0), 0);
+  
+  const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const reviewsThisMonth = formattedReviews.filter(r => new Date(r.createdAt) >= oneMonthAgo).length;
+
+  return res.json({
+    success: true,
+    productId: id,
+    reviews: formattedReviews,
+    stats: {
+      totalReviews,
+      averageRating,
+      recommendPercent,
+      ratingDistribution,
+      verifiedCount,
+      helpfulCount,
+      reviewsThisMonth
+    }
+  });
+});
+
+// Feature: Dynamic Product Reviews - POST new review (authenticated users)
+app.post("/api/product/:id/reviews", authActionLimiter, async (req, res) => {
+  const productId = (req.params.id || "").trim();
+  if (!productId || !/^[a-zA-Z0-9\-_]{1,64}$/.test(productId)) {
+    return res.status(400).json({ error: "Valid product ID required" });
+  }
+
+  const { rating, title, content, pros, cons, images, userId, userName, userAvatar, userCountry, userCountryCode } = req.body || {};
+
+  const numRating = parseInt(rating, 10);
+  if (!numRating || numRating < 1 || numRating > 5) {
+    return res.status(400).json({ error: "Rating must be an integer between 1 and 5" });
+  }
+
+  if (!title || typeof title !== "string" || !title.trim()) {
+    return res.status(400).json({ error: "Review title is required" });
+  }
+
+  if (!content || typeof content !== "string" || !content.trim()) {
+    return res.status(400).json({ error: "Review description is required" });
+  }
+
+  const cleanPros = Array.isArray(pros) ? pros.map(p => String(p).trim()).filter(Boolean) : [];
+  const cleanCons = Array.isArray(cons) ? cons.map(c => String(c).trim()).filter(Boolean) : [];
+  const cleanImages = Array.isArray(images) ? images.map(img => String(img).trim()).filter(Boolean) : [];
+
+  const reviewId = `rev_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const nowIso = new Date().toISOString();
+
+  const newReview = {
+    id: reviewId,
+    product_id: productId,
+    user_id: userId || null,
+    user_name: (userName || "PC Kinba Builder").trim().slice(0, 100),
+    user_avatar: userAvatar || null,
+    user_country: (userCountry || "Bangladesh").trim().slice(0, 50),
+    user_country_code: (userCountryCode || "BD").trim().slice(0, 5),
+    rating: numRating,
+    title: title.trim().slice(0, 200),
+    content: content.trim().slice(0, 2000),
+    pros: cleanPros,
+    cons: cleanCons,
+    images: cleanImages,
+    verified: true,
+    helpful_count: 0,
+    created_at: nowIso,
+    updated_at: nowIso
+  };
+
+  // 1. Insert into Supabase
+  try {
+    const { error: supaErr } = await supabase
+      .from("reviews")
+      .insert({
+        ...newReview,
+        pros: JSON.stringify(cleanPros),
+        cons: JSON.stringify(cleanCons),
+        images: JSON.stringify(cleanImages)
+      });
+    if (supaErr) {
+      console.warn("[Reviews Supabase Insert Warning]:", sanitizeLog(supaErr.message));
+    }
+  } catch (err) {
+    console.error("[Reviews Supabase Insert Error]:", sanitizeLog(err.message));
+  }
+
+  // 2. Insert into SQLite (resilience fallback)
+  try {
+    const db = getSqliteDb();
+    if (db) {
+      db.prepare(`
+        INSERT OR REPLACE INTO reviews (
+          id, product_id, user_id, user_name, user_avatar, user_country, user_country_code,
+          rating, title, content, pros, cons, images, verified, helpful_count, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        newReview.id,
+        newReview.product_id,
+        newReview.user_id,
+        newReview.user_name,
+        newReview.user_avatar,
+        newReview.user_country,
+        newReview.user_country_code,
+        newReview.rating,
+        newReview.title,
+        newReview.content,
+        JSON.stringify(newReview.pros),
+        JSON.stringify(newReview.cons),
+        JSON.stringify(newReview.images),
+        newReview.verified ? 1 : 0,
+        newReview.helpful_count,
+        newReview.created_at,
+        newReview.updated_at
+      );
+      db.close();
+    }
+  } catch (err) {
+    console.error("[Reviews SQLite Insert Error]:", sanitizeLog(err.message));
+  }
+
+  return res.status(201).json({
+    success: true,
+    message: "Review submitted successfully",
+    review: {
+      id: newReview.id,
+      productId: newReview.product_id,
+      user: {
+        id: newReview.user_id,
+        name: newReview.user_name,
+        avatar: newReview.user_avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(newReview.user_name)}`,
+        country: newReview.user_country,
+        countryCode: newReview.user_country_code
+      },
+      verified: newReview.verified,
+      date: "Just now",
+      createdAt: newReview.created_at,
+      rating: newReview.rating,
+      title: newReview.title,
+      content: newReview.content,
+      pros: newReview.pros,
+      cons: newReview.cons,
+      images: newReview.images,
+      helpfulCount: 0
+    }
+  });
+});
+
+// Feature: Helpful Review Upvote
+app.post("/api/reviews/:id/helpful", apiLimiter, async (req, res) => {
+  const reviewId = (req.params.id || "").trim();
+  if (!reviewId) {
+    return res.status(400).json({ error: "Review ID is required" });
+  }
+
+  let newCount = 1;
+
+  // 1. Update in SQLite
+  try {
+    const db = getSqliteDb();
+    if (db) {
+      db.prepare("UPDATE reviews SET helpful_count = helpful_count + 1 WHERE id = ?").run(reviewId);
+      const row = db.prepare("SELECT helpful_count FROM reviews WHERE id = ?").get(reviewId);
+      if (row) newCount = row.helpful_count;
+      db.close();
+    }
+  } catch (err) {
+    console.error("[Helpful SQLite Error]:", sanitizeLog(err.message));
+  }
+
+  // 2. Update in Supabase
+  try {
+    const { data } = await supabase
+      .from("reviews")
+      .select("helpful_count")
+      .eq("id", reviewId)
+      .single();
+    if (data) {
+      newCount = (data.helpful_count || 0) + 1;
+      await supabase
+        .from("reviews")
+        .update({ helpful_count: newCount, updated_at: new Date().toISOString() })
+        .eq("id", reviewId);
+    }
+  } catch (err) {
+    console.warn("[Helpful Supabase Warning]:", sanitizeLog(err.message));
+  }
+
+  return res.json({ success: true, helpfulCount: newCount });
 });
 
 app.post("/api/send-welcome", authActionLimiter, async (req, res) => {
