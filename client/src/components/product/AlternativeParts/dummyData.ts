@@ -46,6 +46,7 @@ export type AlternativeProduct = {
   pros: string[];
   cons: string[];
   reasons: string[];
+  product_url?: string;
 };
 
 export const currentProductPrice = 39900;

@@ -14,7 +14,7 @@ export default function ProductDetailsPage() {
     if (!id) return;
 
     setLoading(true);
-    fetch(`http://localhost:3001/api/product/${id}`)
+    fetch(`/api/product/${id}`)
       .then((res) => res.json())
       .then((data) => {
         if (!data.error) {
@@ -33,7 +33,7 @@ export default function ProductDetailsPage() {
       <ProductReviews />
       {/* 220px Empty Space between Product Reviews and Alternative Parts */}
       <div style={{ height: '220px' }} className="w-full pointer-events-none aria-hidden" />
-      <AlternativePartsSection />
+      <AlternativePartsSection product={product} />
     </div>
   );
 }

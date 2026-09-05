@@ -9,6 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendWelcomeEmail } from "./mailer.js";
 import { extractAttributes, generateFingerprint, isSameProductVariant, group5StoreOffers } from "./lib/normalizer.js";
 import { getGroqSuggestions } from "./lib/groq.js";
+import { buildProductAlternatives } from "./lib/alternatives.js";
 
 dotenv.config();
 
@@ -687,6 +688,88 @@ app.get("/api/product/:id", apiLimiter, async (req, res) => {
   };
 
   return res.json(responsePayload);
+});
+
+// Feature 3b: Dynamic Category-Aware Alternative Parts Endpoint
+app.get("/api/product/:id/alternatives", apiLimiter, async (req, res) => {
+  const id = (req.params.id || "").trim();
+  if (!id || !/^[a-zA-Z0-9\-_]{1,64}$/.test(id)) {
+    return res.status(400).json({ error: "Valid product ID format required" });
+  }
+
+  let item = null;
+
+  try {
+    const db = getSqliteDb();
+    if (db) {
+      item = db.prepare("SELECT * FROM listings WHERE id = ?").get(id);
+      if (item) {
+        const alternatives = await buildProductAlternatives(item, db);
+        db.close();
+        return res.json({
+          success: true,
+          target_id: id,
+          target_product: item.title,
+          target_category: deriveCategory(item.title),
+          count: alternatives.length,
+          alternatives
+        });
+      }
+      db.close();
+    }
+  } catch (err) {
+    console.error("[Alternatives API SQLite Error]:", sanitizeLog(err.message));
+  }
+
+  // Fallback if not found in SQLite
+  if (!item) {
+    try {
+      const { data } = await supabase.from("listings").select("*").eq("id", id).single();
+      if (data) {
+        item = data;
+        const db = getSqliteDb();
+        const alternatives = await buildProductAlternatives(item, db);
+        if (db) db.close();
+        return res.json({
+          success: true,
+          target_id: id,
+          target_product: item.title,
+          target_category: deriveCategory(item.title),
+          count: alternatives.length,
+          alternatives
+        });
+      }
+    } catch (err) {
+      console.warn("[Alternatives API Supabase Warning]:", sanitizeLog(err.message));
+    }
+  }
+
+  return res.status(404).json({ error: "Target product not found" });
+});
+
+// Feature 3c: General Alternatives query endpoint (by category or query)
+app.get("/api/alternatives", apiLimiter, async (req, res) => {
+  const category = (req.query.category || "").trim();
+  const q = (req.query.q || "").trim();
+  const price = parseInt(req.query.price || "25000", 10);
+
+  const mockTarget = {
+    id: "query-target",
+    title: q || category || "Component",
+    category: category || deriveCategory(q),
+    price: price > 0 ? price : 25000,
+    brand: ""
+  };
+
+  const db = getSqliteDb();
+  const alternatives = await buildProductAlternatives(mockTarget, db);
+  if (db) db.close();
+
+  return res.json({
+    success: true,
+    count: alternatives.length,
+    alternatives
+  });
 });
 
 // Dedicated On-Demand Live Google Price Scan Endpoint
