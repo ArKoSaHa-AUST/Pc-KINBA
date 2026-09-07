@@ -10,13 +10,16 @@ import {
   BrainCircuit,
   Briefcase,
   Check,
+  Loader2,
+  Cloud,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { use3DTilt } from '../ai/use3DTilt';
-import { resizeImageToDataUrl, sanitizeImageUrl } from '../../utils/image';
+import { sanitizeImageUrl } from '../../utils/image';
+import { uploadUserAvatar } from '../../services/imageUpload';
 import type { UserProfile } from '../../api/auth';
 
 interface ProfileInfoCardProps {
@@ -38,6 +41,8 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl || '');
   const [purpose, setPurpose] = useState(user.purpose || 'gaming');
   const [avatarBroken, setAvatarBroken] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [storageProvider, setStorageProvider] = useState<'supabase' | 'imagekit' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -56,12 +61,23 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+
+    setUploadingAvatar(true);
     try {
-      const dataUrl = await resizeImageToDataUrl(file, 256, 0.82);
-      setAvatarUrl(dataUrl);
+      const result = await uploadUserAvatar(file, user.id);
+      setAvatarUrl(result.url);
+      setStorageProvider(result.provider);
       setAvatarBroken(false);
+      // Automatically save new avatar URL to user profile
+      await onSave({
+        name: name.trim(),
+        avatarUrl: result.url,
+        purpose,
+      });
     } catch (err) {
-      console.error('Avatar resize failed', err);
+      console.error('Avatar cloud upload failed', err);
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -154,7 +170,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
             <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
               {/* Left Side: Avatar Preview + Upload / Remove Button */}
               <div className="flex items-center gap-3 shrink-0">
-                <div className="w-14 h-14 rounded-full overflow-hidden border border-border bg-fill-muted flex items-center justify-center shrink-0 shadow-inner">
+                <div className="relative w-14 h-14 rounded-full overflow-hidden border border-border bg-fill-muted flex items-center justify-center shrink-0 shadow-inner">
                   {(() => {
                     const safeAvatarUrl = sanitizeImageUrl(avatarUrl);
                     return safeAvatarUrl && !avatarBroken ? (
@@ -168,6 +184,13 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
                       <span className="text-text-muted font-bold text-sm">{initials}</span>
                     );
                   })()}
+
+                  {/* Uploading Overlay */}
+                  {uploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-xs">
+                      <Loader2 className="w-5 h-5 text-accent animate-spin" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -184,10 +207,11 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
                     type="button"
                     variant="secondary"
                     size="sm"
+                    loading={uploadingAvatar}
                     leftIcon={<Upload className="w-3.5 h-3.5" />}
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    Upload Photo
+                    {uploadingAvatar ? 'Uploading...' : 'Upload Photo'}
                   </Button>
                   {avatarUrl && (
                     <Button
@@ -195,8 +219,10 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
                       type="button"
                       variant="ghost"
                       size="sm"
+                      disabled={uploadingAvatar}
                       onClick={() => {
                         setAvatarUrl('');
+                        setStorageProvider(null);
                         setAvatarBroken(false);
                       }}
                     >
@@ -221,7 +247,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
                   <input
                     id="profile-avatar-url-input"
                     type="url"
-                    placeholder="https://example.com/avatar.jpg"
+                    placeholder="https://ik.imagekit.io/... or https://example.com/avatar.jpg"
                     value={avatarUrl.startsWith('data:') ? '' : avatarUrl}
                     onChange={(e) => {
                       setAvatarUrl(e.target.value);
@@ -233,11 +259,32 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
               </div>
             </div>
 
-            {/* Bottom Helper / Status Text adjusted with proper spacing */}
-            {avatarUrl.startsWith('data:') && (
+            {/* Bottom Helper / Cloud Storage Status Text */}
+            {avatarUrl && (
               <div className="pt-2 border-t border-border/40 flex items-center gap-2 text-xs text-text-muted">
-                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                <span>Custom compressed image active (≤256px)</span>
+                {avatarUrl.includes('imagekit.io') || storageProvider === 'imagekit' ? (
+                  <>
+                    <Cloud className="w-3.5 h-3.5 text-accent shrink-0" />
+                    <span className="text-accent font-medium">Stored in ImageKit Cloud CDN</span>
+                    <span className="text-text-muted">• Synced to Supabase Profile</span>
+                  </>
+                ) : avatarUrl.includes('supabase.co') || storageProvider === 'supabase' ? (
+                  <>
+                    <Cloud className="w-3.5 h-3.5 text-success shrink-0" />
+                    <span className="text-success font-medium">Stored in Supabase Storage</span>
+                    <span className="text-text-muted">• Direct Cloud Sync</span>
+                  </>
+                ) : avatarUrl.startsWith('data:') ? (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse shrink-0" />
+                    <span>Optimized compressed image active</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+                    <span>Connected via custom image URL</span>
+                  </>
+                )}
               </div>
             )}
           </div>
