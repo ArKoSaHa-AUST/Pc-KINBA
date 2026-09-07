@@ -631,3 +631,19 @@ h4,
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(34, 211, 238, 0.7);
 }
+
+:root[data-theme='light'] .custom-scrollbar {
+  scrollbar-color: rgba(14, 116, 144, 0.4) rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme='light'] .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme='light'] .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(14, 116, 144, 0.35);
+}
+
+:root[data-theme='light'] .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(14, 116, 144, 0.7);
+}

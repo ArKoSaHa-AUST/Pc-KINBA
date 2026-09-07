@@ -78,9 +78,9 @@ export default function FilterSidebar({ availableBrands, availableRetailers }: F
     Object.keys(filters.dynamicSpecs).length > 0;
 
   return (
-    <aside className="w-full bg-bg-surface/70 backdrop-blur-xl border border-border rounded-2xl p-5 shadow-lg select-none space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-border">
+    <aside className="w-full max-h-[calc(100vh-110px)] overflow-y-auto overscroll-contain bg-bg-surface/70 backdrop-blur-xl border border-border rounded-2xl p-5 shadow-lg select-none space-y-6 custom-scrollbar">
+      {/* Sticky Header */}
+      <div className="sticky top-0 bg-bg-surface/95 backdrop-blur-md z-10 -mx-5 -mt-5 p-5 border-b border-border rounded-t-2xl flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Tag className="w-4 h-4 text-accent" />
           <h3 className="font-bold text-sm text-text-primary uppercase tracking-wider">
