@@ -6,23 +6,23 @@
   position: relative;
   min-height: calc(100vh - 80px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   overflow: hidden;
-  padding-top: 120px;
-  padding-bottom: 120px;
+  padding-top: 1.5rem;
+  padding-bottom: 5rem;
 }
 
 @media (max-width: 1024px) {
   .tonima-hero-section {
-    padding-top: 80px;
-    padding-bottom: 80px;
+    padding-top: 1rem;
+    padding-bottom: 3rem;
   }
 }
 
 @media (max-width: 640px) {
   .tonima-hero-section {
-    padding-top: 60px;
-    padding-bottom: 60px;
+    padding-top: 0.75rem;
+    padding-bottom: 2rem;
   }
 }
 
@@ -36,7 +36,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 3.5rem;
-  align-items: center;
+  align-items: flex-start;
 }
 
 @media (max-width: 1024px) {
@@ -59,10 +59,12 @@
 .ai-hero-text {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-start;
   text-align: left;
   z-index: 10;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .ai-hero-badge {
