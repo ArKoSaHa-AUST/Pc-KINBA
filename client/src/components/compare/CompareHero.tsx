@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { SlidersHorizontal, Share2, FileDown, Trash2, Layers } from 'lucide-react';
+import { SlidersHorizontal, Share2, FileDown, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface CompareHeroProps {
@@ -24,7 +24,7 @@ export const CompareHero: React.FC<CompareHeroProps> = ({
   const { t } = useTranslation('compare');
 
   return (
-    <div className="relative pt-6 pb-8 border-b border-white/10 overflow-hidden">
+    <div className="relative pt-2 pb-6 border-b border-white/10 overflow-hidden">
       {/* Background ambient lighting glow */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl pointer-events-none -z-10" />
       <div className="absolute top-10 right-1/4 w-96 h-96 bg-purple/10 rounded-full blur-3xl pointer-events-none -z-10" />
@@ -33,10 +33,6 @@ export const CompareHero: React.FC<CompareHeroProps> = ({
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           {/* Header Title & Subtitle */}
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-accent/10 border border-accent/30 text-accent mb-3">
-              <Layers className="w-3.5 h-3.5" />
-              <span>{t('heroBadge', 'Taisha Component Compare')}</span>
-            </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white">
               {t('title', 'Hardware Battleground')}{' '}
               <span className="bg-gradient-to-r from-accent via-cyan-400 to-purple bg-clip-text text-transparent">

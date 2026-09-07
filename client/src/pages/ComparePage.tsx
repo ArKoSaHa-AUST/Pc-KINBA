@@ -234,7 +234,7 @@ export default function ComparePage() {
   }, [activeProducts]);
 
   return (
-    <div className="compare-page-container bg-bg-primary text-text-primary min-h-screen pb-24 pt-20">
+    <div className="compare-page-container bg-bg-primary text-text-primary min-h-screen pb-24 pt-4">
       {/* Toast Notification */}
       <AnimatePresence>
         {toastMessage && (
