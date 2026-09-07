@@ -139,19 +139,70 @@ Return ONLY a valid JSON object:
 
     return None
 
+class GroqKeyPool:
+    def __init__(self):
+        self._keys = []
+        self._current_index = 0
+        self._cooldowns = {}
+
+    def get_keys(self):
+        load_env_file()
+        if not self._keys:
+            raw_str = os.getenv("GROQ_API_KEYS", "") or os.getenv("GROQ_API_KEY", "")
+            if raw_str:
+                self._keys = [
+                    k.strip().replace('"', '').replace("'", "")
+                    for k in raw_str.split(",")
+                    if k.strip().startswith("gsk_") or len(k.strip()) > 20
+                ]
+        return self._keys
+
+    def get_active_key(self):
+        pool = self.get_keys()
+        if not pool:
+            return ""
+
+        import time
+        now = time.time()
+        self._cooldowns = {k: exp for k, exp in self._cooldowns.items() if exp > now}
+
+        for i in range(len(pool)):
+            idx = (self._current_index + i) % len(pool)
+            k = pool[idx]
+            if k not in self._cooldowns:
+                self._current_index = idx
+                return k
+
+        self._cooldowns.clear()
+        return pool[self._current_index % len(pool)]
+
+    def mark_exhausted(self, key: str, cooldown_sec: float = 60.0):
+        if not key:
+            return
+        import time
+        pool = self.get_keys()
+        masked = f"...{key[-6:]}" if len(key) >= 6 else key
+        print(f"[Groq Key Pool] Key {masked} finished tokens or hit limit. Switching to next key.")
+        self._cooldowns[key] = time.time() + cooldown_sec
+        if pool:
+            self._current_index = (self._current_index + 1) % len(pool)
+
+    def rotate_next(self):
+        pool = self.get_keys()
+        if pool:
+            self._current_index = (self._current_index + 1) % len(pool)
+        return self.get_active_key()
+
+_groq_pool = GroqKeyPool()
+
 def query_groq_cloud_full(title: str, snippet: str, url: str, product_name: str):
     """
-    Resilient cloud fallback across 17 Groq API keys using qwen/qwen3.8-27b or openai/gpt-oss-120b.
+    Resilient cloud fallback across Groq API key pool using qwen/qwen3.8-27b or openai/gpt-oss-120b.
+    Automatically switches to another key when one finishes its tokens or hits quota/rate limits.
     """
-    load_env_file()
-
-    env_keys = []
-    groq_keys_str = os.getenv("GROQ_API_KEYS", "")
-    if groq_keys_str:
-        env_keys = [k.strip().replace('"', '').replace("'", "") for k in groq_keys_str.split(",") if k.strip().startswith("gsk_")]
-
-    if not env_keys and os.getenv("GROQ_API_KEY"):
-        env_keys = [os.getenv("GROQ_API_KEY").strip()]
+    keys = _groq_pool.get_keys()
+    if not keys:
+        return None
 
     prompt = f"""Target Product: "{product_name}"
 Search Result:
@@ -169,7 +220,13 @@ Extract:
 Return ONLY JSON format:
 {{"shop_name": "...", "price": 0, "in_stock": true, "is_relevant": true}}"""
 
-    for apiKey in env_keys[:5]:
+    max_attempts = max(len(keys), 3)
+
+    for attempt in range(max_attempts):
+        apiKey = _groq_pool.get_active_key()
+        if not apiKey:
+            break
+
         for model in ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]:
             try:
                 req = urllib.request.Request(
@@ -204,6 +261,14 @@ Return ONLY JSON format:
                                 "is_relevant": bool(parsed.get('is_relevant', True)),
                                 "source": f"groq_{model}"
                             }
+            except urllib.error.HTTPError as e:
+                # 429: Rate limit / Token limit reached
+                # 401: Invalid key
+                # 402 / 403: Quota exhausted
+                if e.code in (429, 401, 402, 403):
+                    _groq_pool.mark_exhausted(apiKey, 60.0)
+                    break
+                continue
             except Exception:
                 continue
 
