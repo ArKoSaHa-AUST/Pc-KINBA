@@ -1,8 +1,8 @@
 .brands-section {
   padding: 4rem 0;
-  border-top: 1px solid var(--glass-border);
-  border-bottom: 1px solid var(--glass-border);
-  background: rgba(13, 17, 23, 0.5);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--fill-subtle);
   overflow: hidden;
 }
 

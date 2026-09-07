@@ -86,20 +86,20 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
   return (
     <div
       id="ai-auditor-section"
-      className="w-full rounded-3xl bg-slate-900/80 border border-white/10 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl overflow-hidden relative"
+      className="w-full rounded-3xl bg-glass border border-border backdrop-blur-2xl p-6 sm:p-8 shadow-2xl overflow-hidden relative"
     >
       {/* Glow Effects */}
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple/10 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-white/10 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-border pb-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-accent to-purple flex items-center justify-center text-slate-950 font-black shadow-[0_0_20px_rgba(0,229,255,0.4)]">
             <Bot className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-xl font-bold text-white">
+              <h3 className="text-xl font-bold text-text-primary">
                 Tonima AI Compatibility & Bottleneck Auditor
               </h3>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
@@ -114,15 +114,15 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
         </div>
 
         {/* Target Resolution Toggle */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950/80 border border-white/10 self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-fill-subtle border border-border self-start sm:self-auto">
           {(['1080p', '1440p', '4k'] as const).map((res) => (
             <button
               key={res}
               onClick={() => setTargetResolution(res)}
-              className={`px-3 py-1 rounded-lg text-xs font-bold uppercase transition-all ${
+              className={`px-3 py-1 rounded-lg text-xs font-bold uppercase transition-all cursor-pointer ${
                 targetResolution === res
                   ? 'bg-accent text-slate-950 shadow-md'
-                  : 'text-text-muted hover:text-white'
+                  : 'text-text-muted hover:text-text-primary'
               }`}
             >
               {res}
@@ -134,7 +134,7 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
       {/* Audit Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {/* 1. PSU & Power Envelope */}
-        <div className="p-4 rounded-2xl bg-slate-950/60 border border-white/5 flex flex-col justify-between">
+        <div className="p-4 rounded-2xl bg-fill-subtle border border-border flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs font-bold text-text-muted mb-2">
               <span className="flex items-center gap-1.5">
@@ -143,7 +143,7 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
               </span>
               <span className="text-amber-400">{recommendedPSUWattage}W Min</span>
             </div>
-            <div className="text-lg font-mono font-black text-white">
+            <div className="text-lg font-mono font-black text-text-primary">
               ~{estimatedPeakPower}W{' '}
               <span className="text-xs font-normal text-text-muted">Peak Draw</span>
             </div>
@@ -152,14 +152,14 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
               margin.
             </p>
           </div>
-          <div className="mt-3 pt-2 border-t border-white/5 flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
+          <div className="mt-3 pt-2 border-t border-border flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
             <CheckCircle2 className="w-3 h-3" />
             <span>ATX 3.0 Standard Recommended</span>
           </div>
         </div>
 
         {/* 2. CPU Bottleneck Index */}
-        <div className="p-4 rounded-2xl bg-slate-950/60 border border-white/5 flex flex-col justify-between">
+        <div className="p-4 rounded-2xl bg-fill-subtle border border-border flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs font-bold text-text-muted mb-2">
               <span className="flex items-center gap-1.5">
@@ -170,19 +170,21 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
                 {bottleneck.riskPercent}%
               </span>
             </div>
-            <div className="text-sm font-bold text-white line-clamp-1">{bottleneck.title}</div>
+            <div className="text-sm font-bold text-text-primary line-clamp-1">
+              {bottleneck.title}
+            </div>
             <p className="text-[11px] text-text-muted mt-1 leading-normal line-clamp-2">
               {bottleneck.description}
             </p>
           </div>
-          <div className="mt-3 pt-2 border-t border-white/5 flex items-center gap-1 text-[10px] text-accent font-semibold">
+          <div className="mt-3 pt-2 border-t border-border flex items-center gap-1 text-[10px] text-accent font-semibold">
             <Sparkles className="w-3 h-3" />
             <span>Optimal Gaming Tier</span>
           </div>
         </div>
 
         {/* 3. Chassis Clearance */}
-        <div className="p-4 rounded-2xl bg-slate-950/60 border border-white/5 flex flex-col justify-between">
+        <div className="p-4 rounded-2xl bg-fill-subtle border border-border flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs font-bold text-text-muted mb-2">
               <span className="flex items-center gap-1.5">
@@ -191,19 +193,19 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
               </span>
               <span className="text-cyan-400">{maxLength.toFixed(0)} mm Max</span>
             </div>
-            <div className="text-sm font-bold text-white">Requires Standard Mid-Tower</div>
+            <div className="text-sm font-bold text-text-primary">Requires Standard Mid-Tower</div>
             <p className="text-[11px] text-text-muted mt-1 leading-normal">
               Ensure case clearance exceeds 320mm for front radiator / fan clearance.
             </p>
           </div>
-          <div className="mt-3 pt-2 border-t border-white/5 flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
+          <div className="mt-3 pt-2 border-t border-border flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
             <CheckCircle2 className="w-3 h-3" />
             <span>ATX / mATX Case Compatible</span>
           </div>
         </div>
 
         {/* 4. Power Connector Safety */}
-        <div className="p-4 rounded-2xl bg-slate-950/60 border border-white/5 flex flex-col justify-between">
+        <div className="p-4 rounded-2xl bg-fill-subtle border border-border flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs font-bold text-text-muted mb-2">
               <span className="flex items-center gap-1.5">
@@ -214,7 +216,7 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
                 {has12VHPWR ? '12VHPWR' : 'Standard 8-Pin'}
               </span>
             </div>
-            <div className="text-sm font-bold text-white">
+            <div className="text-sm font-bold text-text-primary">
               {has12VHPWR ? '16-Pin 12V-2x6 Power' : 'Dual 8-Pin PCIe Power'}
             </div>
             <p className="text-[11px] text-text-muted mt-1 leading-normal">
@@ -223,7 +225,7 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
                 : 'Use separate non-daisy-chained PCIe cables from power supply.'}
             </p>
           </div>
-          <div className="mt-3 pt-2 border-t border-white/5 flex items-center gap-1 text-[10px] text-amber-400 font-semibold">
+          <div className="mt-3 pt-2 border-t border-border flex items-center gap-1 text-[10px] text-amber-400 font-semibold">
             <AlertTriangle className="w-3 h-3" />
             <span>Follow Cable Bend Safety</span>
           </div>

@@ -242,7 +242,7 @@ export default function ComparePage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-slate-900/90 border border-accent/40 text-accent text-sm font-semibold shadow-2xl backdrop-blur-md flex items-center gap-2"
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-glass border border-accent/40 text-accent text-sm font-semibold shadow-2xl backdrop-blur-md flex items-center gap-2"
           >
             <Check className="w-4 h-4 text-accent" />
             <span>{toastMessage}</span>
@@ -284,7 +284,7 @@ export default function ComparePage() {
             <div className="flex justify-center">
               <button
                 onClick={handleAddFourthSlot}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/30 text-text-secondary hover:text-white transition-all shadow-lg"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-fill-subtle hover:bg-fill-muted border border-border hover:border-accent/40 text-text-secondary hover:text-text-primary transition-all shadow-lg"
               >
                 <Plus className="w-4 h-4 text-accent" />
                 <span>{t('actions.addSlot', 'Add 4th Slot for 4-Way Comparison')}</span>
@@ -357,15 +357,15 @@ export default function ComparePage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSwapModalOpen(false)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-md"
+              className="fixed inset-0 bg-black/60 backdrop-blur-md"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-2xl z-10"
+              className="relative w-full max-w-sm bg-bg-surface border border-border rounded-2xl p-6 shadow-2xl z-10"
             >
-              <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
+              <h3 className="text-base font-bold text-text-primary mb-2 flex items-center gap-2">
                 <ArrowLeftRight className="w-4 h-4 text-accent" />
                 <span>Swap Slot {swapSourceIndex + 1} with:</span>
               </h3>
@@ -379,11 +379,11 @@ export default function ComparePage() {
                     <button
                       key={idx}
                       onClick={() => handleExecuteSwap(idx)}
-                      className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-accent/10 border border-white/5 hover:border-accent/30 text-left transition-all group"
+                      className="w-full flex items-center justify-between p-3 rounded-xl bg-fill-subtle hover:bg-accent/10 border border-border hover:border-accent/40 text-left transition-all group"
                     >
                       <div>
                         <div className="text-xs font-bold text-accent">Slot {idx + 1}</div>
-                        <div className="text-xs text-white truncate max-w-[200px]">
+                        <div className="text-xs text-text-primary truncate max-w-[200px]">
                           {prod ? prod.name : 'Empty Slot'}
                         </div>
                       </div>

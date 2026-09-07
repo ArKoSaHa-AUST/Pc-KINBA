@@ -179,7 +179,7 @@ export function BuildHistoryTimeline() {
 
   return (
     <div className="relative flex flex-col gap-6">
-      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+      <div className="flex items-center justify-between border-b border-border pb-4">
         <div className="flex items-center gap-2.5 text-text-primary font-bold text-lg">
           <div className="p-2 rounded-lg bg-purple/10 border border-purple/20 text-purple">
             <Layers className="w-5 h-5" />
@@ -209,7 +209,7 @@ export function BuildHistoryTimeline() {
             {/* Timeline dot */}
             <div className="absolute -left-6 top-5 w-4 h-4 rounded-full bg-bg-primary border-2 border-accent group-hover:scale-125 group-hover:bg-accent transition-all duration-300 shadow-[0_0_10px_rgba(0,229,255,0.6)]" />
 
-            <Card className="bg-slate-900/50 backdrop-blur-md border border-white/10 p-5 rounded-xl hover:border-accent/40 transition-all duration-300 hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
+            <Card className="backdrop-blur-md border border-border p-5 rounded-xl hover:border-accent/40 transition-all duration-300">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2.5">
@@ -248,11 +248,11 @@ export function BuildHistoryTimeline() {
               </div>
 
               {build.parts.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-white/5 flex flex-wrap gap-1.5">
+                <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-1.5">
                   {build.parts.map((part, i) => (
                     <span
                       key={i}
-                      className="px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/5 text-[11px] text-text-muted"
+                      className="px-2 py-0.5 rounded-md bg-fill-subtle border border-border text-[11px] text-text-muted"
                     >
                       {part}
                     </span>
@@ -261,7 +261,7 @@ export function BuildHistoryTimeline() {
               )}
 
               {build.partIds && (
-                <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
+                <div className="mt-3 pt-3 border-t border-border flex items-center gap-2">
                   <Button
                     variant="secondary"
                     size="sm"

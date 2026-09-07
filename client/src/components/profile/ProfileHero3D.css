@@ -4,15 +4,15 @@
 
 .profile-hero-card {
   position: relative;
-  background: var(--glass-bg, rgba(15, 23, 42, 0.65));
+  background: var(--glass-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--border);
   border-radius: 1.25rem;
   padding: 2.25rem;
   overflow: hidden;
   box-shadow:
-    0 20px 40px -15px rgba(0, 0, 0, 0.5),
+    0 20px 40px -15px rgba(0, 0, 0, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   transform-style: preserve-3d;
   perspective: 1000px;
@@ -101,7 +101,7 @@
   width: calc(100% - 6px);
   height: calc(100% - 6px);
   border-radius: 9999px;
-  background: var(--bg-primary, #090d16);
+  background: var(--bg-surface);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -116,8 +116,8 @@
 }
 
 .profile-stat-badge {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--fill-subtle);
+  border: 1px solid var(--border);
   border-radius: 0.75rem;
   padding: 0.75rem 1.25rem;
   backdrop-filter: blur(8px);
@@ -125,8 +125,8 @@
 }
 
 .profile-stat-badge:hover {
-  background: rgba(0, 229, 255, 0.05);
-  border-color: rgba(0, 229, 255, 0.25);
+  background: var(--fill-muted);
+  border-color: rgba(0, 229, 255, 0.4);
   transform: translateY(-2px);
 }
 

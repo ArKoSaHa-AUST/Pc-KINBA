@@ -92,7 +92,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
       style={{ rotateX, rotateY, scale }}
       className="relative rounded-2xl overflow-hidden transition-all duration-300"
     >
-      <Card className="relative overflow-hidden bg-slate-900/60 backdrop-blur-xl border border-white/10 p-6 md:p-8 flex flex-col gap-6 shadow-2xl">
+      <Card className="relative overflow-hidden backdrop-blur-xl border border-border p-6 md:p-8 flex flex-col gap-6 shadow-2xl">
         {/* Gloss highlight */}
         <div
           className="absolute inset-0 pointer-events-none rounded-2xl transition-opacity duration-300"
@@ -102,7 +102,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
           }}
         />
 
-        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2.5 text-text-primary font-bold text-lg">
             <div className="p-2 rounded-lg bg-accent/10 border border-accent/20 text-accent">
               <UserIcon className="w-5 h-5" />
@@ -136,7 +136,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
                   value={user.email}
                   disabled
                   readOnly
-                  className="opacity-75 cursor-not-allowed pr-10"
+                  className="opacity-75 cursor-not-allowed pr-10 bg-fill-subtle border-border"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted">
                   <Mail className="w-4 h-4" />
@@ -146,13 +146,13 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
           </div>
 
           {/* Avatar Upload / URL Section */}
-          <div className="flex flex-col gap-3 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+          <div className="flex flex-col gap-3 p-4 rounded-xl bg-fill-subtle border border-border">
             <span className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-purple" /> Profile Avatar
             </span>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="w-14 h-14 rounded-full overflow-hidden border border-border/80 bg-slate-800 flex items-center justify-center shrink-0">
+              <div className="w-14 h-14 rounded-full overflow-hidden border border-border bg-fill-muted flex items-center justify-center shrink-0">
                 {(() => {
                   const safeAvatarUrl = sanitizeImageUrl(avatarUrl);
                   return safeAvatarUrl && !avatarBroken ? (
@@ -239,7 +239,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
                     className={`relative p-3.5 rounded-xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-accent/15 border-accent shadow-[0_0_15px_rgba(0,229,255,0.15)] text-text-primary'
-                        : 'bg-white/[0.02] border-white/10 hover:border-white/20 text-text-muted hover:text-text-primary'
+                        : 'bg-fill-subtle border-border hover:border-accent/40 hover:bg-fill-muted text-text-muted hover:text-text-primary'
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
@@ -258,7 +258,7 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
             </div>
           </div>
 
-          <div className="flex justify-end pt-2 border-t border-white/10">
+          <div className="flex justify-end pt-2 border-t border-border">
             <Button id="profile-save-btn" type="submit" loading={saving} className="px-6 py-2.5">
               Save Changes
             </Button>

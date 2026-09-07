@@ -25,6 +25,8 @@
   --color-danger: var(--danger);
   --color-border: var(--border);
   --color-glass: var(--glass-bg);
+  --color-fill-subtle: var(--fill-subtle);
+  --color-fill-muted: var(--fill-muted);
 
   /* Custom typography scale based on user request */
   --text-hero: 64px;
@@ -174,6 +176,7 @@ a {
   text-decoration: inherit;
   transition: color 0.3s ease;
 }
+
 a:hover {
   color: var(--accent);
 }
@@ -262,13 +265,16 @@ h4,
 ::-webkit-scrollbar {
   width: 10px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--bg-primary);
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--fill-muted);
   border-radius: 5px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border);
 }
@@ -278,9 +284,11 @@ h4,
   0% {
     transform: translateY(0px);
   }
+
   50% {
     transform: translateY(-10px);
   }
+
   100% {
     transform: translateY(0px);
   }
@@ -296,6 +304,7 @@ h4,
     opacity: 0.5;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.8;
     transform: scale(1.05);
@@ -332,10 +341,12 @@ h4,
     padding-top: 60px;
     padding-bottom: 60px;
   }
+
   h1,
   .text-hero {
     font-size: 48px;
   }
+
   h2,
   .text-title {
     font-size: 32px;
