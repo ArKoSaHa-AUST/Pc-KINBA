@@ -151,74 +151,95 @@ export function ProfileInfoCard({ user, onSave, saving }: ProfileInfoCardProps) 
               <Sparkles className="w-4 h-4 text-purple" /> Profile Avatar
             </span>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="w-14 h-14 rounded-full overflow-hidden border border-border bg-fill-muted flex items-center justify-center shrink-0">
-                {(() => {
-                  const safeAvatarUrl = sanitizeImageUrl(avatarUrl);
-                  return safeAvatarUrl && !avatarBroken ? (
-                    <img
-                      src={safeAvatarUrl}
-                      alt="Avatar preview"
-                      onError={() => setAvatarBroken(true)}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-text-muted font-bold text-sm">{initials}</span>
-                  );
-                })()}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
+              {/* Left Side: Avatar Preview + Upload / Remove Button */}
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="w-14 h-14 rounded-full overflow-hidden border border-border bg-fill-muted flex items-center justify-center shrink-0 shadow-inner">
+                  {(() => {
+                    const safeAvatarUrl = sanitizeImageUrl(avatarUrl);
+                    return safeAvatarUrl && !avatarBroken ? (
+                      <img
+                        src={safeAvatarUrl}
+                        alt="Avatar preview"
+                        onError={() => setAvatarBroken(true)}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-text-muted font-bold text-sm">{initials}</span>
+                    );
+                  })()}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    id="profile-avatar-file-input"
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileSelected}
+                  />
+                  <Button
+                    id="profile-upload-avatar-btn"
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<Upload className="w-3.5 h-3.5" />}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Upload Photo
+                  </Button>
+                  {avatarUrl && (
+                    <Button
+                      id="profile-remove-avatar-btn"
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setAvatarUrl('');
+                        setAvatarBroken(false);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <input
-                  id="profile-avatar-file-input"
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileSelected}
-                />
-                <Button
-                  id="profile-upload-avatar-btn"
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  leftIcon={<Upload className="w-3.5 h-3.5" />}
-                  onClick={() => fileInputRef.current?.click()}
+              {/* Middle Divider on desktop */}
+              <div className="hidden md:block w-px h-9 bg-border/60 shrink-0" />
+
+              {/* Right Side: Image URL Input */}
+              <div className="flex-1 flex flex-col justify-center min-w-0">
+                <label
+                  htmlFor="profile-avatar-url-input"
+                  className="text-xs font-medium text-text-muted mb-1 block"
                 >
-                  Upload Photo
-                </Button>
-                {avatarUrl && (
-                  <Button
-                    id="profile-remove-avatar-btn"
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setAvatarUrl('');
+                  Or specify an Image URL
+                </label>
+                <div className="relative">
+                  <input
+                    id="profile-avatar-url-input"
+                    type="url"
+                    placeholder="https://example.com/avatar.jpg"
+                    value={avatarUrl.startsWith('data:') ? '' : avatarUrl}
+                    onChange={(e) => {
+                      setAvatarUrl(e.target.value);
                       setAvatarBroken(false);
                     }}
-                  >
-                    Remove
-                  </Button>
-                )}
+                    className="w-full rounded-xl bg-glass border border-border text-text-primary placeholder:text-text-muted px-3.5 py-2 text-xs sm:text-sm transition-colors focus:outline-none focus:border-accent"
+                  />
+                </div>
               </div>
             </div>
 
-            <Input
-              id="profile-avatar-url-input"
-              label="Or specify an Image URL"
-              placeholder="https://example.com/avatar.jpg"
-              value={avatarUrl.startsWith('data:') ? '' : avatarUrl}
-              onChange={(e) => {
-                setAvatarUrl(e.target.value);
-                setAvatarBroken(false);
-              }}
-              hint={
-                avatarUrl.startsWith('data:')
-                  ? 'Custom compressed image active (≤256px)'
-                  : undefined
-              }
-            />
+            {/* Bottom Helper / Status Text adjusted with proper spacing */}
+            {avatarUrl.startsWith('data:') && (
+              <div className="pt-2 border-t border-border/40 flex items-center gap-2 text-xs text-text-muted">
+                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                <span>Custom compressed image active (≤256px)</span>
+              </div>
+            )}
           </div>
 
           {/* PC Purpose Selector */}
