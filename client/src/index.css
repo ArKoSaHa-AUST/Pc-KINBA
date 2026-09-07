@@ -541,6 +541,75 @@ h4,
 }
 
 /* ==========================================================================
+   High-Contrast Safety: Prevent text & icons from disappearing on Cyan / Accent fills
+   ========================================================================== */
+
+/* Dark Mode: Accent is bright neon cyan (#00e5ff) -> text & SVGs must be deep dark slate */
+:root[data-theme='dark']
+  :is(
+    .bg-accent,
+    .hover\:bg-accent:hover,
+    .bg-cyan-400,
+    .hover\:bg-cyan-400:hover,
+    .bg-cyan-300,
+    .hover\:bg-cyan-300:hover
+  ),
+:root:not([data-theme='light'])
+  :is(
+    .bg-accent,
+    .hover\:bg-accent:hover,
+    .bg-cyan-400,
+    .hover\:bg-cyan-400:hover,
+    .bg-cyan-300,
+    .hover\:bg-cyan-300:hover
+  ) {
+  color: #050816 !important;
+}
+
+:root[data-theme='dark']
+  :is(
+    .bg-accent,
+    .hover\:bg-accent:hover,
+    .bg-cyan-400,
+    .hover\:bg-cyan-400:hover,
+    .bg-cyan-300,
+    .hover\:bg-cyan-300:hover
+  )
+  :is(span, p, h1, h2, h3, h4, h5, h6, strong, b, div, a, button) {
+  color: #050816 !important;
+}
+
+:root[data-theme='dark']
+  :is(
+    .bg-accent,
+    .hover\:bg-accent:hover,
+    .bg-cyan-400,
+    .hover\:bg-cyan-400:hover,
+    .bg-cyan-300,
+    .hover\:bg-cyan-300:hover
+  )
+  svg {
+  color: #050816 !important;
+  stroke: #050816 !important;
+}
+
+/* Light Mode: Accent is deep cyan/teal (#0e7490) -> solid fills need clean white text */
+:root[data-theme='light'] :is(.bg-accent, .hover\:bg-accent:hover) {
+  color: #ffffff !important;
+}
+
+:root[data-theme='light']
+  :is(.bg-accent, .hover\:bg-accent:hover)
+  :is(span, p, h1, h2, h3, h4, h5, h6, strong, b, div, a, button) {
+  color: #ffffff !important;
+}
+
+:root[data-theme='light'] :is(.bg-accent, .hover\:bg-accent:hover) svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* ==========================================================================
    Tonima AI Spatial Assistant Global Utility Classes (tonima.md)
    ========================================================================== */
 
@@ -622,4 +691,20 @@ h4,
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(34, 211, 238, 0.7);
+}
+
+:root[data-theme='light'] .custom-scrollbar {
+  scrollbar-color: rgba(14, 116, 144, 0.4) rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme='light'] .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme='light'] .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(14, 116, 144, 0.35);
+}
+
+:root[data-theme='light'] .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(14, 116, 144, 0.7);
 }

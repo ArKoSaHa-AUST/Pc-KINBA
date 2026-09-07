@@ -6,7 +6,6 @@ import {
   Sparkles,
   TrendingDown,
   TrendingUp,
-  Heart,
   Share2,
   ChevronDown,
   ChevronUp,
@@ -15,6 +14,7 @@ import {
   Plus,
   ExternalLink,
 } from 'lucide-react';
+import { sanitizeHref } from '../../../utils/image';
 import type { AlternativeProduct } from './dummyData';
 
 interface AlternativeCardProps {
@@ -29,7 +29,6 @@ export default function AlternativeCard({
   onToggleCompare,
 }: AlternativeCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isFavorited, setIsFavorited] = useState(false);
   const [copied, setCopied] = useState(false);
   const [imgSrc, setImgSrc] = useState(product.image);
 
@@ -346,7 +345,7 @@ export default function AlternativeCard({
             {product.product_url && (
               <div className="pt-2">
                 <a
-                  href={product.product_url}
+                  href={sanitizeHref(product.product_url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-2 px-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
@@ -384,18 +383,6 @@ export default function AlternativeCard({
           ) : (
             <ChevronDown className="w-3.5 h-3.5" />
           )}
-        </button>
-
-        <button
-          onClick={() => setIsFavorited(!isFavorited)}
-          className={`p-2.5 rounded-xl border transition-colors cursor-pointer ${
-            isFavorited
-              ? 'bg-rose-500/20 border-rose-500/40 text-rose-400'
-              : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
-          }`}
-          title="Save to Wishlist"
-        >
-          <Heart className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`} />
         </button>
 
         <button

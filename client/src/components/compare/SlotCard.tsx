@@ -229,7 +229,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                 e.stopPropagation();
                 onInspect3DClick(product);
               }}
-              className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-bg-surface/90 hover:bg-accent hover:text-white text-accent border border-accent/40 backdrop-blur-md transition-all shadow-md"
+              className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-bg-surface/90 hover:bg-accent hover:text-slate-950 text-accent border border-accent/40 backdrop-blur-md transition-all shadow-md"
               title="Inspect in 3D WebGL Modal"
             >
               <Eye className="w-3 h-3" />

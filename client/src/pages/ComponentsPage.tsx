@@ -31,19 +31,11 @@ export default function ComponentsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary pt-24 pb-32">
+    <div className="min-h-screen bg-bg-primary text-text-primary pt-4 pb-32">
       <div className="container max-w-[1440px] mx-auto px-4 sm:px-6 md:px-8">
         {/* Page Hero Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-accent/20 border border-accent/40 text-accent uppercase tracking-widest">
-              Live Supabase Marketplace
-            </span>
-            <span className="text-xs text-text-muted hidden sm:inline">
-              Real-time prices & verified specs across StarTech, Ryans, Techland & Skyland
-            </span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white mb-2">
+        <div className="mb-6">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-text-primary mb-2">
             PC Components & Hardware
           </h1>
           <p className="text-sm sm:text-base text-text-muted max-w-3xl leading-relaxed">
@@ -65,7 +57,12 @@ export default function ComponentsPage() {
         {/* 4. Main Marketplace Layout (Sticky Left Sidebar + Right Responsive Grid) */}
         <div className="flex items-start gap-8">
           {/* Desktop Filter Sidebar */}
-          <div className="hidden lg:block w-72 flex-shrink-0 sticky top-24">
+          <div
+            data-lenis-prevent="true"
+            data-lenis-prevent-wheel="true"
+            data-lenis-prevent-touch="true"
+            className="hidden lg:block w-72 flex-shrink-0 sticky top-24 z-10"
+          >
             <FilterSidebar
               availableBrands={availableBrands}
               availableRetailers={availableRetailers}

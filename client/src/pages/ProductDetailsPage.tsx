@@ -26,7 +26,7 @@ export default function ProductDetailsPage() {
   }, [id]);
 
   return (
-    <div className="bg-[#050816] text-white min-h-screen relative overflow-hidden pb-32">
+    <div className="bg-bg-primary text-text-primary min-h-screen relative overflow-hidden pb-32">
       <ProductHero product={product} loading={loading} />
       {/* 200px Empty Space between Live Price Comparison / Price History and Product Reviews */}
       <div style={{ height: '200px' }} className="w-full pointer-events-none aria-hidden" />

@@ -4,7 +4,6 @@ import {
   Star,
   Shield,
   Activity,
-  Heart,
   Share2,
   ChevronRight,
   CheckCircle,
@@ -17,6 +16,7 @@ import {
   Sparkles,
   Globe,
 } from 'lucide-react';
+import { sanitizeHref } from '../../utils/image';
 import PriceAlertButton from './PriceAlertButton';
 
 export interface ShopOffer {
@@ -76,7 +76,6 @@ const defaultThumbnails = [
 
 export default function ProductHero({ product, loading }: ProductHeroProps) {
   const [activeImage, setActiveImage] = useState<string>('');
-  const [wished, setWished] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [liveShops, setLiveShops] = useState<ShopOffer[]>([]);
@@ -100,7 +99,7 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
     if (!product?.id || isScanning) return;
     setIsScanning(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/product/${product.id}/live-prices`);
+      const res = await fetch(`/api/product/${encodeURIComponent(product.id)}/live-prices`);
       if (res.ok) {
         const data = await res.json();
         if (data.shops && data.shops.length > 0) {
@@ -204,15 +203,24 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                   </span>
                 </span>
               </div>
-              {/* Wishlist + Share */}
+              {/* Share Action */}
               <div className="flex gap-2">
                 <button
-                  onClick={() => setWished(!wished)}
-                  className={`p-2.5 rounded-xl border transition-all duration-300 hover:scale-110 active:scale-95 ${wished ? 'bg-red-500/15 border-red-500/30 text-red-400' : 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-400 hover:text-white'}`}
+                  onClick={() => {
+                    if (navigator.share) {
+                      navigator
+                        .share({
+                          title: product?.title || 'Product Details',
+                          url: window.location.href,
+                        })
+                        .catch(() => {});
+                    } else {
+                      navigator.clipboard.writeText(window.location.href);
+                    }
+                  }}
+                  className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white transition-all hover:scale-110 active:scale-95 cursor-pointer"
+                  title="Share Product"
                 >
-                  <Heart className={`w-4 h-4 ${wished ? 'fill-current' : ''}`} />
-                </button>
-                <button className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white transition-all hover:scale-110 active:scale-95">
                   <Share2 className="w-4 h-4" />
                 </button>
               </div>
@@ -308,7 +316,7 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
 
               {/* Bottom Right: View More Details button */}
               <a
-                href={product?.product_url || '#'}
+                href={sanitizeHref(product?.product_url)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 hover:text-cyan-200 text-xs font-bold transition-all backdrop-blur-md shadow-lg hover:scale-105"
@@ -438,7 +446,7 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
 
                     <div>
                       <a
-                        href={shop.product_url || product?.product_url || '#'}
+                        href={sanitizeHref(shop.product_url || product?.product_url)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-cyan-500/20 hover:scale-105"

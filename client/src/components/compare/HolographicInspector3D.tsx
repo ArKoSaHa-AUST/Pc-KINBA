@@ -551,7 +551,7 @@ export const HolographicInspector3D = ({
                 onClick={() => setViewMode('solid')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   viewMode === 'solid'
-                    ? 'bg-accent text-white font-bold shadow-md'
+                    ? 'bg-accent text-slate-950 font-bold shadow-md'
                     : 'text-text-muted hover:text-text-primary hover:bg-fill-subtle'
                 }`}
               >
@@ -561,7 +561,7 @@ export const HolographicInspector3D = ({
                 onClick={() => setViewMode('wireframe')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   viewMode === 'wireframe'
-                    ? 'bg-accent text-white font-bold shadow-md'
+                    ? 'bg-accent text-slate-950 font-bold shadow-md'
                     : 'text-text-muted hover:text-text-primary hover:bg-fill-subtle'
                 }`}
               >
@@ -571,7 +571,7 @@ export const HolographicInspector3D = ({
                 onClick={() => setViewMode('xray')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   viewMode === 'xray'
-                    ? 'bg-accent text-white font-bold shadow-md'
+                    ? 'bg-accent text-slate-950 font-bold shadow-md'
                     : 'text-text-muted hover:text-text-primary hover:bg-fill-subtle'
                 }`}
               >

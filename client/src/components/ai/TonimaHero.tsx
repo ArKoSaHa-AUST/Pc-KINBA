@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Mic, MicOff, ArrowRight, SlidersHorizontal, Cpu } from 'lucide-react';
+import { Mic, MicOff, ArrowRight, SlidersHorizontal, Cpu } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import HolographicCore from './HolographicCore';
 import './TonimaHero.css';
@@ -154,23 +154,6 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         >
-          {/* Badge */}
-          <motion.div
-            className="ai-hero-badge"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Sparkles size={16} className="text-accent animate-spin-slow" />
-            <span className="text-text-primary font-semibold">
-              {t('heroBadge', { defaultValue: 'Tonima AI 2.0' })}
-            </span>
-            <span className="text-text-muted">|</span>
-            <span className="text-accent font-medium">
-              {t('heroBadgeSubtitle', { defaultValue: 'Spatial PC Architect' })}
-            </span>
-          </motion.div>
-
           {/* Main Headline */}
           <h1 className="ai-hero-headline">
             {t('heroTitlePrefix', { defaultValue: 'Meet Tonima —' })} <br />
