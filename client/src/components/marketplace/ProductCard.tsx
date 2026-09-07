@@ -5,7 +5,6 @@ import {
   Eye,
   CheckCircle2,
   Clock,
-  Heart,
   ExternalLink,
   Layers,
   Sparkles,
@@ -21,8 +20,6 @@ interface ProductCardProps {
 export const ProductCard = memo(function ProductCard({ product }: ProductCardProps) {
   const { isInCompare, addToCompare, removeFromCompare } = useCompare();
   const setQuickViewProduct = useComponentStore((s) => s.setQuickViewProduct);
-  const isInWishlist = useComponentStore((s) => s.isInWishlist(product.id));
-  const toggleWishlist = useComponentStore((s) => s.toggleWishlist);
   const addRecentlyViewed = useComponentStore((s) => s.addRecentlyViewed);
 
   const inCompare = isInCompare(product.id);
@@ -42,12 +39,6 @@ export const ProductCard = memo(function ProductCard({ product }: ProductCardPro
     e.stopPropagation();
     setQuickViewProduct(product);
     addRecentlyViewed(product);
-  };
-
-  const handleWishlist = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleWishlist(product.id);
   };
 
   return (
@@ -75,23 +66,13 @@ export const ProductCard = memo(function ProductCard({ product }: ProductCardPro
         )}
       </div>
 
-      {/* Top Right Quick Actions (Wishlist & Quick View) */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={handleWishlist}
-          className={`w-8 h-8 rounded-full backdrop-blur-md border flex items-center justify-center transition-all cursor-pointer ${
-            isInWishlist
-              ? 'bg-danger/20 border-danger text-danger shadow-[0_0_10px_rgba(255,77,94,0.4)]'
-              : 'bg-bg-primary/70 border-border text-text-muted hover:text-text-primary hover:bg-bg-primary'
-          }`}
-          aria-label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
-        >
-          <Heart className={`w-4 h-4 ${isInWishlist ? 'fill-current' : ''}`} />
-        </button>
+      {/* Top Right Quick View */}
+      <div className="absolute top-3 right-3 z-10 opacity-90 group-hover:opacity-100 transition-opacity">
         <button
           onClick={handleQuickView}
-          className="w-8 h-8 rounded-full bg-bg-primary/70 backdrop-blur-md border border-border text-text-muted hover:text-accent hover:border-accent/40 hover:bg-bg-primary flex items-center justify-center transition-all cursor-pointer"
+          className="w-8 h-8 rounded-full bg-bg-primary/70 backdrop-blur-md border border-border text-text-muted hover:text-accent hover:border-accent/40 hover:bg-bg-primary flex items-center justify-center transition-all cursor-pointer shadow-sm"
           aria-label="Quick preview component"
+          title="Quick Preview"
         >
           <Eye className="w-4 h-4" />
         </button>

@@ -5,29 +5,21 @@ import {
   Star,
   ExternalLink,
   Layers,
-  Heart,
   CheckCircle2,
   Info,
   Building2,
-  ShoppingCart,
-  Check,
 } from 'lucide-react';
 import { useComponentStore } from '../../store/useComponentStore';
 import { useCompare } from '../../hooks/useCompare';
-import { useCart } from '../../hooks/useCart';
 
 export default function ProductQuickViewModal() {
   const product = useComponentStore((s) => s.quickViewProduct);
   const setQuickViewProduct = useComponentStore((s) => s.setQuickViewProduct);
-  const isInWishlist = useComponentStore((s) => (product ? s.isInWishlist(product.id) : false));
-  const toggleWishlist = useComponentStore((s) => s.toggleWishlist);
 
   const { isInCompare, addToCompare, removeFromCompare } = useCompare();
-  const { addToCart } = useCart();
 
   const [activeTab, setActiveTab] = useState<'specs' | 'stores' | 'compatibility'>('specs');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [addedToCart, setAddedToCart] = useState(false);
 
   if (!product) return null;
 
@@ -40,13 +32,6 @@ export default function ProductQuickViewModal() {
     } else {
       addToCompare(product);
     }
-  };
-
-  const handleAddToCart = async () => {
-    if (addedToCart || !product.inStock) return;
-    await addToCart(product, 1);
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
   };
 
   return (
@@ -293,65 +278,36 @@ export default function ProductQuickViewModal() {
             )}
           </div>
 
-          {/* Bottom Action Buttons */}
-          <div className="pt-4 border-t border-border space-y-2">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleAddToCart}
-                disabled={!product.inStock}
-                className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs tracking-wide text-center transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  !product.inStock
-                    ? 'bg-bg-primary text-text-muted border border-border cursor-not-allowed opacity-60'
-                    : addedToCart
-                      ? 'bg-success text-black shadow-[0_0_20px_rgba(16,185,129,0.4)]'
-                      : 'bg-accent text-black hover:brightness-110 active:scale-98 shadow-[0_0_20px_rgba(0,229,255,0.4)]'
-                }`}
-              >
-                {addedToCart ? (
-                  <>
-                    <Check className="w-4 h-4 stroke-[3]" />
-                    <span>Added to Cart</span>
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="w-4 h-4" />
-                    <span>{product.inStock ? 'Add to Cart' : 'Out of Stock'}</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                onClick={handleCompare}
-                className={`py-3 px-4 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  inCompare
-                    ? 'bg-purple/20 border-purple text-purple'
-                    : 'bg-bg-primary border-border text-text-muted hover:text-white hover:border-accent/40'
-                }`}
-              >
-                <Layers className="w-4 h-4" />
-                <span>{inCompare ? 'In Compare' : 'Add to Compare'}</span>
-              </button>
-
-              <button
-                onClick={() => toggleWishlist(product.id)}
-                className={`p-3 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
-                  isInWishlist
-                    ? 'bg-danger/20 border-danger text-danger'
-                    : 'bg-bg-primary border-border text-text-muted hover:text-white'
-                }`}
-                aria-label="Wishlist"
-              >
-                <Heart className={`w-4 h-4 ${isInWishlist ? 'fill-current' : ''}`} />
-              </button>
-            </div>
+          {/* Bottom Action Buttons: Compare & View Full Details */}
+          <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center gap-2.5">
+            <button
+              onClick={handleCompare}
+              className={`w-full sm:w-auto px-5 py-3 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                inCompare
+                  ? 'bg-purple/20 border-purple text-purple shadow-[0_0_15px_rgba(124,58,237,0.3)]'
+                  : 'bg-bg-primary/80 border-border text-text-muted hover:text-accent hover:border-accent/40 hover:bg-bg-primary'
+              }`}
+            >
+              {inCompare ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-purple" />
+                  <span>In Compare</span>
+                </>
+              ) : (
+                <>
+                  <Layers className="w-4 h-4 text-accent" />
+                  <span>Add to Compare</span>
+                </>
+              )}
+            </button>
 
             <Link
               to={`/product/${product.id}`}
               onClick={() => setQuickViewProduct(null)}
-              className="w-full py-2.5 rounded-xl bg-bg-primary border border-border hover:border-accent/40 text-xs font-medium text-text-muted hover:text-white transition-colors flex items-center justify-center gap-1.5"
+              className="flex-1 w-full py-3 px-4 rounded-xl bg-accent/15 border border-accent/40 hover:bg-accent/25 hover:border-accent/60 text-accent text-xs font-bold transition-all flex items-center justify-center gap-2 text-center cursor-pointer shadow-sm"
             >
-              <span>View Full Specs, Price History & Customer Reviews</span>
-              <ExternalLink className="w-3.5 h-3.5" />
+              <span>View Full Specs & Price History</span>
+              <ExternalLink className="w-4 h-4 text-accent" />
             </Link>
           </div>
         </div>

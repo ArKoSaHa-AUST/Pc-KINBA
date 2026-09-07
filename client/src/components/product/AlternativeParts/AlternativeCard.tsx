@@ -6,7 +6,6 @@ import {
   Sparkles,
   TrendingDown,
   TrendingUp,
-  Heart,
   Share2,
   ChevronDown,
   ChevronUp,
@@ -29,7 +28,6 @@ export default function AlternativeCard({
   onToggleCompare,
 }: AlternativeCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isFavorited, setIsFavorited] = useState(false);
   const [copied, setCopied] = useState(false);
   const [imgSrc, setImgSrc] = useState(product.image);
 
@@ -384,18 +382,6 @@ export default function AlternativeCard({
           ) : (
             <ChevronDown className="w-3.5 h-3.5" />
           )}
-        </button>
-
-        <button
-          onClick={() => setIsFavorited(!isFavorited)}
-          className={`p-2.5 rounded-xl border transition-colors cursor-pointer ${
-            isFavorited
-              ? 'bg-rose-500/20 border-rose-500/40 text-rose-400'
-              : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
-          }`}
-          title="Save to Wishlist"
-        >
-          <Heart className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`} />
         </button>
 
         <button

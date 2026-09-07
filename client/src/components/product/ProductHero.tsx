@@ -4,7 +4,6 @@ import {
   Star,
   Shield,
   Activity,
-  Heart,
   Share2,
   ChevronRight,
   CheckCircle,
@@ -76,7 +75,6 @@ const defaultThumbnails = [
 
 export default function ProductHero({ product, loading }: ProductHeroProps) {
   const [activeImage, setActiveImage] = useState<string>('');
-  const [wished, setWished] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [liveShops, setLiveShops] = useState<ShopOffer[]>([]);
@@ -204,15 +202,22 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                   </span>
                 </span>
               </div>
-              {/* Wishlist + Share */}
+              {/* Share Action */}
               <div className="flex gap-2">
                 <button
-                  onClick={() => setWished(!wished)}
-                  className={`p-2.5 rounded-xl border transition-all duration-300 hover:scale-110 active:scale-95 ${wished ? 'bg-red-500/15 border-red-500/30 text-red-400' : 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-400 hover:text-white'}`}
+                  onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({
+                        title: product?.title || 'Product Details',
+                        url: window.location.href,
+                      }).catch(() => {});
+                    } else {
+                      navigator.clipboard.writeText(window.location.href);
+                    }
+                  }}
+                  className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white transition-all hover:scale-110 active:scale-95 cursor-pointer"
+                  title="Share Product"
                 >
-                  <Heart className={`w-4 h-4 ${wished ? 'fill-current' : ''}`} />
-                </button>
-                <button className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white transition-all hover:scale-110 active:scale-95">
                   <Share2 className="w-4 h-4" />
                 </button>
               </div>
