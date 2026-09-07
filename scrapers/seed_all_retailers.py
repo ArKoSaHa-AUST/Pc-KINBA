@@ -12,7 +12,7 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from scrapers.fast_scrapers import scrape_all_fast
-from scrapers.db import upsert_listings, init_sqlite_db
+from scrapers.db import upsert_listings
 
 CORE_KEYWORDS = [
     # RTX 50 & 40 Series GPUs
@@ -47,7 +47,6 @@ CORE_KEYWORDS = [
 ]
 
 def seed_catalog(queries=None):
-    init_sqlite_db()
     target_queries = queries or CORE_KEYWORDS
     print(f"🚀 [Catalog Seeder] Beginning crawl for {len(target_queries)} core hardware targets...")
 

@@ -8,13 +8,12 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from scrapers.fast_scrapers import scrape_all_fast
-from scrapers.db import upsert_listings, init_sqlite_db as init_db
+from scrapers.db import upsert_listings
 
 DEFAULT_QUERIES = ["rtx 5060", "rtx 4060", "ryzen 7"]
 
 def run_scrapers(queries: list):
     """Run concurrent scrapers for all Bangladeshi tech retailers."""
-    init_db()
     print("==================================================")
     print(f"🚀 Starting PC Component Price Scraper Run for: {queries}")
     print("==================================================")
@@ -32,9 +31,9 @@ def run_scrapers(queries: list):
     print(f"\nTotal scraped listings collected across stores: {len(all_listings)}")
     
     if all_listings:
-        print("\nUpserting scraped listings into SQLite & Supabase...")
+        print("\nUpserting scraped listings into Supabase...")
         upsert_listings(all_listings)
-        print("✅ Database update completed!")
+        print("✅ Supabase database update completed!")
     else:
         print("⚠️ No listings scraped.")
 

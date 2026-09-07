@@ -32,7 +32,8 @@ except ImportError:
 
 from scrapers.ai_extractor import ai_extract_listing, clean_extracted_shop_name
 from scrapers.fast_scrapers import get_session, scrape_all_fast
-from scrapers.db import get_sqlite_conn, init_sqlite_db, get_or_create_product_sqlite
+from scrapers.db import supabase_client
+import datetime
 
 # Vibrant cyber/neon palette for dynamically discovered shops
 PALETTE = [
@@ -363,27 +364,27 @@ def scan_live_store_prices(product_title: str):
     verified_count = sum(1 for s in sorted_shops if s.get('is_verified'))
     discovered_count = len(sorted_shops) - verified_count
 
-    # Persist newly found listings into SQLite database
-    try:
-        init_sqlite_db()
-        conn = get_sqlite_conn()
-        c = conn.cursor()
-        for shop in sorted_shops:
-            if shop['price'] > 0 and shop['product_url'] and 'http' in shop['product_url']:
-                prod_id = get_or_create_product_sqlite(conn, product_title, shop['store'])
-                url_hash = str(abs(hash(shop['product_url'])))
-                c.execute("""
-                    INSERT INTO listings (id, product_id, retailer, title, brand, price, price_str, product_url, last_scraped_at, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, 'Hardware', ?, ?, ?, DATETIME('now'), DATETIME('now'), DATETIME('now'))
-                    ON CONFLICT(product_url) DO UPDATE SET
-                        price = excluded.price,
-                        price_str = excluded.price_str,
-                        updated_at = DATETIME('now')
-                """, (url_hash, prod_id, shop['store'], product_title, shop['price'], shop['price_str'], shop['product_url']))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"[Google Scanner] DB save warning: {e}")
+    # Persist newly found listings into Supabase database
+    if supabase_client:
+        try:
+            now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            payloads = []
+            for shop in sorted_shops:
+                if shop['price'] > 0 and shop['product_url'] and 'http' in shop['product_url']:
+                    payloads.append({
+                        "retailer": shop['store'],
+                        "title": product_title,
+                        "brand": "Hardware",
+                        "price": shop['price'],
+                        "price_str": shop['price_str'],
+                        "product_url": shop['product_url'],
+                        "last_scraped_at": now_iso,
+                        "updated_at": now_iso
+                    })
+            if payloads:
+                supabase_client.table("listings").upsert(payloads, on_conflict="product_url").execute()
+        except Exception as e:
+            print(f"[Google Scanner] Supabase save warning: {e}")
 
     return {
         'query': product_title,
