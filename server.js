@@ -241,7 +241,8 @@ async function searchSupabaseListings(query, requestedCategory = null) {
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "15mb" }));
+app.use(express.urlencoded({ limit: "15mb", extended: true }));
 
 // Rate Limiters
 const apiLimiter = rateLimit({
@@ -1443,6 +1444,148 @@ app.get("/api/compare", apiLimiter, async (req, res) => {
 
     if (error) throw error;
     return res.json({ success: true, compareList: data || [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// 6. User Avatar Cloud Storage Upload (Supabase Storage with ImageKit Fallback/Direct Cloud Storage)
+app.post("/api/upload/avatar", authActionLimiter, async (req, res) => {
+  const { file, fileName, userId } = req.body || {};
+
+  if (!file || typeof file !== "string") {
+    return res.status(400).json({ error: "Image file data is required (base64 or data URL)" });
+  }
+
+  console.log(`[Avatar Upload] Processing photo upload for user ${sanitizeLog(userId || 'anonymous')}...`);
+
+  let uploadedUrl = null;
+  let provider = null;
+
+  // Step 1: Attempt upload to Supabase Storage if configured
+  try {
+    const rawBase64 = file.replace(/^data:image\/\w+;base64,/, "");
+    const fileBuffer = Buffer.from(rawBase64, "base64");
+    const mimeMatch = file.match(/^data:image\/(\w+);base64,/);
+    const ext = mimeMatch ? mimeMatch[1] : "jpg";
+    const safePath = `avatar_${sanitizeCliArg(userId || 'user')}_${Date.now()}.${ext}`;
+
+    const { data: sData, error: sErr } = await supabase.storage
+      .from("avatars")
+      .upload(safePath, fileBuffer, {
+        contentType: `image/${ext}`,
+        upsert: true
+      });
+
+    if (!sErr && sData) {
+      const { data: pubData } = supabase.storage.from("avatars").getPublicUrl(safePath);
+      if (pubData && pubData.publicUrl) {
+        uploadedUrl = pubData.publicUrl;
+        provider = "supabase";
+        console.log(`[Avatar Upload] Successfully uploaded to Supabase Storage: ${uploadedUrl}`);
+      }
+    } else if (sErr) {
+      console.warn(`[Avatar Upload] Supabase storage note: ${sErr.message}. Falling back to ImageKit...`);
+    }
+  } catch (sError) {
+    console.warn(`[Avatar Upload] Supabase storage exception: ${sanitizeLog(sError.message)}. Using ImageKit...`);
+  }
+
+  // Step 2: If Supabase Storage is not available or failed, upload to ImageKit CDN
+  if (!uploadedUrl) {
+    try {
+      const imagekitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY || "private_glm5kvVJU62iywKFJ6UCpf2VObc=";
+      const authHeader = `Basic ${Buffer.from(imagekitPrivateKey + ":").toString("base64")}`;
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("fileName", fileName || `avatar_${sanitizeCliArg(userId || 'user')}_${Date.now()}.jpg`);
+      formData.append("folder", "/avatars/");
+      formData.append("useUniqueFileName", "true");
+
+      const ikRes = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
+        method: "POST",
+        headers: {
+          Authorization: authHeader
+        },
+        body: formData
+      });
+
+      if (ikRes.ok) {
+        const ikData = await ikRes.json();
+        uploadedUrl = ikData.url;
+        provider = "imagekit";
+        console.log(`[Avatar Upload] Successfully uploaded to ImageKit CDN: ${uploadedUrl}`);
+      } else {
+        const errText = await ikRes.text();
+        console.error(`[Avatar Upload] ImageKit upload error:`, sanitizeLog(errText));
+        throw new Error(`ImageKit upload failed: ${errText}`);
+      }
+    } catch (ikErr) {
+      console.error(`[Avatar Upload Error]:`, sanitizeLog(ikErr.message));
+      return res.status(500).json({ error: "Failed to upload image to cloud storage", details: ikErr.message });
+    }
+  }
+
+  // Step 3: Automatically sync new avatar URL to Supabase profiles DB
+  if (userId && uploadedUrl && !userId.startsWith("user_")) {
+    try {
+      const { error: profileErr } = await supabase
+        .from("profiles")
+        .update({
+          avatar_url: uploadedUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", userId);
+
+      if (profileErr) {
+        console.warn(`[Avatar Upload] Profile DB update note:`, sanitizeLog(profileErr.message));
+      }
+    } catch (dbErr) {
+      console.warn(`[Avatar Upload] Profile DB update exception:`, sanitizeLog(dbErr.message));
+    }
+  }
+
+  return res.json({
+    success: true,
+    url: uploadedUrl,
+    provider,
+    message: `Photo stored securely in ${provider === 'supabase' ? 'Supabase Storage' : 'ImageKit Cloud CDN'}`
+  });
+});
+
+// 7. General Media Upload Endpoint (ImageKit)
+app.post("/api/upload/imagekit", authActionLimiter, async (req, res) => {
+  const { file, fileName, folder } = req.body || {};
+
+  if (!file || typeof file !== "string") {
+    return res.status(400).json({ error: "Image file data is required" });
+  }
+
+  try {
+    const imagekitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY || "private_glm5kvVJU62iywKFJ6UCpf2VObc=";
+    const authHeader = `Basic ${Buffer.from(imagekitPrivateKey + ":").toString("base64")}`;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("fileName", fileName || `media_${Date.now()}.jpg`);
+    formData.append("folder", folder || "/media/");
+    formData.append("useUniqueFileName", "true");
+
+    const ikRes = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
+      method: "POST",
+      headers: {
+        Authorization: authHeader
+      },
+      body: formData
+    });
+
+    if (ikRes.ok) {
+      const ikData = await ikRes.json();
+      return res.json({ success: true, ...ikData });
+    }
+    const errText = await ikRes.text();
+    return res.status(500).json({ error: "ImageKit upload failed", details: errText });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
