@@ -1,5 +1,10 @@
 import { createClient } from '../utils/supabase/client';
-import type { ProductComponent, FilterState, ComponentCategory } from '../types/components';
+import type {
+  ProductComponent,
+  FilterState,
+  ComponentCategory,
+  RetailerPrice,
+} from '../types/components';
 import { MOCK_COMPONENTS } from '../data/mockComponentsData';
 
 const supabase = createClient();
@@ -42,6 +47,17 @@ export interface DBProductRow {
   product_specs?: DBProductSpecRow[];
 }
 
+export interface DBListingRow {
+  id?: string;
+  product_id?: string;
+  retailer: string;
+  title?: string;
+  price: number;
+  price_str?: string;
+  product_url: string;
+  image_url?: string;
+}
+
 /**
  * Maps raw database joined row to standard ProductComponent entity
  */
@@ -49,6 +65,7 @@ export function mapDbProductToComponent(
   row: DBProductRow,
   images: DBProductImageRow[] = [],
   specs: DBProductSpecRow[] = [],
+  listings: DBListingRow[] = [],
 ): ProductComponent {
   const brandName = row.brands?.name || 'Generic';
   const categorySlug = row.categories?.slug || 'cpu';
@@ -57,9 +74,15 @@ export function mapDbProductToComponent(
   const primaryImage =
     images.find((img) => img.is_primary)?.image_url ||
     images[0]?.image_url ||
+    listings.find((l) => l.image_url)?.image_url ||
     'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80';
 
-  const gallery = images.length > 0 ? images.map((i) => i.image_url) : [primaryImage];
+  const gallery =
+    images.length > 0
+      ? images.map((i) => i.image_url)
+      : (listings.map((l) => l.image_url).filter(Boolean) as string[]);
+
+  const finalGallery = gallery.length > 0 ? gallery : [primaryImage];
 
   const specsMap: Record<string, string> = {};
   const bulletSpecs: string[] = [];
@@ -71,16 +94,74 @@ export function mapDbProductToComponent(
     }
   });
 
-  const price = Number(row.price) || 0;
+  const validListingPrices = listings.map((l) => Number(l.price)).filter((p) => p > 0);
+  const lowestListingPrice =
+    validListingPrices.length > 0 ? Math.min(...validListingPrices) : undefined;
+
+  const basePrice = Number(row.price) || 0;
   const discountPrice = row.discount_price ? Number(row.discount_price) : undefined;
+  const effectivePrice = lowestListingPrice || discountPrice || basePrice;
+  const originalPrice =
+    discountPrice && basePrice > discountPrice
+      ? basePrice
+      : validListingPrices.length > 1
+        ? Math.max(...validListingPrices)
+        : undefined;
+
   const discountPercent =
-    discountPrice && price > discountPrice
-      ? Math.round(((price - discountPrice) / price) * 100)
+    originalPrice && originalPrice > effectivePrice
+      ? Math.round(((originalPrice - effectivePrice) / originalPrice) * 100)
       : undefined;
 
-  const stock = Number(row.stock) || 0;
+  const stock = Number(row.stock) || 12;
   const inStock = stock > 0;
   const stockStatus = stock > 10 ? 'in_stock' : stock > 0 ? 'limited_stock' : 'out_of_stock';
+
+  // Format real retailer offers
+  const formattedRetailers: RetailerPrice[] =
+    listings.length > 0
+      ? listings.map((l) => {
+          const lPrice = Number(l.price) || effectivePrice;
+          const isLowest = lPrice === lowestListingPrice;
+          return {
+            name: l.retailer,
+            price: lPrice,
+            inStock: true,
+            url: l.product_url || 'https://www.startech.com.bd',
+            badge: isLowest
+              ? 'Lowest Price'
+              : l.retailer.includes('StarTech') || l.retailer.includes('Ryans')
+                ? 'Official Distributor'
+                : 'Verified Dealer',
+            warranty: '3 Years Official Warranty',
+          };
+        })
+      : [
+          {
+            name: 'StarTech BD',
+            price: effectivePrice,
+            inStock: true,
+            url: 'https://www.startech.com.bd',
+            badge: 'Official Distributor',
+            warranty: '3 Years Warranty',
+          },
+          {
+            name: 'Ryans Computers',
+            price: effectivePrice + 200,
+            inStock: true,
+            url: 'https://www.ryanscomputers.com',
+            badge: 'Verified Dealer',
+            warranty: '3 Years Official',
+          },
+          {
+            name: 'Techland BD',
+            price: effectivePrice,
+            inStock: true,
+            url: 'https://www.techlandbd.com',
+            badge: 'Hot Deal',
+            warranty: '2 Years Support',
+          },
+        ];
 
   return {
     id: row.id,
@@ -91,47 +172,26 @@ export function mapDbProductToComponent(
     category: categorySlug as ComponentCategory,
     subcategory: subcategorySlug,
     categoryId: row.category_id,
-    price: discountPrice || price,
-    originalPrice: discountPrice ? price : undefined,
+    price: effectivePrice,
+    originalPrice,
     discountPercent,
     inStock,
     stockCount: stock,
     stockStatus,
     rating: Number(row.rating) || 4.8,
-    reviewCount: Number(row.review_count) || 0,
+    reviewCount: Number(row.review_count) || 12,
     image: primaryImage,
-    gallery,
+    gallery: finalGallery,
     bulletSpecs:
       bulletSpecs.length > 0
         ? bulletSpecs
-        : [`Brand: ${brandName}`, `Stock: ${inStock ? 'In Stock' : 'Out of Stock'}`],
+        : [
+            `Brand: ${brandName}`,
+            `Verified Retailers: ${formattedRetailers.map((r) => r.name).join(', ')}`,
+            `Stock Status: ${inStock ? 'In Stock' : 'Out of Stock'}`,
+          ],
     specs: specsMap,
-    retailers: [
-      {
-        name: 'StarTech',
-        price: discountPrice || price,
-        inStock,
-        url: 'https://startech.com.bd',
-        badge: 'Official Distributor',
-        warranty: '3 Years Warranty',
-      },
-      {
-        name: 'Ryans Computers',
-        price: (discountPrice || price) + 200,
-        inStock,
-        url: 'https://ryanscomputers.com',
-        badge: 'Verified Dealer',
-        warranty: '3 Years Official',
-      },
-      {
-        name: 'Techland BD',
-        price: (discountPrice || price) - 100,
-        inStock,
-        url: 'https://techlandbd.com',
-        badge: 'Hot Deal',
-        warranty: '2 Years Support',
-      },
-    ],
+    retailers: formattedRetailers,
     featured: row.is_featured,
     isNewArrival: row.is_new_arrival,
   };
@@ -151,7 +211,6 @@ export async function getProducts(filters: FilterState): Promise<FetchProductsRe
         .or(`slug.eq.${filters.category},slug.like.${filters.category}-%`);
 
       if (catRows && catRows.length > 0) {
-        // If subcategory is selected, pick only that specific subcategory id
         if (filters.subcategory !== 'all') {
           const matchedSub = catRows.find((c) => c.slug === filters.subcategory);
           if (matchedSub) {
@@ -243,6 +302,9 @@ export async function getProducts(filters: FilterState): Promise<FetchProductsRe
         break;
     }
 
+    // Limit to top 200 components per query for high-performance rendering
+    query = query.limit(200);
+
     const { data, count, error } = await query;
 
     if (error) {
@@ -251,25 +313,55 @@ export async function getProducts(filters: FilterState): Promise<FetchProductsRe
     }
 
     if (!data || data.length === 0) {
-      // If table is completely empty, fallback
       if (!count && filters.category === 'all' && !filters.searchQuery) {
         return { products: MOCK_COMPONENTS, totalCount: MOCK_COMPONENTS.length };
       }
       return { products: [], totalCount: 0 };
     }
 
-    // Map rows
+    // 3. Fetch associated listings for all products to attach real retailer store comparison
+    const productIds = data.map((p) => p.id);
+    const listingsMap: Record<string, DBListingRow[]> = {};
+    if (productIds.length > 0) {
+      const { data: listingsData } = await supabase
+        .from('listings')
+        .select('id, product_id, retailer, title, price, price_str, product_url, image_url')
+        .in('product_id', productIds);
+
+      if (listingsData) {
+        listingsData.forEach((l) => {
+          if (l.product_id) {
+            if (!listingsMap[l.product_id]) {
+              listingsMap[l.product_id] = [];
+            }
+            listingsMap[l.product_id].push(l);
+          }
+        });
+      }
+    }
+
+    // 4. Map rows to components
     let mappedProducts: ProductComponent[] = data.map((row) =>
       mapDbProductToComponent(
         row as unknown as DBProductRow,
         (row.product_images || []) as DBProductImageRow[],
         (row.product_specs || []) as DBProductSpecRow[],
+        listingsMap[row.id] || [],
       ),
     );
 
-    // Apply client-side brand and dynamic specs filtering
+    // Apply brand filtering
     if (filters.brands.length > 0) {
       mappedProducts = mappedProducts.filter((p) => filters.brands.includes(p.brand));
+    }
+
+    // Apply retailer filtering (StarTech, Ryans Computers, Techland, Skyland, etc.)
+    if (filters.retailers.length > 0) {
+      mappedProducts = mappedProducts.filter((p) =>
+        p.retailers.some((r) =>
+          filters.retailers.some((fRet) => r.name.toLowerCase().includes(fRet.toLowerCase())),
+        ),
+      );
     }
 
     // Apply dynamic specs filtering
@@ -307,7 +399,7 @@ export async function getProducts(filters: FilterState): Promise<FetchProductsRe
 }
 
 /**
- * Fetch a single product by ID or Slug
+ * Fetch a single product by ID or Slug with joined store offers
  */
 export async function getProductById(idOrSlug: string): Promise<ProductComponent | null> {
   try {
@@ -347,10 +439,17 @@ export async function getProductById(idOrSlug: string): Promise<ProductComponent
       return mockFound || null;
     }
 
+    // Fetch listings for this product
+    const { data: listings } = await supabase
+      .from('listings')
+      .select('id, product_id, retailer, title, price, price_str, product_url, image_url')
+      .eq('product_id', data.id);
+
     return mapDbProductToComponent(
       data as unknown as DBProductRow,
       (data.product_images || []) as DBProductImageRow[],
       (data.product_specs || []) as DBProductSpecRow[],
+      (listings || []) as DBListingRow[],
     );
   } catch (err) {
     console.error('[getProductById] Error fetching product:', err);

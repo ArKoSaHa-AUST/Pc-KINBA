@@ -186,11 +186,13 @@ export const ProductCard = memo(function ProductCard({ product }: ProductCardPro
           ))}
         </ul>
 
-        {/* Price Section */}
+        {/* Price Section & Multi-Store Availability */}
         <div className="pt-3 border-t border-border/60 mb-4">
-          <div className="flex items-baseline justify-between">
+          <div className="flex items-baseline justify-between gap-2">
             <div>
-              <span className="text-[11px] text-text-muted block">Lowest Price in BD</span>
+              <span className="text-[10px] text-text-muted uppercase tracking-wider block font-semibold">
+                Lowest BD Price
+              </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-lg sm:text-xl font-black text-text-primary tracking-tight">
                   ৳{product.price.toLocaleString()}
@@ -203,9 +205,17 @@ export const ProductCard = memo(function ProductCard({ product }: ProductCardPro
               </div>
             </div>
             {lowestRetailer && (
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-bg-primary border border-border text-text-muted">
-                {lowestRetailer.name}
-              </span>
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-accent/10 border border-accent/30 text-accent truncate max-w-[120px]">
+                  {lowestRetailer.name}
+                </span>
+                {product.retailers && product.retailers.length > 1 && (
+                  <span className="text-[9px] text-text-muted mt-0.5">
+                    +{product.retailers.length - 1} other store
+                    {product.retailers.length > 2 ? 's' : ''}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>

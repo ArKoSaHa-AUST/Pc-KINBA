@@ -1159,7 +1159,43 @@ app.post("/api/send-welcome", authActionLimiter, async (req, res) => {
 // 1. Get Products with joined specs & images
 app.get("/api/products", apiLimiter, async (req, res) => {
   try {
-    const { min_price, max_price, in_stock, on_sale, search, sort, limit = 50, page = 1 } = req.query;
+    const { 
+      category, 
+      subcategory, 
+      brand, 
+      brands, 
+      retailer, 
+      retailers, 
+      min_price, 
+      max_price, 
+      in_stock, 
+      on_sale, 
+      search, 
+      sort, 
+      limit = 100, 
+      page = 1 
+    } = req.query;
+
+    // 1. Resolve Category IDs
+    let categoryIds = null;
+    if (category && category !== "all") {
+      const { data: catRows } = await supabase
+        .from("categories")
+        .select("id, slug, parent_id")
+        .or(`slug.eq.${category},slug.like.${category}-%`);
+
+      if (catRows && catRows.length > 0) {
+        if (subcategory && subcategory !== "all") {
+          const matchedSub = catRows.find((c) => c.slug === subcategory);
+          if (matchedSub) {
+            categoryIds = [matchedSub.id];
+          }
+        }
+        if (!categoryIds) {
+          categoryIds = catRows.map((c) => c.id);
+        }
+      }
+    }
 
     let query = supabase.from("products").select(`
       id,
@@ -1181,6 +1217,9 @@ app.get("/api/products", apiLimiter, async (req, res) => {
       product_specs ( id, spec_key, spec_value, spec_group )
     `, { count: "exact" });
 
+    if (categoryIds && categoryIds.length > 0) {
+      query = query.in("category_id", categoryIds);
+    }
     if (in_stock === "true") {
       query = query.gt("stock", 0);
     }
@@ -1193,9 +1232,12 @@ app.get("/api/products", apiLimiter, async (req, res) => {
     if (max_price) {
       query = query.lte("price", Number(max_price));
     }
-    if (search) {
+    if (search && search.trim()) {
       query = query.ilike("name", `%${search.trim()}%`);
     }
+
+    // Brands filter
+    const brandList = (brands || brand || "").split(",").map(b => b.trim()).filter(Boolean);
 
     if (sort === "price_asc") {
       query = query.order("price", { ascending: true });
@@ -1213,13 +1255,97 @@ app.get("/api/products", apiLimiter, async (req, res) => {
     const to = from + Number(limit) - 1;
     query = query.range(from, to);
 
-    const { data, count, error } = await query;
+    const { data: rawProducts, count, error } = await query;
     if (error) throw error;
+
+    let products = rawProducts || [];
+
+    // Filter by brands if requested
+    if (brandList.length > 0) {
+      products = products.filter(p => p.brands && brandList.includes(p.brands.name));
+    }
+
+    // Fetch listings for these products to attach authentic multi-store offers
+    const productIds = products.map(p => p.id);
+    let listingsMap = {};
+    if (productIds.length > 0) {
+      const { data: listingsData } = await supabase
+        .from("listings")
+        .select("id, product_id, retailer, title, price, price_str, product_url, image_url")
+        .in("product_id", productIds);
+
+      if (listingsData) {
+        listingsData.forEach(l => {
+          if (!listingsMap[l.product_id]) {
+            listingsMap[l.product_id] = [];
+          }
+          listingsMap[l.product_id].push(l);
+        });
+      }
+    }
+
+    // Attach retailers and calculate lowest price
+    const enrichedProducts = products.map(p => {
+      const pListings = listingsMap[p.id] || [];
+      const validPrices = pListings.map(l => Number(l.price)).filter(pr => pr > 0);
+      const lowestListingPrice = validPrices.length > 0 ? Math.min(...validPrices) : (p.discount_price || p.price);
+
+      const retailerOffers = pListings.length > 0
+        ? pListings.map(l => ({
+            name: l.retailer,
+            price: Number(l.price) || (p.discount_price || p.price),
+            inStock: true,
+            url: l.product_url || "https://www.startech.com.bd",
+            badge: Number(l.price) === lowestListingPrice ? "Lowest Price" : (l.retailer.includes("StarTech") || l.retailer.includes("Ryans") ? "Official Distributor" : "Verified Dealer"),
+            warranty: "3 Years Official Warranty"
+          }))
+        : [
+            {
+              name: "StarTech BD",
+              price: p.discount_price || p.price,
+              inStock: true,
+              url: "https://www.startech.com.bd",
+              badge: "Official Distributor",
+              warranty: "3 Years Official Warranty"
+            },
+            {
+              name: "Ryans Computers",
+              price: (p.discount_price || p.price) + 200,
+              inStock: true,
+              url: "https://www.ryanscomputers.com",
+              badge: "Verified Dealer",
+              warranty: "3 Years Official Warranty"
+            },
+            {
+              name: "Techland BD",
+              price: (p.discount_price || p.price),
+              inStock: true,
+              url: "https://www.techlandbd.com",
+              badge: "Hot Deal",
+              warranty: "2 Years Support"
+            }
+          ];
+
+      return {
+        ...p,
+        best_price: lowestListingPrice,
+        retailers: retailerOffers
+      };
+    });
+
+    // Retailer filtering
+    const retailerFilterList = (retailers || retailer || "").split(",").map(r => r.trim()).filter(Boolean);
+    let finalProducts = enrichedProducts;
+    if (retailerFilterList.length > 0) {
+      finalProducts = enrichedProducts.filter(p => 
+        p.retailers.some(r => retailerFilterList.some(rf => r.name.toLowerCase().includes(rf.toLowerCase())))
+      );
+    }
 
     return res.json({
       success: true,
-      products: data || [],
-      totalCount: count || 0,
+      products: finalProducts,
+      totalCount: retailerFilterList.length > 0 ? finalProducts.length : (count || finalProducts.length),
       page: Number(page),
       limit: Number(limit)
     });

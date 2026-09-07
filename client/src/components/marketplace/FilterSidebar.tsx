@@ -345,7 +345,7 @@ export default function FilterSidebar({ availableBrands, availableRetailers }: F
           >
             <span className="flex items-center gap-1.5">
               <Building2 className="w-3.5 h-3.5 text-accent" />
-              BD Retailers
+              BD Retailers ({availableRetailers.length})
             </span>
             {openSections.retailer ? (
               <ChevronUp className="w-3.5 h-3.5 text-text-muted" />
@@ -356,38 +356,40 @@ export default function FilterSidebar({ availableBrands, availableRetailers }: F
 
           {openSections.retailer && (
             <div className="space-y-1.5 pt-1">
-              {availableRetailers.map((ret) => {
-                const isChecked = filters.retailers.includes(ret);
-                return (
-                  <label
-                    key={ret}
-                    className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-bg-primary/80 cursor-pointer transition-colors text-xs"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                          isChecked
-                            ? 'bg-accent border-accent text-black font-bold'
-                            : 'border-border bg-bg-primary'
-                        }`}
-                      >
-                        {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+              <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+                {availableRetailers.map((ret) => {
+                  const isChecked = filters.retailers.includes(ret);
+                  return (
+                    <label
+                      key={ret}
+                      className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-bg-primary/80 cursor-pointer transition-colors text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                            isChecked
+                              ? 'bg-accent border-accent text-black font-bold'
+                              : 'border-border bg-bg-primary'
+                          }`}
+                        >
+                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                        <span
+                          className={isChecked ? 'font-semibold text-accent' : 'text-text-primary'}
+                        >
+                          {ret}
+                        </span>
                       </div>
-                      <span
-                        className={isChecked ? 'font-semibold text-accent' : 'text-text-primary'}
-                      >
-                        {ret}
-                      </span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => toggleRetailer(ret)}
-                      className="sr-only"
-                    />
-                  </label>
-                );
-              })}
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleRetailer(ret)}
+                        className="sr-only"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
