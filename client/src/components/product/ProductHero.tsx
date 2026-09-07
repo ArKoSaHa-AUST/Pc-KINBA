@@ -17,6 +17,7 @@ import {
   Sparkles,
   Globe,
 } from 'lucide-react';
+import PriceAlertButton from './PriceAlertButton';
 
 export interface ShopOffer {
   name: string;
@@ -347,14 +348,8 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                 </span>
               </p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-gray-400 px-3 py-1.5 bg-white/5 rounded-full border border-white/10 flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-cyan-400" />
-                Comparing {validPricedShops.length > 0
-                  ? validPricedShops.length
-                  : shops.length}{' '}
-                active store(s)
-              </span>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <PriceAlertButton product={product} bestPriceStr={bestPriceStr} />
               {Boolean(scanMeta && scanMeta.discovered > 0) && (
                 <span className="text-xs text-purple-400 px-2.5 py-1 bg-purple-500/10 rounded-full border border-purple-500/20 flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />

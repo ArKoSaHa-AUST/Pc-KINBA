@@ -6,7 +6,7 @@ import path from "path";
 import { execFileSync } from "child_process";
 import rateLimit from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
-import { sendWelcomeEmail } from "./mailer.js";
+import { sendWelcomeEmail, sendPriceAlertConfirmationEmail, sendPriceDropAlertEmail } from "./mailer.js";
 import { extractAttributes, generateFingerprint, isSameProductVariant, group5StoreOffers } from "./lib/normalizer.js";
 import { getGroqSuggestions } from "./lib/groq.js";
 import { buildProductAlternatives } from "./lib/alternatives.js";
@@ -92,6 +92,41 @@ function initReviewsDatabase() {
   }
 }
 initReviewsDatabase();
+
+function initPriceAlertsDatabase() {
+  try {
+    const db = getSqliteDb();
+    if (db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS price_alerts (
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL,
+          product_title TEXT,
+          product_image TEXT,
+          product_url TEXT,
+          user_id TEXT,
+          user_email TEXT NOT NULL,
+          user_name TEXT,
+          initial_price REAL,
+          current_price REAL,
+          target_price REAL,
+          notify_on_any_change INTEGER DEFAULT 1,
+          status TEXT DEFAULT 'active',
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          UNIQUE(product_id, user_email)
+        );
+        CREATE INDEX IF NOT EXISTS idx_price_alerts_product ON price_alerts (product_id);
+        CREATE INDEX IF NOT EXISTS idx_price_alerts_email ON price_alerts (user_email);
+        CREATE INDEX IF NOT EXISTS idx_price_alerts_user ON price_alerts (user_id);
+      `);
+      db.close();
+    }
+  } catch (err) {
+    console.error("[SQLite Init Price Alerts Error]:", sanitizeLog(err.message));
+  }
+}
+initPriceAlertsDatabase();
 
 /**
  * Normalizes query string into useful search tokens for any tech category.
@@ -1209,6 +1244,316 @@ app.post("/api/reviews/:id/helpful", apiLimiter, async (req, res) => {
   }
 
   return res.json({ success: true, helpfulCount: newCount });
+});
+
+// ==============================================================================
+// Price Alert & Price Change Subscription Endpoints (Supabase + SQLite Fallback)
+// ==============================================================================
+
+// 1. Check price alert status for a product & user
+app.get("/api/product/:id/price-alert", apiLimiter, async (req, res) => {
+  const productId = (req.params.id || "").trim();
+  const email = (req.query.email || "").trim().toLowerCase();
+  const userId = (req.query.userId || "").trim();
+
+  if (!productId || (!email && !userId)) {
+    return res.json({ subscribed: false, alert: null });
+  }
+
+  let alertData = null;
+
+  // 1. Check Supabase
+  try {
+    let query = supabase.from("price_alerts").select("*").eq("product_id", productId).eq("status", "active");
+    if (email) {
+      query = query.eq("user_email", email);
+    } else if (userId) {
+      query = query.eq("user_id", userId);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (!error && data) {
+      alertData = data;
+    }
+  } catch (err) {
+    console.warn("[PriceAlert Supabase Query Warning]:", sanitizeLog(err.message));
+  }
+
+  // 2. Check SQLite fallback if Supabase didn't return
+  if (!alertData) {
+    try {
+      const db = getSqliteDb();
+      if (db) {
+        let row = null;
+        if (email) {
+          row = db.prepare("SELECT * FROM price_alerts WHERE product_id = ? AND user_email = ? AND status = 'active'").get(productId, email);
+        } else if (userId) {
+          row = db.prepare("SELECT * FROM price_alerts WHERE product_id = ? AND user_id = ? AND status = 'active'").get(productId, userId);
+        }
+        if (row) {
+          alertData = row;
+        }
+        db.close();
+      }
+    } catch (err) {
+      console.error("[PriceAlert SQLite Query Error]:", sanitizeLog(err.message));
+    }
+  }
+
+  return res.json({
+    subscribed: !!alertData,
+    alert: alertData ? {
+      id: alertData.id,
+      productId: alertData.product_id,
+      productTitle: alertData.product_title,
+      userEmail: alertData.user_email,
+      initialPrice: alertData.initial_price,
+      currentPrice: alertData.current_price,
+      targetPrice: alertData.target_price,
+      status: alertData.status,
+      createdAt: alertData.created_at
+    } : null
+  });
+});
+
+// 2. Subscribe or update price alert
+app.post("/api/product/:id/price-alert", apiLimiter, async (req, res) => {
+  const productId = (req.params.id || "").trim();
+  const {
+    email,
+    userId = null,
+    userName = "PC Builder",
+    productTitle = "Component",
+    productImage = null,
+    productUrl = null,
+    currentPrice = null,
+    targetPrice = null,
+    notifyOnAnyChange = true
+  } = req.body;
+
+  if (!productId || !email || typeof email !== "string" || !email.includes("@")) {
+    return res.status(400).json({ error: "Valid email address and product reference are required" });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const alertId = `alert_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const now = new Date().toISOString();
+
+  const alertRecord = {
+    id: alertId,
+    product_id: productId,
+    product_title: typeof productTitle === "string" ? productTitle.slice(0, 300) : "Component",
+    product_image: productImage || null,
+    product_url: productUrl || null,
+    user_id: userId || null,
+    user_email: cleanEmail,
+    user_name: typeof userName === "string" ? userName.slice(0, 100) : "PC Builder",
+    initial_price: Number(currentPrice) || null,
+    current_price: Number(currentPrice) || null,
+    target_price: Number(targetPrice) || null,
+    notify_on_any_change: !!notifyOnAnyChange,
+    status: "active",
+    created_at: now,
+    updated_at: now
+  };
+
+  // 1. Upsert into Supabase
+  try {
+    const { error: supaErr } = await supabase
+      .from("price_alerts")
+      .upsert(alertRecord, { onConflict: "product_id,user_email" });
+    if (supaErr) {
+      console.warn("[PriceAlert Supabase Upsert Warning]:", sanitizeLog(supaErr.message));
+    }
+  } catch (err) {
+    console.error("[PriceAlert Supabase Upsert Error]:", sanitizeLog(err.message));
+  }
+
+  // 2. Upsert into SQLite
+  try {
+    const db = getSqliteDb();
+    if (db) {
+      db.prepare(`
+        INSERT OR REPLACE INTO price_alerts (
+          id, product_id, product_title, product_image, product_url, user_id,
+          user_email, user_name, initial_price, current_price, target_price,
+          notify_on_any_change, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        alertRecord.id,
+        alertRecord.product_id,
+        alertRecord.product_title,
+        alertRecord.product_image,
+        alertRecord.product_url,
+        alertRecord.user_id,
+        alertRecord.user_email,
+        alertRecord.user_name,
+        alertRecord.initial_price,
+        alertRecord.current_price,
+        alertRecord.target_price,
+        alertRecord.notify_on_any_change ? 1 : 0,
+        alertRecord.status,
+        alertRecord.created_at,
+        alertRecord.updated_at
+      );
+      db.close();
+    }
+  } catch (err) {
+    console.error("[PriceAlert SQLite Upsert Error]:", sanitizeLog(err.message));
+  }
+
+  // 3. Send email confirmation asynchronously
+  sendPriceAlertConfirmationEmail({
+    rawEmail: alertRecord.user_email,
+    rawName: alertRecord.user_name,
+    productTitle: alertRecord.product_title,
+    currentPrice: alertRecord.current_price,
+    targetPrice: alertRecord.target_price,
+    productId: alertRecord.product_id
+  }).catch((err) => {
+    console.error("[PriceAlert Email Error]:", sanitizeLog(err.message));
+  });
+
+  return res.status(201).json({
+    success: true,
+    subscribed: true,
+    message: "Price alert activated! You will receive notifications on price changes.",
+    alert: {
+      id: alertRecord.id,
+      productId: alertRecord.product_id,
+      productTitle: alertRecord.product_title,
+      userEmail: alertRecord.user_email,
+      currentPrice: alertRecord.current_price,
+      targetPrice: alertRecord.target_price,
+      status: alertRecord.status,
+      createdAt: alertRecord.created_at
+    }
+  });
+});
+
+// Test / Trigger endpoint to simulate a real price drop notification email
+app.post("/api/test/price-drop-alert", authActionLimiter, async (req, res) => {
+  const {
+    email = "wastsonbd123@gmail.com",
+    name = "Andrew",
+    productTitle = "GIGABYTE GeForce RTX 5060 Ti Gaming OC 8GB GDDR7",
+    oldPrice = 58000,
+    newPrice = 52500,
+    storeName = "StarTech BD",
+    productId = "b76b4ba2-14a9-494c-b0f9-f367987ae826"
+  } = req.body;
+
+  try {
+    const result = await sendPriceDropAlertEmail({
+      rawEmail: email,
+      rawName: name,
+      productTitle,
+      oldPrice,
+      newPrice,
+      storeName,
+      productId
+    });
+
+    return res.json({
+      success: true,
+      message: `Price drop alert email sent successfully to ${email}`,
+      result
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. Unsubscribe from price alert
+app.delete("/api/product/:id/price-alert", apiLimiter, async (req, res) => {
+  const productId = (req.params.id || "").trim();
+  const email = (req.body.email || req.query.email || "").trim().toLowerCase();
+  const userId = (req.body.userId || req.query.userId || "").trim();
+
+  if (!productId || (!email && !userId)) {
+    return res.status(400).json({ error: "Product reference and email/userId are required" });
+  }
+
+  // 1. Delete from Supabase
+  try {
+    let query = supabase.from("price_alerts").delete().eq("product_id", productId);
+    if (email) {
+      query = query.eq("user_email", email);
+    } else if (userId) {
+      query = query.eq("user_id", userId);
+    }
+    await query;
+  } catch (err) {
+    console.warn("[PriceAlert Supabase Delete Warning]:", sanitizeLog(err.message));
+  }
+
+  // 2. Delete from SQLite
+  try {
+    const db = getSqliteDb();
+    if (db) {
+      if (email) {
+        db.prepare("DELETE FROM price_alerts WHERE product_id = ? AND user_email = ?").run(productId, email);
+      } else if (userId) {
+        db.prepare("DELETE FROM price_alerts WHERE product_id = ? AND user_id = ?").run(productId, userId);
+      }
+      db.close();
+    }
+  } catch (err) {
+    console.error("[PriceAlert SQLite Delete Error]:", sanitizeLog(err.message));
+  }
+
+  return res.json({
+    success: true,
+    subscribed: false,
+    message: "Unsubscribed from price change notifications."
+  });
+});
+
+// 4. Get all price alerts for a user
+app.get("/api/user/price-alerts", apiLimiter, async (req, res) => {
+  const email = (req.query.email || "").trim().toLowerCase();
+  const userId = (req.query.userId || "").trim();
+
+  if (!email && !userId) {
+    return res.json({ success: true, alerts: [] });
+  }
+
+  let alerts = [];
+
+  // 1. Query Supabase
+  try {
+    let query = supabase.from("price_alerts").select("*").order("created_at", { ascending: false });
+    if (email) {
+      query = query.eq("user_email", email);
+    } else if (userId) {
+      query = query.eq("user_id", userId);
+    }
+    const { data, error } = await query;
+    if (!error && data) {
+      alerts = data;
+    }
+  } catch (err) {
+    console.warn("[User PriceAlerts Supabase Warning]:", sanitizeLog(err.message));
+  }
+
+  // 2. Query SQLite fallback if empty
+  if (alerts.length === 0) {
+    try {
+      const db = getSqliteDb();
+      if (db) {
+        if (email) {
+          alerts = db.prepare("SELECT * FROM price_alerts WHERE user_email = ? ORDER BY created_at DESC").all(email);
+        } else if (userId) {
+          alerts = db.prepare("SELECT * FROM price_alerts WHERE user_id = ? ORDER BY created_at DESC").all(userId);
+        }
+        db.close();
+      }
+    } catch (err) {
+      console.error("[User PriceAlerts SQLite Error]:", sanitizeLog(err.message));
+    }
+  }
+
+  return res.json({ success: true, alerts });
 });
 
 app.post("/api/send-welcome", authActionLimiter, async (req, res) => {
