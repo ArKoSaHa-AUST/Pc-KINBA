@@ -39,8 +39,7 @@ PC-KINBA unifies the market by providing:
 | **Web Server** | Express.js | High-throughput REST API serving search, suggest, details, and live scanning |
 | **Subprocess IPC** | Python Bridge (`child_process.spawn`) | Invokes Python scraping engines and AI scanner pipelines dynamically |
 | **Email Service** | Nodemailer / Resend SMTP | Transactional welcome emails, password resets, and verification workflows |
-| **Database** | SQLite3 (`pcbuilder.db`) | Embedded, low-latency relational database with full-text search indexing |
-| **Cloud DB** | Supabase / PostgreSQL | Cloud database for user profiles, saved builds, wishlists, and reviews |
+| **Database** | Supabase / PostgreSQL | Cloud PostgreSQL database for all products, listings, reviews, price alerts, cart, and profiles |
 
 ### 2.3 AI & Machine Learning Stack
 | Component | Engine | Role |

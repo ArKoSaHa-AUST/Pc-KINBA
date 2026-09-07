@@ -25,7 +25,7 @@ from scrapers.normalizer import (
     normalize_price,
     calculate_match_confidence
 )
-from scrapers.db import get_sqlite_conn, init_sqlite_db, get_or_create_product_sqlite
+from scrapers.db import supabase_client, upsert_listings
 from scrapers.fast_scrapers import scrape_all_fast
 
 TARGET_DOMAINS = [
@@ -254,9 +254,7 @@ def run_parallel_scraping_engine(query: str) -> Dict[str, Any]:
 
     store_map = {}
     valid_prices = []
-
-    init_sqlite_db()
-    db_conn = get_sqlite_conn()
+    db_items_to_save = []
 
     for item in scraped_items:
         t = item['title']
@@ -274,26 +272,21 @@ def run_parallel_scraping_engine(query: str) -> Dict[str, Any]:
                 if p is not None:
                     valid_prices.append(p)
 
-            # Save listing into local SQLite database
-            try:
-                prod_id = get_or_create_product_sqlite(db_conn, t, item['store'])
-                cursor = db_conn.cursor()
-                cursor.execute("""
-                INSERT INTO listings (id, product_id, retailer, title, brand, price, price_str, product_url, last_scraped_at, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, DATETIME('now'), DATETIME('now'), DATETIME('now'))
-                ON CONFLICT(product_url) DO UPDATE SET
-                    price = excluded.price,
-                    price_str = excluded.price_str,
-                    updated_at = DATETIME('now')
-                """, (
-                    str(hash(url)), prod_id, store, t, attrs['brand'] or 'Generic',
-                    p or 0, item['price_str'], url
-                ))
-                db_conn.commit()
-            except Exception:
-                pass
+            db_items_to_save.append({
+                "retailer": store,
+                "title": t,
+                "brand": attrs['brand'] or 'Generic',
+                "price": p or 0,
+                "price_str": item.get('price_str', f"{p or 0:,}৳"),
+                "product_url": url,
+                "image_url": item.get('image', '')
+            })
 
-    db_conn.close()
+    if db_items_to_save:
+        try:
+            upsert_listings(db_items_to_save)
+        except Exception as e:
+            print(f"[Parallel Engine] Supabase save warning: {e}")
 
     best_price = min(valid_prices) if valid_prices else None
     best_price_str = f"{best_price:,}৳" if best_price else "Call for Price"

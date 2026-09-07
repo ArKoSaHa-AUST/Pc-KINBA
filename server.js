@@ -5,7 +5,6 @@ if (!globalThis.WebSocket) {
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import Database from "better-sqlite3";
 import path from "path";
 import { execFileSync } from "child_process";
 import rateLimit from "express-rate-limit";
@@ -13,7 +12,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendWelcomeEmail, sendPriceAlertConfirmationEmail, sendPriceDropAlertEmail } from "./mailer.js";
 import { extractAttributes, generateFingerprint, isSameProductVariant, group5StoreOffers } from "./lib/normalizer.js";
 import { getGroqSuggestions } from "./lib/groq.js";
-import { buildProductAlternatives } from "./lib/alternatives.js";
+import { buildProductAlternatives, deriveCategory, getCategoryFallbackImage } from "./lib/alternatives.js";
 
 dotenv.config();
 
@@ -49,430 +48,221 @@ const supabaseKey = (
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const DB_PATH = path.join(process.cwd(), "pcbuilder.db");
-
-function getSqliteDb() {
-  try {
-    const db = new Database(DB_PATH);
-    db.pragma("journal_mode = WAL");
-    return db;
-  } catch (err) {
-    console.error("[SQLite Connect Error]:", err.message);
-    return null;
-  }
-}
-
-function initReviewsDatabase() {
-  try {
-    const db = getSqliteDb();
-    if (db) {
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS reviews (
-          id TEXT PRIMARY KEY,
-          product_id TEXT NOT NULL,
-          user_id TEXT,
-          user_name TEXT NOT NULL,
-          user_avatar TEXT,
-          user_country TEXT DEFAULT 'Bangladesh',
-          user_country_code TEXT DEFAULT 'BD',
-          rating INTEGER NOT NULL,
-          title TEXT NOT NULL,
-          content TEXT NOT NULL,
-          pros TEXT DEFAULT '[]',
-          cons TEXT DEFAULT '[]',
-          images TEXT DEFAULT '[]',
-          verified INTEGER DEFAULT 0,
-          helpful_count INTEGER DEFAULT 0,
-          created_at TEXT DEFAULT (datetime('now')),
-          updated_at TEXT DEFAULT (datetime('now'))
-        );
-        CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON reviews (product_id);
-        CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews (created_at DESC);
-      `);
-      db.close();
-    }
-  } catch (err) {
-    console.error("[SQLite Init Reviews Error]:", sanitizeLog(err.message));
-  }
-}
-initReviewsDatabase();
-
-function initPriceAlertsDatabase() {
-  try {
-    const db = getSqliteDb();
-    if (db) {
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS price_alerts (
-          id TEXT PRIMARY KEY,
-          product_id TEXT NOT NULL,
-          product_title TEXT,
-          product_image TEXT,
-          product_url TEXT,
-          user_id TEXT,
-          user_email TEXT NOT NULL,
-          user_name TEXT,
-          initial_price REAL,
-          current_price REAL,
-          target_price REAL,
-          notify_on_any_change INTEGER DEFAULT 1,
-          status TEXT DEFAULT 'active',
-          created_at TEXT DEFAULT (datetime('now')),
-          updated_at TEXT DEFAULT (datetime('now')),
-          UNIQUE(product_id, user_email)
-        );
-        CREATE INDEX IF NOT EXISTS idx_price_alerts_product ON price_alerts (product_id);
-        CREATE INDEX IF NOT EXISTS idx_price_alerts_email ON price_alerts (user_email);
-        CREATE INDEX IF NOT EXISTS idx_price_alerts_user ON price_alerts (user_id);
-      `);
-      db.close();
-    }
-  } catch (err) {
-    console.error("[SQLite Init Price Alerts Error]:", sanitizeLog(err.message));
-  }
-}
-initPriceAlertsDatabase();
-
 /**
  * Normalizes query string into useful search tokens for any tech category.
- * E.g., "16 gb ram" -> clean: "16 gb ram", norm: "16gb ram", tokens: ["16", "gb", "ram", "16gb"]
- * E.g., "1000va ups" -> clean: "1000va ups", norm: "1000 va ups", tokens: ["1000", "va", "ups", "1000va"]
  */
 function getQueryVariations(rawQuery) {
-  const cleanQ = rawQuery.trim();
-  const normalized = cleanQ.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-  const rawWords = normalized.split(/\s+/).filter(w => w.length > 0);
+  if (!rawQuery || typeof rawQuery !== "string") {
+    return { cleanQ: "", normQ: "", tokens: [] };
+  }
 
-  // Natural search tokens from the user's actual typed words
-  const tokens = rawWords.filter(w => w.length >= 2 || (w.length === 1 && /\d/.test(w)));
+  const cleanQ = rawQuery.replace(/[^a-zA-Z0-9\s.\-_+]/g, " ").replace(/\s+/g, " ").trim();
+  const lower = cleanQ.toLowerCase();
 
-  // Useful variations for full phrase matching (e.g. 16 gb <-> 16gb)
-  const normQ = cleanQ.replace(/(\d+)\s+([a-zA-Z]+)/gi, "$1$2");
-  const splitQ = cleanQ.replace(/([a-zA-Z]+)(\d+)/gi, "$1 $2").replace(/(\d+)([a-zA-Z]+)/gi, "$1 $2");
+  let normQ = lower
+    .replace(/(\d+)\s*gb\b/g, "$1gb")
+    .replace(/(\d+)\s*tb\b/g, "$1tb")
+    .replace(/(\d+)\s*va\b/g, "$1va")
+    .replace(/(\d+)\s*w\b/g, "$1w")
+    .replace(/(\d+)\s*hz\b/g, "$1hz")
+    .replace(/(\d+)\s*ghz\b/g, "$1ghz")
+    .replace(/(\d+)\s*mhz\b/g, "$1mhz")
+    .replace(/(\d+)\s*pin\b/g, "$1pin")
+    .replace(/(\d+)\s*fan\b/g, "$1fan")
+    .replace(/(\d+)\s*port\b/g, "$1port")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  return { cleanQ, normQ, splitQ, tokens };
+  const rawTokens = Array.from(new Set([
+    ...lower.split(/\s+/),
+    ...normQ.split(/\s+/)
+  ])).filter(t => t.length > 0);
+
+  const noiseWords = new Set([
+    "pc", "bd", "price", "in", "bangladesh", "buy", "online", "shop", "store",
+    "best", "cheap", "good", "latest", "new", "original", "official", "edition"
+  ]);
+
+  const tokens = rawTokens.filter(t => !noiseWords.has(t));
+
+  return { cleanQ, normQ, tokens };
 }
 
-function detectSearchIntent(query = "") {
-  const q = query.toLowerCase().trim();
-
-  // 1. Explicit Laptop query
-  if (/\b(laptop|notebook|macbook|zenbook|ideapad|thinkpad|legion|victus|tuf gaming)\b/.test(q)) {
-    return { type: "laptop", category: "Laptop", excludes: [] };
+/**
+ * Detects user search intent to prioritize true components and reject accessories.
+ */
+function detectSearchIntent(query) {
+  const q = (query || "").toLowerCase();
+  
+  if (q.includes("rtx") || q.includes("gtx") || q.includes("rx ") || q.includes("graphics card") || q.includes("gpu") || q.includes("radeon") || q.includes("geforce")) {
+    return { category: "Graphics Card", type: "gpu", excludes: ["laptop", "notebook", "desktop pc", "gaming pc", "combo offer"] };
   }
-
-  // 2. Explicit PC Build / Combo query
-  if (/\b(desktop pc|gaming pc|budget pc|pc build|combo|prebuilt|all-in-one|aio pc)\b/.test(q)) {
-    return { type: "pc_build", category: "Desktop PC", excludes: [] };
+  if (q.includes("ryzen") || q.includes("core i") || q.includes("processor") || q.includes("cpu") || q.includes("threadripper")) {
+    return { category: "Processor", type: "cpu", excludes: ["laptop", "notebook", "desktop pc", "gaming pc", "budget pc", "pc build", "combo offer", "motherboard", "cooler"] };
   }
-
-  // 3. Motherboard query (checked before CPU so 'amd b650' or 'intel b760' is Motherboard)
-  if (/\b(motherboard|mainboard|b650|b760|z790|b550|x670|z890|a620|b450|h610)\b/.test(q)) {
-    return {
-      type: "motherboard",
-      category: "Motherboard",
-      excludes: ["desktop pc", "gaming pc", "laptop", "combo", "pc-deal", "budget pc", "pc build"]
-    };
+  if (q.includes("motherboard") || q.includes("mainboard") || q.includes("b650") || q.includes("b760") || q.includes("z790") || q.includes("x670") || q.includes("b550") || q.includes("a620")) {
+    return { category: "Motherboard", type: "motherboard", excludes: ["laptop", "desktop pc", "gaming pc", "combo offer"] };
   }
-
-  // 4. GPU / Graphics Card query (e.g. rtx 4060, rtx 5060, gtx 1650, rx 7600, graphics card, gpu, geforce, radeon)
-  if (/\b(rtx|gtx|rx\s*\d{4}|graphics\s*card|gpu|geforce|radeon|arc\s*a\d{3})\b/.test(q)) {
-    return {
-      type: "gpu",
-      category: "Graphics Card",
-      excludes: ["laptop", "notebook", "desktop pc", "gaming pc", "pc build", "budget pc", "combo", "custom pc", "prebuilt", "all-in-one"]
-    };
+  if (q.includes("ups") || q.includes("ips") || q.includes("voltage") || q.includes("offline ups") || q.includes("online ups")) {
+    return { category: "UPS & Power", type: "ups", excludes: ["mouse", "keyboard", "headphone"] };
   }
-
-  // 5. CPU / Processor query (e.g. ryzen, core i3/i5/i7/i9, amd 7 7700, processor, cpu, intel, threadripper)
-  if (/\b(ryzen|processor|cpu|threadripper|pentium|celeron)\b/.test(q) ||
-      /\b(core\s*i[3579]|intel\s*i[3579]|i[3579][\s-]\d{4,5}[a-z]?)\b/.test(q) ||
-      /\b(amd\s*(ryzen\s*)?[3579]|\b7700\b|\b7600\b|\b7800x3d\b|\b5600\b|\b5700\b|\b5800\b|\b9800x3d\b|\b9700\b|\b9600\b)/.test(q)) {
-    return {
-      type: "cpu",
-      category: "Processor",
-      excludes: ["laptop", "notebook", "desktop pc", "gaming pc", "budget pc", "pc build", "combo", "bundle", "ram", "motherboard", "cooler", "casing"]
-    };
+  if (q.includes("pendrive") || q.includes("pen drive") || q.includes("flash drive") || q.includes("thumb drive") || q.includes("usb drive")) {
+    return { category: "Pendrive / Storage", type: "pendrive", excludes: ["mouse", "keyboard", "cable", "laptop"] };
   }
-
-  // 6. RAM Memory query
-  if (/\b(ram|ddr4|ddr5|sodimm|memory)\b/.test(q)) {
-    return {
-      type: "ram",
-      category: "RAM Memory",
-      excludes: ["desktop pc", "gaming pc", "combo"]
-    };
+  if (q.includes("laptop") || q.includes("notebook") || q.includes("macbook") || q.includes("zenbook") || q.includes("ideapad")) {
+    return { category: "Laptop", type: "laptop", excludes: [] };
   }
-
-  // 7. SSD Storage query
-  if (/\b(ssd|nvme|m\.2|sata ssd)\b/.test(q)) {
-    return {
-      type: "ssd",
-      category: "SSD Storage",
-      excludes: ["desktop pc", "gaming pc", "laptop", "notebook", "combo"]
-    };
+  if (q.includes("monitor") || q.includes("display")) {
+    return { category: "Monitor", type: "monitor", excludes: ["laptop", "notebook"] };
   }
-
-  // 8. UPS & Power query
-  if (/\b(ups|ips|voltage regulator|stabilizer)\b/.test(q)) {
-    return { type: "ups", category: "UPS & Power", excludes: [] };
+  if (q.includes("ssd") || q.includes("nvme") || q.includes("m.2")) {
+    return { category: "SSD Storage", type: "ssd", excludes: ["laptop"] };
   }
-
-  // 9. Pendrive / Flash drive query
-  if (/\b(pendrive|pen drive|flash drive|usb drive|thumb drive)\b/.test(q)) {
-    return { type: "pendrive", category: "Pendrive / Storage", excludes: [] };
+  if (q.includes("ram") || q.includes("ddr4") || q.includes("ddr5") || q.includes("desktop memory")) {
+    return { category: "RAM Memory", type: "ram", excludes: ["desktop pc", "gaming pc", "motherboard"] };
   }
-
-  // 10. Monitor query
-  if (/\b(monitor|display)\b/.test(q)) {
-    return { type: "monitor", category: "Monitor", excludes: ["laptop"] };
+  if (q.includes("power supply") || q.includes("psu")) {
+    return { category: "Power Supply", type: "psu", excludes: ["laptop"] };
   }
-
-  // 11. Casing query
-  if (/\b(casing|chassis)\b/.test(q)) {
-    return { type: "casing", category: "Casing", excludes: ["desktop pc", "gaming pc"] };
+  if (q.includes("cooler") || q.includes("liquid cooler") || q.includes("fan")) {
+    return { category: "Cooler", type: "cooler", excludes: ["laptop"] };
   }
-
-  // 12. Power Supply query
-  if (/\b(power supply|psu)\b/.test(q)) {
-    return { type: "power_supply", category: "Power Supply", excludes: ["desktop pc", "gaming pc"] };
+  if (q.includes("casing") || q.includes("chassis")) {
+    return { category: "Casing", type: "casing", excludes: ["laptop"] };
   }
-
-  // 13. Cooler query
-  if (/\b(cooler|liquid cooler|aio)\b/.test(q)) {
-    return { type: "cooler", category: "Cooler", excludes: ["desktop pc", "gaming pc"] };
-  }
-
-  return { type: "general", category: "All", excludes: [] };
+  
+  return { category: "All", type: "general", excludes: [] };
 }
 
-function deriveCategory(title = "") {
-  const t = title.toLowerCase();
-  // Check composite/full systems first so they don't get misclassified by component keywords
-  if (t.includes("laptop") || t.includes("notebook") || t.includes("macbook") || t.includes("zenbook") || t.includes("ideapad")) return "Laptop";
-  if (t.includes("gaming pc") || t.includes("desktop pc") || t.includes("budget pc") || t.includes("pc build") || t.includes("combo offer") || t.includes("all-in-one") || t.includes("aio pc")) return "Desktop PC";
-  if (t.includes("motherboard") || t.includes("mainboard")) return "Motherboard";
-  if (t.includes("rtx") || t.includes("gtx") || t.includes("rx ") || t.includes("graphics card") || t.includes("graphics") || t.includes("gpu") || t.includes("geforce") || t.includes("radeon")) return "Graphics Card";
-  if (t.includes("processor") || t.includes("cpu") || t.includes("ryzen") || t.includes("core i") || t.includes("threadripper") || t.includes("intel") || t.includes("amd")) return "Processor";
-  if (t.includes("ssd") || t.includes("nvme") || t.includes("m.2")) return "SSD Storage";
-  if (t.includes("ram") || t.includes("ddr4") || t.includes("ddr5") || t.includes("memory")) return "RAM Memory";
-  if (t.includes("casing") || t.includes("chassis")) return "Casing";
-  if (t.includes("power supply") || t.includes("psu")) return "Power Supply";
-  if (t.includes("cooler") || t.includes("liquid cooler") || t.includes("fan")) return "Cooler";
-  if (t.includes("monitor")) return "Monitor";
-  if (t.includes("ups") || t.includes("ips")) return "UPS & Power";
-  if (t.includes("pendrive") || t.includes("pen drive") || t.includes("flash drive") || t.includes("usb drive")) return "Pendrive / Storage";
-  if (t.includes("keyboard")) return "Keyboard";
-  if (t.includes("mouse")) return "Mouse";
-  if (t.includes("headphone") || t.includes("headset") || t.includes("speaker")) return "Audio";
-  if (t.includes("router")) return "Networking";
-  return "Components";
-}
-
-function searchSqliteListings(query, requestedCategory = null) {
-  const db = getSqliteDb();
-  if (!db) return [];
-
+/**
+ * Searches listings directly from Supabase with smart ranking, token matching, and category filtering.
+ */
+async function searchSupabaseListings(query, requestedCategory = null) {
+  if (!query) return [];
   const { cleanQ, normQ, tokens } = getQueryVariations(query);
   const intent = detectSearchIntent(query);
-  let whereParams = [];
-  let conds = [];
 
-  // 1. Full title/brand match
-  conds.push("(l.title LIKE ? OR l.title LIKE ? OR l.brand LIKE ? OR p.canonical_name LIKE ? OR a.alias_text LIKE ?)");
-  whereParams.push(`%${cleanQ}%`, `%${normQ}%`, `%${cleanQ}%`, `%${cleanQ}%`, `%${cleanQ}%`);
-
-  // 2. Individual key tokens match
-  if (tokens.length > 0) {
-    const tokenSql = tokens.map(t => {
-      whereParams.push(`%${t}%`);
-      return "l.title LIKE ?";
-    }).join(" AND ");
-    conds.push(`(${tokenSql})`);
-  }
-
-  // 3. Category & Negative Exclusion Filters
-  let extraFilters = [];
-
-  if (requestedCategory && requestedCategory !== "All") {
-    if (requestedCategory === "Graphics Card") {
-      extraFilters.push("LOWER(l.title) NOT LIKE '%laptop%' AND LOWER(l.title) NOT LIKE '%notebook%' AND LOWER(l.title) NOT LIKE '%desktop pc%' AND LOWER(l.title) NOT LIKE '%gaming pc%' AND LOWER(l.title) NOT LIKE '%combo%'");
-    } else if (requestedCategory === "Processor") {
-      extraFilters.push("LOWER(l.title) NOT LIKE '%laptop%' AND LOWER(l.title) NOT LIKE '%desktop pc%' AND LOWER(l.title) NOT LIKE '%gaming pc%' AND LOWER(l.title) NOT LIKE '%budget pc%' AND LOWER(l.title) NOT LIKE '%pc build%' AND LOWER(l.title) NOT LIKE '%combo%' AND LOWER(l.title) NOT LIKE '%ram%' AND LOWER(l.title) NOT LIKE '%motherboard%'");
-    } else if (requestedCategory === "Motherboard") {
-      extraFilters.push("LOWER(l.title) NOT LIKE '%laptop%' AND LOWER(l.title) NOT LIKE '%desktop pc%' AND LOWER(l.title) NOT LIKE '%gaming pc%' AND LOWER(l.title) NOT LIKE '%combo%'");
-    } else if (requestedCategory === "Laptop") {
-      extraFilters.push("(LOWER(l.title) LIKE '%laptop%' OR LOWER(l.title) LIKE '%notebook%' OR LOWER(l.title) LIKE '%macbook%')");
-    } else if (requestedCategory === "RAM Memory") {
-      extraFilters.push("(LOWER(l.title) LIKE '%ram%' OR LOWER(l.title) LIKE '%ddr%') AND LOWER(l.title) NOT LIKE '%desktop pc%' AND LOWER(l.title) NOT LIKE '%gaming pc%'");
-    } else if (requestedCategory === "SSD Storage") {
-      extraFilters.push("(LOWER(l.title) LIKE '%ssd%' OR LOWER(l.title) LIKE '%nvme%') AND LOWER(l.title) NOT LIKE '%laptop%'");
-    } else if (requestedCategory === "UPS & Power") {
-      extraFilters.push("(LOWER(l.title) LIKE '%ups%' OR LOWER(l.title) LIKE '%ips%')");
-    } else if (requestedCategory === "Pendrive / Storage") {
-      extraFilters.push("(LOWER(l.title) LIKE '%pendrive%' OR LOWER(l.title) LIKE '%pen drive%' OR LOWER(l.title) LIKE '%flash drive%' OR LOWER(l.title) LIKE '%usb%')");
-    } else if (requestedCategory === "Monitor") {
-      extraFilters.push("(LOWER(l.title) LIKE '%monitor%' OR LOWER(l.title) LIKE '%display%') AND LOWER(l.title) NOT LIKE '%laptop%'");
-    }
-  } else if (intent.excludes && intent.excludes.length > 0) {
-    // Automatically apply negative exclusions from detected intent!
-    const negativeSql = intent.excludes.map(e => `LOWER(l.title) NOT LIKE '%${e}%'`).join(" AND ");
-    extraFilters.push(`(${negativeSql})`);
-  }
-
-  const whereClause = conds.join(" OR ");
-  const filterClause = extraFilters.length > 0 ? ` AND ${extraFilters.join(" AND ")}` : "";
-
-  // Dynamic ranking: boost actual component names
-  let bonusRankSql = "3";
-  if (intent.type === "gpu") {
-    bonusRankSql = `CASE 
-      WHEN LOWER(l.title) LIKE '%graphics card%' OR LOWER(l.title) LIKE '%gddr%' OR LOWER(l.title) LIKE '%oc edition%' THEN 0
-      WHEN LOWER(l.title) LIKE '%graphics%' OR LOWER(l.title) LIKE '%edition%' THEN 1
-      ELSE 2
-    END`;
-  } else if (intent.type === "cpu") {
-    bonusRankSql = `CASE 
-      WHEN LOWER(l.title) LIKE '%processor%' OR LOWER(l.title) LIKE '%cpu%' THEN 0
-      WHEN LOWER(l.title) LIKE '%tray%' OR LOWER(l.title) LIKE '%am5%' OR LOWER(l.title) LIKE '%am4%' THEN 1
-      ELSE 2
-    END`;
-  } else if (intent.type === "motherboard") {
-    bonusRankSql = `CASE 
-      WHEN LOWER(l.title) LIKE '%motherboard%' OR LOWER(l.title) LIKE '%mainboard%' THEN 0
-      ELSE 1
-    END`;
-  } else if (intent.type === "ups") {
-    bonusRankSql = `CASE 
-      WHEN LOWER(l.title) LIKE '%ups%' OR LOWER(l.title) LIKE '%ips%' THEN 0
-      ELSE 1
-    END`;
-  } else if (intent.type === "pendrive") {
-    bonusRankSql = `CASE 
-      WHEN LOWER(l.title) LIKE '%pendrive%' OR LOWER(l.title) LIKE '%flash drive%' THEN 0
-      ELSE 1
-    END`;
-  }
-
-  const sql = `
-    SELECT DISTINCT
-      l.id, 
-      l.title, 
-      l.brand, 
-      l.price, 
-      l.price_str, 
-      l.retailer, 
-      l.product_url, 
-      l.image_url, 
-      l.last_scraped_at,
-      p.canonical_name as base_product_name,
-      p.fingerprint,
-      p.category,
-      CASE 
-        WHEN LOWER(l.title) = LOWER(?) THEN 0
-        WHEN LOWER(l.title) LIKE ? THEN 1
-        WHEN LOWER(l.title) LIKE ? THEN 2
-        ELSE 3
-      END as match_rank,
-      ${bonusRankSql} as category_priority
-    FROM listings l
-    LEFT JOIN products p ON l.product_id = p.id
-    LEFT JOIN product_aliases a ON a.product_id = p.id
-    WHERE (${whereClause}) ${filterClause}
-    ORDER BY match_rank ASC, category_priority ASC, l.price ASC
-  `;
-
-  // Prepend match_rank ordering parameters to align with SELECT clause
-  const allParams = [
-    cleanQ,
-    `${cleanQ.toLowerCase()}%`,
-    `%${cleanQ.toLowerCase()}%`,
-    ...whereParams
-  ];
-
-  try {
-    const rows = db.prepare(sql).all(...allParams);
-    db.close();
-    console.log(`[SQLite Search] Found ${rows.length} listings for "${sanitizeLog(query)}" (Intent: ${intent.category})`);
-    return rows.map(r => ({
-      ...r,
-      category: deriveCategory(r.title)
-    }));
-  } catch (err) {
-    console.error("[SQLite Search Error]:", sanitizeLog(err.message));
-    try { db.close(); } catch (_) {}
-    return [];
-  }
-}
-
-async function searchSupabaseListings(query) {
-  const { cleanQ, normQ } = getQueryVariations(query);
   const safeCleanQ = cleanQ.replace(/[^a-zA-Z0-9\s]/g, " ").trim();
   const safeNormQ = normQ.replace(/[^a-zA-Z0-9\s]/g, " ").trim();
-  try {
-    const { data, error } = await supabase
-      .from("listings")
-      .select(`
-        id, 
-        title, 
-        brand, 
-        price, 
-        price_str, 
-        retailer, 
-        product_url, 
-        image_url, 
-        last_scraped_at,
-        product_id,
-        products ( name, category )
-      `)
-      .or(`title.ilike.%${safeCleanQ}%,title.ilike.%${safeNormQ}%,brand.ilike.%${safeCleanQ}%`)
-      .order("price", { ascending: true });
 
-    if (!error && data && data.length > 0) {
-      console.log(`[Supabase Search] Found ${data.length} listings for "${sanitizeLog(query)}"`);
-      return data.map(item => ({
-        id: item.id,
-        title: item.title,
-        brand: item.brand,
-        price: item.price,
-        price_str: item.price_str,
-        retailer: item.retailer,
-        product_url: item.product_url,
-        image_url: item.image_url,
-        last_scraped_at: item.last_scraped_at,
-        base_product_name: item.products?.name || item.brand,
-        category: item.products?.category || deriveCategory(item.title)
-      }));
+  try {
+    let baseQuery = supabase
+      .from("listings")
+      .select("id, title, brand, price, price_str, retailer, product_url, image_url, last_scraped_at, product_id")
+      .gt("price", 0);
+
+    const orConditions = [
+      `title.ilike.%${safeCleanQ}%`,
+      `brand.ilike.%${safeCleanQ}%`
+    ];
+    if (safeNormQ && safeNormQ !== safeCleanQ) {
+      orConditions.push(`title.ilike.%${safeNormQ}%`);
     }
+    for (const t of tokens.slice(0, 4)) {
+      if (t.length >= 2) {
+        orConditions.push(`title.ilike.%${t}%`);
+      }
+    }
+
+    baseQuery = baseQuery.or(orConditions.join(","));
+
+    const { data, error } = await baseQuery.order("price", { ascending: true }).limit(100);
+
+    if (error || !data || data.length === 0) {
+      return [];
+    }
+
+    // Apply token matching & category exclusion filtering
+    const filtered = data.filter(item => {
+      const titleLower = (item.title || "").toLowerCase();
+
+      // Negative exclusions
+      if (intent.excludes && intent.excludes.length > 0) {
+        if (intent.excludes.some(exc => titleLower.includes(exc.toLowerCase()))) {
+          return false;
+        }
+      }
+
+      // Category filters
+      if (requestedCategory && requestedCategory !== "All") {
+        if (requestedCategory === "Graphics Card") {
+          if (titleLower.includes("laptop") || titleLower.includes("desktop pc") || titleLower.includes("combo")) return false;
+        } else if (requestedCategory === "Processor") {
+          if (titleLower.includes("laptop") || titleLower.includes("desktop pc") || titleLower.includes("motherboard") || titleLower.includes("cooler")) return false;
+        } else if (requestedCategory === "Motherboard") {
+          if (titleLower.includes("laptop") || titleLower.includes("desktop pc")) return false;
+        } else if (requestedCategory === "Laptop") {
+          if (!titleLower.includes("laptop") && !titleLower.includes("notebook") && !titleLower.includes("macbook")) return false;
+        } else if (requestedCategory === "RAM Memory") {
+          if (!titleLower.includes("ram") && !titleLower.includes("ddr")) return false;
+        } else if (requestedCategory === "SSD Storage") {
+          if (!titleLower.includes("ssd") && !titleLower.includes("nvme") && !titleLower.includes("m.2")) return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Score & rank candidates
+    const scored = filtered.map(r => {
+      const titleLower = (r.title || "").toLowerCase();
+      let matchRank = 3;
+      if (titleLower === safeCleanQ.toLowerCase()) matchRank = 0;
+      else if (titleLower.startsWith(safeCleanQ.toLowerCase())) matchRank = 1;
+      else if (titleLower.includes(safeCleanQ.toLowerCase())) matchRank = 2;
+
+      let categoryPriority = 2;
+      if (intent.type === "gpu" && (titleLower.includes("graphics") || titleLower.includes("gddr") || titleLower.includes("edition"))) categoryPriority = 0;
+      if (intent.type === "cpu" && (titleLower.includes("processor") || titleLower.includes("cpu") || titleLower.includes("am5") || titleLower.includes("am4"))) categoryPriority = 0;
+      if (intent.type === "motherboard" && (titleLower.includes("motherboard") || titleLower.includes("mainboard"))) categoryPriority = 0;
+
+      return {
+        ...r,
+        base_product_name: r.brand || "Hardware",
+        category: deriveCategory(r.title),
+        matchRank,
+        categoryPriority
+      };
+    });
+
+    scored.sort((a, b) => {
+      if (a.matchRank !== b.matchRank) return a.matchRank - b.matchRank;
+      if (a.categoryPriority !== b.categoryPriority) return a.categoryPriority - b.categoryPriority;
+      return a.price - b.price;
+    });
+
+    console.log(`[Supabase Search] Found ${scored.length} listings for "${sanitizeLog(query)}" (Intent: ${intent.category})`);
+    return scored;
   } catch (err) {
     console.warn("[Supabase Search Warning]:", sanitizeLog(err.message));
+    return [];
   }
-  return [];
 }
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Rate Limiters to protect database & system command executions from abuse (CodeQL compliance)
+// Rate Limiters
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // Limit each IP to 300 requests per 15 minutes
+  windowMs: 15 * 60 * 1000,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests from this IP, please try again after 15 minutes." }
 });
 
 const commandLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 30, // Limit each IP to 30 command / scan executions per 5 minutes
+  windowMs: 5 * 60 * 1000,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Rate limit exceeded for live scanning and background processes. Please try again later." }
 });
 
 const authActionLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Limit each IP to 20 emails per 15 minutes
+  windowMs: 15 * 60 * 1000,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many email requests, please try again later." }
@@ -481,47 +271,43 @@ const authActionLimiter = rateLimit({
 // Apply default API limiter to all API endpoints
 app.use("/api/", apiLimiter);
 
-// Feature 1: Search Autosuggest Endpoint (Combines SQLite DB & Groq AI Key-Rotation)
+// Feature 1: Search Autosuggest Endpoint (Powered by Supabase DB & Groq AI Key-Rotation)
 app.get("/api/search/suggest", apiLimiter, async (req, res) => {
   const query = (req.query.q || "").toString().trim();
   if (!query || query.length < 1) {
     return res.json({ suggestions: [] });
   }
 
-  const { cleanQ, normQ } = getQueryVariations(query);
+  const { cleanQ } = getQueryVariations(query);
   const set = new Set();
 
-  // 1. Fetch DB product & listing titles
+  // 1. Fetch DB product & listing titles from Supabase
   try {
-    const db = getSqliteDb();
-    if (db) {
-      const listingRows = db.prepare(`
-        SELECT DISTINCT title FROM listings 
-        WHERE title LIKE ? OR title LIKE ? OR brand LIKE ?
-        ORDER BY 
-          CASE WHEN LOWER(title) LIKE ? THEN 0 ELSE 1 END,
-          title ASC 
-        LIMIT 6
-      `).all(`%${cleanQ}%`, `%${normQ}%`, `%${cleanQ}%`, `${cleanQ.toLowerCase()}%`);
+    const { data: listings } = await supabase
+      .from("listings")
+      .select("title")
+      .ilike("title", `%${cleanQ}%`)
+      .limit(6);
 
-      const productRows = db.prepare(`
-        SELECT DISTINCT name FROM products 
-        WHERE name LIKE ? OR name LIKE ?
-        ORDER BY name ASC 
-        LIMIT 4
-      `).all(`%${cleanQ}%`, `%${normQ}%`);
-
-      db.close();
-
-      listingRows.forEach(r => {
-        if (set.size < 6) set.add(r.title);
+    if (listings) {
+      listings.forEach(r => {
+        if (set.size < 6 && r.title) set.add(r.title);
       });
-      productRows.forEach(r => {
-        if (set.size < 8) set.add(r.name);
+    }
+
+    const { data: prods } = await supabase
+      .from("products")
+      .select("name")
+      .ilike("name", `%${cleanQ}%`)
+      .limit(4);
+
+    if (prods) {
+      prods.forEach(r => {
+        if (set.size < 8 && r.name) set.add(r.name);
       });
     }
   } catch (err) {
-    console.error("[Autosuggest SQLite Error]:", sanitizeLog(err.message));
+    console.error("[Autosuggest Supabase Error]:", sanitizeLog(err.message));
   }
 
   // 2. Complement with Groq AI suggestions (fast sub-second LLM inference with 17-key pool)
@@ -542,7 +328,7 @@ app.get("/api/search/suggest", apiLimiter, async (req, res) => {
   });
 });
 
-// Feature 2: Search Results Endpoint
+// Feature 2: Search Results Endpoint (100% Supabase)
 app.get("/api/search", apiLimiter, async (req, res) => {
   const query = (req.query.q || "").toString().trim();
   const category = (req.query.category || "").toString().trim();
@@ -553,11 +339,7 @@ app.get("/api/search", apiLimiter, async (req, res) => {
   const intent = detectSearchIntent(query);
   console.log(`[API Search] Executing search for query: "${sanitizeLog(query)}" (Intent: ${intent.category}, Filter: ${category ? sanitizeLog(category) : 'Auto'})`);
 
-  let results = searchSqliteListings(query, category);
-
-  if (results.length === 0) {
-    results = await searchSupabaseListings(query);
-  }
+  let results = await searchSupabaseListings(query, category);
 
   // If fewer than 2 results found in DB, auto-trigger live scrapers across all 12 retailers
   if (results.length < 2) {
@@ -573,10 +355,7 @@ app.get("/api/search", apiLimiter, async (req, res) => {
         env: { ...process.env, PYTHONPATH: "." }
       });
 
-      results = searchSqliteListings(query, category);
-      if (results.length === 0) {
-        results = await searchSupabaseListings(query);
-      }
+      results = await searchSupabaseListings(query, category);
     } catch (err) {
       console.error("[Auto-Scraper Error]:", sanitizeLog(err.message));
     }
@@ -623,7 +402,7 @@ app.get("/api/search/live", commandLimiter, async (req, res) => {
   }
 });
 
-// Feature 3: Dynamic Product Details Endpoint with 5-Store Comparison & Normalization
+// Feature 3: Dynamic Product Details Endpoint with 5-Store Comparison & Normalization (Supabase)
 app.get("/api/product/:id", apiLimiter, async (req, res) => {
   const id = (req.params.id || "").trim();
   if (!id || !/^[a-zA-Z0-9\-_]{1,64}$/.test(id)) {
@@ -634,31 +413,17 @@ app.get("/api/product/:id", apiLimiter, async (req, res) => {
 
   let item = null;
 
-  // 1. Try Supabase
   try {
     const { data, error } = await supabase
       .from("listings")
       .select("*")
       .eq("id", id)
-      .single();
+      .maybeSingle();
     if (!error && data) {
       item = data;
     }
   } catch (err) {
     console.warn("[Product Details Supabase Warning]:", sanitizeLog(err.message));
-  }
-
-  // 2. Fallback SQLite
-  if (!item) {
-    try {
-      const db = getSqliteDb();
-      if (db) {
-        item = db.prepare("SELECT * FROM listings WHERE id = ?").get(id);
-        db.close();
-      }
-    } catch (err) {
-      console.error("[Product Details SQLite Error]:", sanitizeLog(err.message));
-    }
   }
 
   if (!item) {
@@ -669,14 +434,11 @@ app.get("/api/product/:id", apiLimiter, async (req, res) => {
   const { fingerprint, canonical_name, attributes } = generateFingerprint(item.title, item.brand);
   const category = deriveCategory(item.title);
 
-  // Search candidate matching listings across DB
+  // Search candidate matching listings across Supabase DB
   const titleWords = item.title.split(/\s+/).filter(w => w.length > 2);
   const mainKeywords = titleWords.slice(0, 3).join(" ");
 
-  let rawCandidates = await searchSupabaseListings(mainKeywords);
-  if (rawCandidates.length === 0) {
-    rawCandidates = searchSqliteListings(mainKeywords);
-  }
+  const rawCandidates = await searchSupabaseListings(mainKeywords);
 
   // Filter candidates using 85% fuzzy match & variant safety checks (prevent merging 8GB vs 16GB)
   const matchedListings = rawCandidates.filter((cand) => {
@@ -764,58 +526,28 @@ app.get("/api/product/:id", apiLimiter, async (req, res) => {
   return res.json(responsePayload);
 });
 
-// Feature 3b: Dynamic Category-Aware Alternative Parts Endpoint
+// Feature 3b: Dynamic Category-Aware Alternative Parts Endpoint (Supabase)
 app.get("/api/product/:id/alternatives", apiLimiter, async (req, res) => {
   const id = (req.params.id || "").trim();
   if (!id || !/^[a-zA-Z0-9\-_]{1,64}$/.test(id)) {
     return res.status(400).json({ error: "Valid product ID format required" });
   }
 
-  let item = null;
-
   try {
-    const db = getSqliteDb();
-    if (db) {
-      item = db.prepare("SELECT * FROM listings WHERE id = ?").get(id);
-      if (item) {
-        const alternatives = await buildProductAlternatives(item, db);
-        db.close();
-        return res.json({
-          success: true,
-          target_id: id,
-          target_product: item.title,
-          target_category: deriveCategory(item.title),
-          count: alternatives.length,
-          alternatives
-        });
-      }
-      db.close();
+    const { data: item } = await supabase.from("listings").select("*").eq("id", id).maybeSingle();
+    if (item) {
+      const alternatives = await buildProductAlternatives(item, supabase);
+      return res.json({
+        success: true,
+        target_id: id,
+        target_product: item.title,
+        target_category: deriveCategory(item.title),
+        count: alternatives.length,
+        alternatives
+      });
     }
   } catch (err) {
-    console.error("[Alternatives API SQLite Error]:", sanitizeLog(err.message));
-  }
-
-  // Fallback if not found in SQLite
-  if (!item) {
-    try {
-      const { data } = await supabase.from("listings").select("*").eq("id", id).single();
-      if (data) {
-        item = data;
-        const db = getSqliteDb();
-        const alternatives = await buildProductAlternatives(item, db);
-        if (db) db.close();
-        return res.json({
-          success: true,
-          target_id: id,
-          target_product: item.title,
-          target_category: deriveCategory(item.title),
-          count: alternatives.length,
-          alternatives
-        });
-      }
-    } catch (err) {
-      console.warn("[Alternatives API Supabase Warning]:", sanitizeLog(err.message));
-    }
+    console.error("[Alternatives API Supabase Error]:", sanitizeLog(err.message));
   }
 
   return res.status(404).json({ error: "Target product not found" });
@@ -835,9 +567,7 @@ app.get("/api/alternatives", apiLimiter, async (req, res) => {
     brand: ""
   };
 
-  const db = getSqliteDb();
-  const alternatives = await buildProductAlternatives(mockTarget, db);
-  if (db) db.close();
+  const alternatives = await buildProductAlternatives(mockTarget, supabase);
 
   return res.json({
     success: true,
@@ -856,11 +586,8 @@ app.get("/api/product/:id/live-prices", commandLimiter, async (req, res) => {
   let item = null;
 
   try {
-    const db = getSqliteDb();
-    if (db) {
-      item = db.prepare("SELECT * FROM listings WHERE id = ?").get(id);
-      db.close();
-    }
+    const { data } = await supabase.from("listings").select("*").eq("id", id).maybeSingle();
+    item = data;
   } catch (err) {
     console.error("[Live Scan API Error]:", sanitizeLog(err.message));
   }
@@ -961,7 +688,7 @@ function formatReviewDate(isoString) {
   }
 }
 
-// Feature: Dynamic Product Reviews - GET reviews & stats
+// Feature: Dynamic Product Reviews - GET reviews & stats (Supabase)
 app.get("/api/product/:id/reviews", apiLimiter, async (req, res) => {
   const id = (req.params.id || "").trim();
   if (!id || !/^[a-zA-Z0-9\-_]{1,64}$/.test(id)) {
@@ -970,7 +697,6 @@ app.get("/api/product/:id/reviews", apiLimiter, async (req, res) => {
 
   let reviews = [];
 
-  // 1. Fetch from Supabase
   try {
     const { data, error } = await supabase
       .from("reviews")
@@ -983,25 +709,6 @@ app.get("/api/product/:id/reviews", apiLimiter, async (req, res) => {
     }
   } catch (err) {
     console.warn("[Reviews Supabase Fetch Warning]:", sanitizeLog(err.message));
-  }
-
-  // 2. Fetch/Merge from SQLite fallback
-  try {
-    const db = getSqliteDb();
-    if (db) {
-      const localRows = db.prepare("SELECT * FROM reviews WHERE product_id = ? ORDER BY created_at DESC").all(id);
-      db.close();
-      if (localRows && localRows.length > 0) {
-        const existingIds = new Set(reviews.map(r => r.id));
-        for (const lr of localRows) {
-          if (!existingIds.has(lr.id)) {
-            reviews.push(lr);
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.error("[Reviews SQLite Error]:", sanitizeLog(err.message));
   }
 
   // Format reviews
@@ -1080,7 +787,7 @@ app.get("/api/product/:id/reviews", apiLimiter, async (req, res) => {
   });
 });
 
-// Feature: Dynamic Product Reviews - POST new review (authenticated users)
+// Feature: Dynamic Product Reviews - POST new review (Supabase)
 app.post("/api/product/:id/reviews", authActionLimiter, async (req, res) => {
   const productId = (req.params.id || "").trim();
   if (!productId || !/^[a-zA-Z0-9\-_]{1,64}$/.test(productId)) {
@@ -1109,10 +816,13 @@ app.post("/api/product/:id/reviews", authActionLimiter, async (req, res) => {
   const reviewId = `rev_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
   const nowIso = new Date().toISOString();
 
+  // Validate userId format for Postgres UUID if provided
+  const validUserId = (userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) ? userId : null;
+
   const newReview = {
     id: reviewId,
     product_id: productId,
-    user_id: userId || null,
+    user_id: validUserId,
     user_name: (userName || "PC Kinba Builder").trim().slice(0, 100),
     user_avatar: userAvatar || null,
     user_country: (userCountry || "Bangladesh").trim().slice(0, 50),
@@ -1129,7 +839,6 @@ app.post("/api/product/:id/reviews", authActionLimiter, async (req, res) => {
     updated_at: nowIso
   };
 
-  // 1. Insert into Supabase
   try {
     const { error: supaErr } = await supabase
       .from("reviews")
@@ -1144,40 +853,6 @@ app.post("/api/product/:id/reviews", authActionLimiter, async (req, res) => {
     }
   } catch (err) {
     console.error("[Reviews Supabase Insert Error]:", sanitizeLog(err.message));
-  }
-
-  // 2. Insert into SQLite (resilience fallback)
-  try {
-    const db = getSqliteDb();
-    if (db) {
-      db.prepare(`
-        INSERT OR REPLACE INTO reviews (
-          id, product_id, user_id, user_name, user_avatar, user_country, user_country_code,
-          rating, title, content, pros, cons, images, verified, helpful_count, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        newReview.id,
-        newReview.product_id,
-        newReview.user_id,
-        newReview.user_name,
-        newReview.user_avatar,
-        newReview.user_country,
-        newReview.user_country_code,
-        newReview.rating,
-        newReview.title,
-        newReview.content,
-        JSON.stringify(newReview.pros),
-        JSON.stringify(newReview.cons),
-        JSON.stringify(newReview.images),
-        newReview.verified ? 1 : 0,
-        newReview.helpful_count,
-        newReview.created_at,
-        newReview.updated_at
-      );
-      db.close();
-    }
-  } catch (err) {
-    console.error("[Reviews SQLite Insert Error]:", sanitizeLog(err.message));
   }
 
   return res.status(201).json({
@@ -1207,7 +882,7 @@ app.post("/api/product/:id/reviews", authActionLimiter, async (req, res) => {
   });
 });
 
-// Feature: Helpful Review Upvote
+// Feature: Helpful Review Upvote (Supabase)
 app.post("/api/reviews/:id/helpful", apiLimiter, async (req, res) => {
   const reviewId = (req.params.id || "").trim();
   if (!reviewId) {
@@ -1216,26 +891,12 @@ app.post("/api/reviews/:id/helpful", apiLimiter, async (req, res) => {
 
   let newCount = 1;
 
-  // 1. Update in SQLite
-  try {
-    const db = getSqliteDb();
-    if (db) {
-      db.prepare("UPDATE reviews SET helpful_count = helpful_count + 1 WHERE id = ?").run(reviewId);
-      const row = db.prepare("SELECT helpful_count FROM reviews WHERE id = ?").get(reviewId);
-      if (row) newCount = row.helpful_count;
-      db.close();
-    }
-  } catch (err) {
-    console.error("[Helpful SQLite Error]:", sanitizeLog(err.message));
-  }
-
-  // 2. Update in Supabase
   try {
     const { data } = await supabase
       .from("reviews")
       .select("helpful_count")
       .eq("id", reviewId)
-      .single();
+      .maybeSingle();
     if (data) {
       newCount = (data.helpful_count || 0) + 1;
       await supabase
@@ -1251,7 +912,7 @@ app.post("/api/reviews/:id/helpful", apiLimiter, async (req, res) => {
 });
 
 // ==============================================================================
-// Price Alert & Price Change Subscription Endpoints (Supabase + SQLite Fallback)
+// Price Alert & Price Change Subscription Endpoints (100% Supabase)
 // ==============================================================================
 
 // 1. Check price alert status for a product & user
@@ -1266,7 +927,6 @@ app.get("/api/product/:id/price-alert", apiLimiter, async (req, res) => {
 
   let alertData = null;
 
-  // 1. Check Supabase
   try {
     let query = supabase.from("price_alerts").select("*").eq("product_id", productId).eq("status", "active");
     if (email) {
@@ -1281,27 +941,6 @@ app.get("/api/product/:id/price-alert", apiLimiter, async (req, res) => {
     }
   } catch (err) {
     console.warn("[PriceAlert Supabase Query Warning]:", sanitizeLog(err.message));
-  }
-
-  // 2. Check SQLite fallback if Supabase didn't return
-  if (!alertData) {
-    try {
-      const db = getSqliteDb();
-      if (db) {
-        let row = null;
-        if (email) {
-          row = db.prepare("SELECT * FROM price_alerts WHERE product_id = ? AND user_email = ? AND status = 'active'").get(productId, email);
-        } else if (userId) {
-          row = db.prepare("SELECT * FROM price_alerts WHERE product_id = ? AND user_id = ? AND status = 'active'").get(productId, userId);
-        }
-        if (row) {
-          alertData = row;
-        }
-        db.close();
-      }
-    } catch (err) {
-      console.error("[PriceAlert SQLite Query Error]:", sanitizeLog(err.message));
-    }
   }
 
   return res.json({
@@ -1320,7 +959,7 @@ app.get("/api/product/:id/price-alert", apiLimiter, async (req, res) => {
   });
 });
 
-// 2. Subscribe or update price alert
+// 2. Subscribe or update price alert (Supabase)
 app.post("/api/product/:id/price-alert", apiLimiter, async (req, res) => {
   const productId = (req.params.id || "").trim();
   const {
@@ -1361,7 +1000,6 @@ app.post("/api/product/:id/price-alert", apiLimiter, async (req, res) => {
     updated_at: now
   };
 
-  // 1. Upsert into Supabase
   try {
     const { error: supaErr } = await supabase
       .from("price_alerts")
@@ -1373,40 +1011,7 @@ app.post("/api/product/:id/price-alert", apiLimiter, async (req, res) => {
     console.error("[PriceAlert Supabase Upsert Error]:", sanitizeLog(err.message));
   }
 
-  // 2. Upsert into SQLite
-  try {
-    const db = getSqliteDb();
-    if (db) {
-      db.prepare(`
-        INSERT OR REPLACE INTO price_alerts (
-          id, product_id, product_title, product_image, product_url, user_id,
-          user_email, user_name, initial_price, current_price, target_price,
-          notify_on_any_change, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        alertRecord.id,
-        alertRecord.product_id,
-        alertRecord.product_title,
-        alertRecord.product_image,
-        alertRecord.product_url,
-        alertRecord.user_id,
-        alertRecord.user_email,
-        alertRecord.user_name,
-        alertRecord.initial_price,
-        alertRecord.current_price,
-        alertRecord.target_price,
-        alertRecord.notify_on_any_change ? 1 : 0,
-        alertRecord.status,
-        alertRecord.created_at,
-        alertRecord.updated_at
-      );
-      db.close();
-    }
-  } catch (err) {
-    console.error("[PriceAlert SQLite Upsert Error]:", sanitizeLog(err.message));
-  }
-
-  // 3. Send email confirmation asynchronously
+  // Send email confirmation asynchronously
   sendPriceAlertConfirmationEmail({
     rawEmail: alertRecord.user_email,
     rawName: alertRecord.user_name,
@@ -1468,7 +1073,7 @@ app.post("/api/test/price-drop-alert", authActionLimiter, async (req, res) => {
   }
 });
 
-// 3. Unsubscribe from price alert
+// 3. Unsubscribe from price alert (Supabase)
 app.delete("/api/product/:id/price-alert", apiLimiter, async (req, res) => {
   const productId = (req.params.id || "").trim();
   const email = (req.body.email || req.query.email || "").trim().toLowerCase();
@@ -1478,7 +1083,6 @@ app.delete("/api/product/:id/price-alert", apiLimiter, async (req, res) => {
     return res.status(400).json({ error: "Product reference and email/userId are required" });
   }
 
-  // 1. Delete from Supabase
   try {
     let query = supabase.from("price_alerts").delete().eq("product_id", productId);
     if (email) {
@@ -1491,21 +1095,6 @@ app.delete("/api/product/:id/price-alert", apiLimiter, async (req, res) => {
     console.warn("[PriceAlert Supabase Delete Warning]:", sanitizeLog(err.message));
   }
 
-  // 2. Delete from SQLite
-  try {
-    const db = getSqliteDb();
-    if (db) {
-      if (email) {
-        db.prepare("DELETE FROM price_alerts WHERE product_id = ? AND user_email = ?").run(productId, email);
-      } else if (userId) {
-        db.prepare("DELETE FROM price_alerts WHERE product_id = ? AND user_id = ?").run(productId, userId);
-      }
-      db.close();
-    }
-  } catch (err) {
-    console.error("[PriceAlert SQLite Delete Error]:", sanitizeLog(err.message));
-  }
-
   return res.json({
     success: true,
     subscribed: false,
@@ -1513,7 +1102,7 @@ app.delete("/api/product/:id/price-alert", apiLimiter, async (req, res) => {
   });
 });
 
-// 4. Get all price alerts for a user
+// 4. Get all price alerts for a user (Supabase)
 app.get("/api/user/price-alerts", apiLimiter, async (req, res) => {
   const email = (req.query.email || "").trim().toLowerCase();
   const userId = (req.query.userId || "").trim();
@@ -1524,7 +1113,6 @@ app.get("/api/user/price-alerts", apiLimiter, async (req, res) => {
 
   let alerts = [];
 
-  // 1. Query Supabase
   try {
     let query = supabase.from("price_alerts").select("*").order("created_at", { ascending: false });
     if (email) {
@@ -1538,23 +1126,6 @@ app.get("/api/user/price-alerts", apiLimiter, async (req, res) => {
     }
   } catch (err) {
     console.warn("[User PriceAlerts Supabase Warning]:", sanitizeLog(err.message));
-  }
-
-  // 2. Query SQLite fallback if empty
-  if (alerts.length === 0) {
-    try {
-      const db = getSqliteDb();
-      if (db) {
-        if (email) {
-          alerts = db.prepare("SELECT * FROM price_alerts WHERE user_email = ? ORDER BY created_at DESC").all(email);
-        } else if (userId) {
-          alerts = db.prepare("SELECT * FROM price_alerts WHERE user_id = ? ORDER BY created_at DESC").all(userId);
-        }
-        db.close();
-      }
-    } catch (err) {
-      console.error("[User PriceAlerts SQLite Error]:", sanitizeLog(err.message));
-    }
   }
 
   return res.json({ success: true, alerts });
