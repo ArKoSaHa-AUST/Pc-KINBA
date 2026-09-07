@@ -1,5 +1,10 @@
 import { createClient } from '../utils/supabase/client';
-import type { ProductComponent, FilterState, ComponentCategory, RetailerPrice } from '../types/components';
+import type {
+  ProductComponent,
+  FilterState,
+  ComponentCategory,
+  RetailerPrice,
+} from '../types/components';
 import { MOCK_COMPONENTS } from '../data/mockComponentsData';
 
 const supabase = createClient();
@@ -75,7 +80,7 @@ export function mapDbProductToComponent(
   const gallery =
     images.length > 0
       ? images.map((i) => i.image_url)
-      : listings.map((l) => l.image_url).filter(Boolean) as string[];
+      : (listings.map((l) => l.image_url).filter(Boolean) as string[]);
 
   const finalGallery = gallery.length > 0 ? gallery : [primaryImage];
 
@@ -316,7 +321,7 @@ export async function getProducts(filters: FilterState): Promise<FetchProductsRe
 
     // 3. Fetch associated listings for all products to attach real retailer store comparison
     const productIds = data.map((p) => p.id);
-    let listingsMap: Record<string, DBListingRow[]> = {};
+    const listingsMap: Record<string, DBListingRow[]> = {};
     if (productIds.length > 0) {
       const { data: listingsData } = await supabase
         .from('listings')

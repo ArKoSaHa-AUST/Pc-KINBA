@@ -211,7 +211,8 @@ export const ProductCard = memo(function ProductCard({ product }: ProductCardPro
                 </span>
                 {product.retailers && product.retailers.length > 1 && (
                   <span className="text-[9px] text-text-muted mt-0.5">
-                    +{product.retailers.length - 1} other store{product.retailers.length > 2 ? 's' : ''}
+                    +{product.retailers.length - 1} other store
+                    {product.retailers.length > 2 ? 's' : ''}
                   </span>
                 )}
               </div>
