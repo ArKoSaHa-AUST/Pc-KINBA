@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Star,
@@ -9,27 +9,33 @@ import {
   ExternalLink,
   Layers,
   Sparkles,
+  ShoppingCart,
+  Check,
 } from 'lucide-react';
 import type { ProductComponent } from '../../types/components';
 import { useComponentStore } from '../../store/useComponentStore';
+import { useCompare } from '../../hooks/useCompare';
+import { useCart } from '../../hooks/useCart';
 
 interface ProductCardProps {
   product: ProductComponent;
 }
 
 export const ProductCard = memo(function ProductCard({ product }: ProductCardProps) {
-  const isInCompare = useComponentStore((s) => s.isInCompare(product.id));
-  const addToCompare = useComponentStore((s) => s.addToCompare);
-  const removeFromCompare = useComponentStore((s) => s.removeFromCompare);
+  const { isInCompare, addToCompare, removeFromCompare } = useCompare();
+  const { addToCart } = useCart();
   const setQuickViewProduct = useComponentStore((s) => s.setQuickViewProduct);
   const isInWishlist = useComponentStore((s) => s.isInWishlist(product.id));
   const toggleWishlist = useComponentStore((s) => s.toggleWishlist);
   const addRecentlyViewed = useComponentStore((s) => s.addRecentlyViewed);
 
+  const [addedToCart, setAddedToCart] = useState(false);
+  const inCompare = isInCompare(product.id);
+
   const handleCompareToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isInCompare) {
+    if (inCompare) {
       removeFromCompare(product.id);
     } else {
       addToCompare(product);
@@ -47,6 +53,16 @@ export const ProductCard = memo(function ProductCard({ product }: ProductCardPro
     e.preventDefault();
     e.stopPropagation();
     toggleWishlist(product.id);
+  };
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (addedToCart || !product.inStock) return;
+
+    await addToCart(product, 1);
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 2000);
   };
 
   const lowestRetailer = product.retailers?.[0];
@@ -197,24 +213,40 @@ export const ProductCard = memo(function ProductCard({ product }: ProductCardPro
         {/* Fast Action Buttons */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Link
-              to={`/product/${product.id}`}
-              className="flex-1 py-2.5 px-3 rounded-xl bg-accent text-black font-bold text-xs tracking-wide text-center hover:brightness-110 active:scale-98 transition-all shadow-[0_0_15px_rgba(0,229,255,0.25)] hover:shadow-[0_0_20px_rgba(0,229,255,0.4)] flex items-center justify-center gap-1.5"
+            <button
+              onClick={handleAddToCart}
+              disabled={!product.inStock}
+              className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-xs tracking-wide text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                !product.inStock
+                  ? 'bg-bg-primary text-text-muted border border-border cursor-not-allowed opacity-60'
+                  : addedToCart
+                  ? 'bg-success text-black shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                  : 'bg-accent text-black hover:brightness-110 active:scale-98 shadow-[0_0_15px_rgba(0,229,255,0.25)] hover:shadow-[0_0_20px_rgba(0,229,255,0.4)]'
+              }`}
             >
-              <span>View Deals</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </Link>
+              {addedToCart ? (
+                <>
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>Added to Cart</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="w-3.5 h-3.5" />
+                  <span>{product.inStock ? 'Add to Cart' : 'Out of Stock'}</span>
+                </>
+              )}
+            </button>
 
             <button
               onClick={handleCompareToggle}
               className={`py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                isInCompare
+                inCompare
                   ? 'bg-purple/20 border-purple text-purple shadow-[0_0_15px_rgba(124,58,237,0.3)]'
                   : 'bg-bg-primary border-border text-text-muted hover:text-white hover:border-accent/40'
               }`}
-              title={isInCompare ? 'Remove from Compare' : 'Add to Compare'}
+              title={inCompare ? 'Remove from Compare' : 'Add to Compare'}
             >
-              {isInCompare ? (
+              {inCompare ? (
                 <>
                   <CheckCircle2 className="w-3.5 h-3.5 text-purple" />
                   <span className="hidden sm:inline">Added</span>
@@ -226,6 +258,14 @@ export const ProductCard = memo(function ProductCard({ product }: ProductCardPro
                 </>
               )}
             </button>
+
+            <Link
+              to={`/product/${product.id}`}
+              className="p-2.5 rounded-xl bg-bg-primary border border-border text-text-muted hover:text-white hover:border-accent/40 transition-colors flex items-center justify-center"
+              title="View full specs & price history"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
       </div>

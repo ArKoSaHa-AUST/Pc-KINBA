@@ -17,9 +17,11 @@ import {
   Server,
   Grid,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getCategories } from '../../api/categories';
 import { CATEGORY_TAXONOMY } from '../../data/categoryTaxonomy';
 import { useComponentStore } from '../../store/useComponentStore';
-import type { ComponentCategory } from '../../types/components';
+import type { CategoryInfo, ComponentCategory } from '../../types/components';
 
 const CATEGORY_ICON_MAP: Record<string, any> = {
   cpu: Cpu,
@@ -44,9 +46,15 @@ export default function CategoryTaxonomyNav() {
   const activeSubcategory = useComponentStore((s) => s.filters.subcategory);
   const setFilter = useComponentStore((s) => s.setFilter);
 
+  const { data: categories = CATEGORY_TAXONOMY } = useQuery<CategoryInfo[]>({
+    queryKey: ['categories'],
+    queryFn: getCategories,
+    staleTime: 1000 * 60 * 15,
+  });
+
   const currentCategoryMeta = useMemo(() => {
-    return CATEGORY_TAXONOMY.find((c) => c.id === activeCategory);
-  }, [activeCategory]);
+    return categories.find((c: CategoryInfo) => c.id === activeCategory);
+  }, [categories, activeCategory]);
 
   return (
     <div className="w-full mb-8">
@@ -67,7 +75,7 @@ export default function CategoryTaxonomyNav() {
           <span>All Components</span>
         </button>
 
-        {CATEGORY_TAXONOMY.slice(0, 10).map((cat) => {
+        {categories.slice(0, 10).map((cat: CategoryInfo) => {
           const Icon = CATEGORY_ICON_MAP[cat.id] || Cpu;
           const isSelected = activeCategory === cat.id;
 
@@ -107,7 +115,7 @@ export default function CategoryTaxonomyNav() {
           >
             All {currentCategoryMeta.name.split(' (')[0]}
           </button>
-          {currentCategoryMeta.subcategories.map((sub) => {
+          {currentCategoryMeta.subcategories.map((sub: { id: string; name: string }) => {
             const isSelected = activeSubcategory === sub.id;
             return (
               <button

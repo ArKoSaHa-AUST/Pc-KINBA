@@ -39,7 +39,8 @@ export type ComponentCategory =
   // Advanced
   | 'nas'
   | 'server'
-  | 'workstation-ai';
+  | 'workstation-ai'
+  | string;
 
 export interface RetailerPrice {
   name: 'StarTech' | 'Ryans' | 'Techland' | 'Skyland' | 'Potaka IT' | string;
@@ -63,10 +64,13 @@ export interface ProductComponent {
   brand: string;
   category: ComponentCategory;
   subcategory?: string;
+  categoryId?: string;
+  brandId?: string;
   price: number;
   originalPrice?: number;
   discountPercent?: number;
   inStock: boolean;
+  stockCount?: number;
   stockStatus: 'in_stock' | 'pre_order' | 'out_of_stock' | 'limited_stock';
   rating: number;
   reviewCount: number;
@@ -109,7 +113,7 @@ export interface HeroCategoryCard {
   category: ComponentCategory;
   tag: string;
   imageUrl: string;
-  accentColor: string; // e.g. '#00e5ff' or '#ef4444' or '#10b981'
+  accentColor: string;
   badge?: string;
   linkUrl: string;
 }
@@ -117,6 +121,7 @@ export interface HeroCategoryCard {
 export interface DynamicFilterFacet {
   id: string;
   title: string;
+  type?: 'range' | 'select' | 'multi-select';
   options: { label: string; value: string; count?: number }[];
 }
 
@@ -145,4 +150,95 @@ export interface CompareProductItem {
   specs: Record<string, string>;
   bulletSpecs: string[];
   inStock: boolean;
+}
+
+export interface CartItem {
+  id: string;
+  userId: string;
+  productId: string;
+  quantity: number;
+  product: ProductComponent;
+  createdAt: string;
+}
+
+// Database Schema Interfaces
+export interface DBCategory {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  icon: string | null;
+  accent_color: string | null;
+  display_order: number;
+  created_at: string;
+}
+
+export interface DBBrand {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  created_at: string;
+}
+
+export interface DBProduct {
+  id: string;
+  name: string;
+  slug: string;
+  category_id: string;
+  brand_id: string;
+  price: number;
+  discount_price: number | null;
+  stock: number;
+  rating: number;
+  review_count: number;
+  is_featured: boolean;
+  is_new_arrival: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBProductImage {
+  id: string;
+  product_id: string;
+  image_url: string;
+  is_primary: boolean;
+  display_order: number;
+  created_at: string;
+}
+
+export interface DBProductSpec {
+  id: string;
+  product_id: string;
+  spec_key: string;
+  spec_value: string;
+  spec_group: string;
+  created_at: string;
+}
+
+export interface DBFiltersConfig {
+  id: string;
+  category_id: string | null;
+  filter_key: string;
+  filter_label: string;
+  filter_type: 'range' | 'select' | 'multi-select';
+  options: { label: string; value: string }[];
+  display_order: number;
+  created_at: string;
+}
+
+export interface DBCart {
+  id: string;
+  user_id: string;
+  product_id: string;
+  quantity: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBCompareList {
+  id: string;
+  user_id: string;
+  product_id: string;
+  created_at: string;
 }

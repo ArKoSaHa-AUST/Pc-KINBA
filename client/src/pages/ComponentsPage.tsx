@@ -10,12 +10,16 @@ import RecentlyViewed from '../components/marketplace/RecentlyViewed';
 import AICompatibilityTip from '../components/marketplace/AICompatibilityTip';
 import { useFilterSync } from '../hooks/useFilterSync';
 import { useComponentQuery } from '../hooks/useComponentQuery';
+import { useRealtimeStock } from '../hooks/useRealtimeStock';
 
 export default function ComponentsPage() {
   // Sync URL search params with Zustand store
   useFilterSync();
 
-  // Query & Filter Pipeline
+  // Supabase Realtime Subscription for stock and price updates
+  useRealtimeStock();
+
+  // Query & Filter Pipeline (Connected to Supabase)
   const {
     products,
     totalCount,
@@ -38,18 +42,18 @@ export default function ComponentsPage() {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
             <span className="px-3 py-1 rounded-full text-xs font-bold bg-accent/20 border border-accent/40 text-accent uppercase tracking-widest">
-              Live Hardware Marketplace
+              Live Supabase Marketplace
             </span>
             <span className="text-xs text-text-muted hidden sm:inline">
-              Real-time prices across StarTech, Ryans, Techland & Skyland
+              Real-time prices & verified specs across StarTech, Ryans, Techland & Skyland
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white mb-2">
             PC Components & Hardware
           </h1>
           <p className="text-sm sm:text-base text-text-muted max-w-3xl leading-relaxed">
-            Discover, compare, and verify verified authentic computer components across all major
-            Bangladeshi retailers with live pricing, technical specifications, and AI compatibility checks.
+            Discover, compare, and verify authentic computer components across all major
+            Bangladeshi retailers with live Supabase database pricing, technical specifications, and AI compatibility checks.
           </p>
         </div>
 

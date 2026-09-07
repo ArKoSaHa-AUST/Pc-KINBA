@@ -9,14 +9,16 @@ import {
   AlertCircle,
   ExternalLink,
 } from 'lucide-react';
-import { useComponentStore } from '../../store/useComponentStore';
+import { useCompare } from '../../hooks/useCompare';
 
 export default function CompareDrawer() {
-  const compareList = useComponentStore((s) => s.compareList);
-  const removeFromCompare = useComponentStore((s) => s.removeFromCompare);
-  const clearCompare = useComponentStore((s) => s.clearCompare);
-  const isCompareModalOpen = useComponentStore((s) => s.isCompareModalOpen);
-  const setCompareModalOpen = useComponentStore((s) => s.setCompareModalOpen);
+  const {
+    compareList,
+    removeFromCompare,
+    clearCompare,
+    isCompareModalOpen,
+    setCompareModalOpen,
+  } = useCompare();
 
   const [highlightDiffs, setHighlightDiffs] = useState(false);
 

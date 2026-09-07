@@ -10,6 +10,8 @@ import {
   Building2,
   Cpu,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getFiltersConfig } from '../../api/filters';
 import { CATEGORY_FACETS } from '../../data/categoryTaxonomy';
 import { useComponentStore, DEFAULT_PRICE_RANGE } from '../../store/useComponentStore';
 
@@ -38,9 +40,9 @@ export default function FilterSidebar({
     socket: true,
     chipset: true,
     vram: true,
-    memoryType: true,
+    memory_type: true,
     capacity: true,
-    formFactor: true,
+    form_factor: true,
     wattage: true,
   });
 
@@ -48,8 +50,20 @@ export default function FilterSidebar({
     setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  // Fetch dynamic facets from Supabase filters_config table
+  const { data: dbFacets } = useQuery({
+    queryKey: ['filters-config', filters.category],
+    queryFn: () => getFiltersConfig(filters.category),
+    enabled: filters.category !== 'all',
+    staleTime: 1000 * 60 * 10,
+  });
+
   const dynamicFacets =
-    filters.category !== 'all' ? CATEGORY_FACETS[filters.category] || [] : [];
+    filters.category !== 'all'
+      ? dbFacets && dbFacets.length > 0
+        ? dbFacets
+        : CATEGORY_FACETS[filters.category] || []
+      : [];
 
   const filteredBrands = availableBrands.filter((b) =>
     b.brand.toLowerCase().includes(brandSearch.toLowerCase().trim()),
