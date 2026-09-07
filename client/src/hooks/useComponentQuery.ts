@@ -61,14 +61,28 @@ export function useComponentQuery() {
       .sort((a, b) => b.count - a.count);
   }, [dbBrands, rawProducts]);
 
-  // Available retailers in current category
+  // Available retailers in current category / marketplace
   const availableRetailers = useMemo(() => {
-    const retailersSet = new Set<string>();
+    const retailersSet = new Set<string>([
+      'StarTech BD',
+      'Ryans Computers',
+      'Techland BD',
+      'Skyland BD',
+      'Computer Village',
+      'Global Brand',
+      'PC House BD',
+      'PCB Store',
+      'Sell Tech BD',
+      'Ultra Technology',
+      'EIT',
+      'UCC',
+    ]);
     rawProducts.forEach((p) => {
-      p.retailers.forEach((r) => retailersSet.add(r.name));
+      p.retailers.forEach((r) => {
+        if (r.name) retailersSet.add(r.name);
+      });
     });
-    const list = Array.from(retailersSet);
-    return list.length > 0 ? list : ['StarTech', 'Ryans Computers', 'Techland BD', 'Skyland'];
+    return Array.from(retailersSet);
   }, [rawProducts]);
 
   return {
