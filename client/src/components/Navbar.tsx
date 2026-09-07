@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, LogIn, Menu, X } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import ThemeSwitcher from './ThemeSwitcher';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -20,9 +20,22 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation('nav');
   const { status, user } = useAuth();
   const isAuthenticated = status === 'authenticated' && user !== null;
+
+  const currentPath = location.pathname;
+
+  const isNavItemActive = (itemPath: string) => {
+    if (itemPath === '/') {
+      return currentPath === '/';
+    }
+    if (itemPath === '/components') {
+      return currentPath.startsWith('/components') || currentPath.startsWith('/product');
+    }
+    return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -53,24 +66,36 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop Links (Centered) */}
-          <div className="hidden lg:flex items-center absolute left-1/2 -translate-x-1/2 space-x-1">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.key}
-                to={item.path}
-                className="px-4 py-2 rounded-full text-sm font-medium text-text-muted hover:text-text-primary hover:bg-border transition-all"
-              >
-                {t(item.key)}
-              </Link>
-            ))}
+          {/* Desktop Links (Centered with Active Pill) */}
+          <div className="hidden lg:flex items-center absolute left-1/2 -translate-x-1/2 space-x-1 bg-bg-surface/50 backdrop-blur-md p-1.5 rounded-full border border-border/60 shadow-sm">
+            {NAV_ITEMS.map((item) => {
+              const active = isNavItemActive(item.path);
+              return (
+                <Link
+                  key={item.key}
+                  to={item.path}
+                  className={`relative px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+                    active ? 'text-accent font-bold' : 'text-text-muted hover:text-text-primary'
+                  }`}
+                >
+                  {active && (
+                    <motion.div
+                      layoutId="activeNavPill"
+                      className="absolute inset-0 rounded-full bg-accent/15 border border-accent/40 shadow-[0_0_15px_rgba(0,229,255,0.25)]"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10">{t(item.key)}</span>
+                </Link>
+              );
+            })}
           </div>
 
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center gap-2">
             <button
               onClick={() => navigate('/search')}
-              className="p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-border transition-colors"
+              className="p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-border transition-colors cursor-pointer"
               aria-label={t('search')}
             >
               <Search className="w-5 h-5" />
@@ -84,13 +109,13 @@ export default function Navbar() {
               <>
                 <button
                   onClick={() => navigate('/login')}
-                  className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors flex items-center gap-2"
+                  className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <LogIn className="w-4 h-4" /> {t('signIn')}
                 </button>
                 <button
                   onClick={() => navigate('/register')}
-                  className="button-primary text-sm py-2 px-5"
+                  className="button-primary text-sm py-2 px-5 cursor-pointer"
                 >
                   {t('signUp')}
                 </button>
@@ -103,7 +128,7 @@ export default function Navbar() {
             <ThemeSwitcher />
             <LanguageSwitcher />
             <button
-              className="p-2 text-text-muted hover:text-text-primary"
+              className="p-2 text-text-muted hover:text-text-primary cursor-pointer"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label={mobileMenuOpen ? t('common:close') : t('common:search')}
             >
@@ -123,22 +148,32 @@ export default function Navbar() {
             className="fixed inset-0 z-40 bg-bg-primary/90 flex items-center justify-center lg:hidden"
           >
             <div className="flex flex-col items-center gap-8">
-              {NAV_ITEMS.map((item, idx) => (
-                <motion.div
-                  key={item.key}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                >
-                  <Link
-                    to={item.path}
-                    className="text-2xl font-semibold text-text-muted hover:text-text-primary"
-                    onClick={() => setMobileMenuOpen(false)}
+              {NAV_ITEMS.map((item, idx) => {
+                const active = isNavItemActive(item.path);
+                return (
+                  <motion.div
+                    key={item.key}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
                   >
-                    {t(item.key)}
-                  </Link>
-                </motion.div>
-              ))}
+                    <Link
+                      to={item.path}
+                      className={`text-2xl font-semibold transition-all flex items-center gap-2.5 ${
+                        active
+                          ? 'text-accent font-bold scale-105'
+                          : 'text-text-muted hover:text-text-primary'
+                      }`}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {active && (
+                        <span className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
+                      )}
+                      <span>{t(item.key)}</span>
+                    </Link>
+                  </motion.div>
+                );
+              })}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
