@@ -1,3 +1,7 @@
+if (!globalThis.WebSocket) {
+  globalThis.WebSocket = class WebSocket {};
+}
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -1574,6 +1578,176 @@ app.post("/api/send-welcome", authActionLimiter, async (req, res) => {
     const safeErrorMsg = sanitizeLog(error.message || "");
     console.error("[Signup Event Error] Email sending failed: %s", safeErrorMsg);
     return res.status(500).json({ error: error.message });
+  }
+});
+
+// ==========================================
+// PC Components Marketplace Supabase Routes
+// ==========================================
+
+// 1. Get Products with joined specs & images
+app.get("/api/products", apiLimiter, async (req, res) => {
+  try {
+    const { min_price, max_price, in_stock, on_sale, search, sort, limit = 50, page = 1 } = req.query;
+
+    let query = supabase.from("products").select(`
+      id,
+      name,
+      slug,
+      category_id,
+      brand_id,
+      price,
+      discount_price,
+      stock,
+      rating,
+      review_count,
+      is_featured,
+      is_new_arrival,
+      created_at,
+      categories:category_id ( id, name, slug, parent_id ),
+      brands:brand_id ( id, name, slug ),
+      product_images ( id, image_url, is_primary, display_order ),
+      product_specs ( id, spec_key, spec_value, spec_group )
+    `, { count: "exact" });
+
+    if (in_stock === "true") {
+      query = query.gt("stock", 0);
+    }
+    if (on_sale === "true") {
+      query = query.not("discount_price", "is", null);
+    }
+    if (min_price) {
+      query = query.gte("price", Number(min_price));
+    }
+    if (max_price) {
+      query = query.lte("price", Number(max_price));
+    }
+    if (search) {
+      query = query.ilike("name", `%${search.trim()}%`);
+    }
+
+    if (sort === "price_asc") {
+      query = query.order("price", { ascending: true });
+    } else if (sort === "price_desc") {
+      query = query.order("price", { ascending: false });
+    } else if (sort === "rating") {
+      query = query.order("rating", { ascending: false });
+    } else if (sort === "newest") {
+      query = query.order("created_at", { ascending: false });
+    } else {
+      query = query.order("is_featured", { ascending: false }).order("rating", { ascending: false });
+    }
+
+    const from = (Number(page) - 1) * Number(limit);
+    const to = from + Number(limit) - 1;
+    query = query.range(from, to);
+
+    const { data, count, error } = await query;
+    if (error) throw error;
+
+    return res.json({
+      success: true,
+      products: data || [],
+      totalCount: count || 0,
+      page: Number(page),
+      limit: Number(limit)
+    });
+  } catch (err) {
+    console.error("[GET /api/products Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to fetch products", details: err.message });
+  }
+});
+
+// 2. Get Categories Tree
+app.get("/api/categories", apiLimiter, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("categories")
+      .select("*")
+      .order("display_order", { ascending: true });
+
+    if (error) throw error;
+    return res.json({ success: true, categories: data || [] });
+  } catch (err) {
+    console.error("[GET /api/categories Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to fetch categories", details: err.message });
+  }
+});
+
+// 3. Get Filters Configuration
+app.get("/api/filters", apiLimiter, async (req, res) => {
+  try {
+    const { category_id } = req.query;
+    let query = supabase.from("filters_config").select("*").order("display_order", { ascending: true });
+    if (category_id) {
+      query = query.eq("category_id", category_id);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    return res.json({ success: true, filters: data || [] });
+  } catch (err) {
+    console.error("[GET /api/filters Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to fetch filters", details: err.message });
+  }
+});
+
+// 4. Cart API
+app.get("/api/cart", apiLimiter, async (req, res) => {
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).json({ error: "userId required" });
+
+  try {
+    const { data, error } = await supabase
+      .from("cart")
+      .select(`
+        id,
+        user_id,
+        product_id,
+        quantity,
+        created_at,
+        products (
+          id, name, slug, price, discount_price, stock, rating,
+          brands:brand_id ( name ),
+          categories:category_id ( name, slug ),
+          product_images ( image_url, is_primary )
+        )
+      `)
+      .eq("user_id", userId);
+
+    if (error) throw error;
+    return res.json({ success: true, cart: data || [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. Compare API
+app.get("/api/compare", apiLimiter, async (req, res) => {
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).json({ error: "userId required" });
+
+  try {
+    const { data, error } = await supabase
+      .from("compare_list")
+      .select(`
+        id,
+        user_id,
+        product_id,
+        created_at,
+        products (
+          id, name, slug, price, rating,
+          brands:brand_id ( name ),
+          categories:category_id ( name, slug ),
+          product_images ( image_url, is_primary ),
+          product_specs ( spec_key, spec_value )
+        )
+      `)
+      .eq("user_id", userId);
+
+    if (error) throw error;
+    return res.json({ success: true, compareList: data || [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 });
 
