@@ -172,33 +172,26 @@ def scrape_ryans_fast(query: str):
     except Exception as e:
         print(f"[FastScraper] Ryans direct fetch: {e}")
 
-    # Fallback to local DB cache for Ryans if live request encounters Cloudflare
+    # Fallback to Supabase cache for Ryans if live request encounters Cloudflare
     if not results:
         try:
-            import sqlite3
-            db_path = os.path.join(BASE_DIR, "pcbuilder.db")
-            if os.path.exists(db_path):
-                conn = sqlite3.connect(db_path)
-                c = conn.cursor()
-                clean_q = query.strip().lower()
-                tokens = clean_q.split()
-                if tokens:
-                    clause = " AND ".join(["LOWER(title) LIKE ?" for _ in tokens])
-                    params = [f"%{t}%" for t in tokens]
-                    c.execute(f"SELECT title, brand, price, price_str, product_url, image_url FROM listings WHERE retailer = 'Ryans Computers' AND {clause} LIMIT 10", params)
-                    for row in c.fetchall():
+            from scrapers.db import supabase_client
+            if supabase_client:
+                clean_q = query.strip()
+                res = supabase_client.table("listings").select("title, brand, price, price_str, product_url, image_url").eq("retailer", "Ryans Computers").ilike("title", f"%{clean_q}%").limit(10).execute()
+                if res.data:
+                    for row in res.data:
                         results.append({
                             'retailer': 'Ryans Computers',
-                            'title': row[0],
-                            'brand': row[1] or parse_brand(row[0]),
-                            'price': row[2],
-                            'price_str': row[3] or f"{row[2]:,}৳",
-                            'product_url': row[4],
-                            'image_url': row[5] or ''
+                            'title': row['title'],
+                            'brand': row.get('brand') or parse_brand(row['title']),
+                            'price': row['price'],
+                            'price_str': row.get('price_str') or f"{row['price']:,}৳",
+                            'product_url': row['product_url'],
+                            'image_url': row.get('image_url') or ''
                         })
-                conn.close()
         except Exception as e:
-            print(f"[FastScraper] Ryans DB fallback error: {e}")
+            print(f"[FastScraper] Ryans Supabase fallback error: {e}")
 
     return results
 
@@ -418,30 +411,24 @@ def scrape_computermania_fast(query: str):
     except Exception as e:
         print(f"[FastScraper] ComputerMania direct fetch: {e}")
 
-    # Fallback to local DB cache for Computer Mania if live Cloudflare blocks
+    # Fallback to Supabase cache for Computer Mania if live Cloudflare blocks
     if not results:
         try:
-            import sqlite3
-            db_path = os.path.join(BASE_DIR, "pcbuilder.db")
-            if os.path.exists(db_path):
-                conn = sqlite3.connect(db_path)
-                c = conn.cursor()
-                tokens = query.strip().lower().split()
-                if tokens:
-                    clause = " AND ".join(["LOWER(title) LIKE ?" for _ in tokens])
-                    params = [f"%{t}%" for t in tokens]
-                    c.execute(f"SELECT title, brand, price, price_str, product_url, image_url FROM listings WHERE retailer = 'Computer Mania BD' AND {clause} LIMIT 10", params)
-                    for row in c.fetchall():
+            from scrapers.db import supabase_client
+            if supabase_client:
+                clean_q = query.strip()
+                res = supabase_client.table("listings").select("title, brand, price, price_str, product_url, image_url").eq("retailer", "Computer Mania BD").ilike("title", f"%{clean_q}%").limit(10).execute()
+                if res.data:
+                    for row in res.data:
                         results.append({
                             'retailer': 'Computer Mania BD',
-                            'title': row[0],
-                            'brand': row[1] or parse_brand(row[0]),
-                            'price': row[2],
-                            'price_str': row[3] or f"{row[2]:,}৳",
-                            'product_url': row[4],
-                            'image_url': row[5] or ''
+                            'title': row['title'],
+                            'brand': row.get('brand') or parse_brand(row['title']),
+                            'price': row['price'],
+                            'price_str': row.get('price_str') or f"{row['price']:,}৳",
+                            'product_url': row['product_url'],
+                            'image_url': row.get('image_url') or ''
                         })
-                conn.close()
         except Exception:
             pass
 
