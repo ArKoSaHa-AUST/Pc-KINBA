@@ -24,8 +24,8 @@ export function SecurityDangerZone({
   return (
     <div className="flex flex-col gap-6 w-full">
       {/* Password Reset Section */}
-      <Card className="bg-slate-900/60 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-2xl flex flex-col gap-4 shadow-xl">
-        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+      <Card className="backdrop-blur-xl border border-border p-6 md:p-8 rounded-2xl flex flex-col gap-4 shadow-xl">
+        <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2.5 text-text-primary font-bold text-lg">
             <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
               <KeyRound className="w-5 h-5" />
@@ -68,8 +68,8 @@ export function SecurityDangerZone({
         transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
         className="rounded-2xl"
       >
-        <Card className="bg-slate-900/80 backdrop-blur-xl border border-red-500/40 p-6 md:p-8 rounded-2xl flex flex-col gap-4 shadow-2xl">
-          <div className="flex items-center justify-between border-b border-red-500/20 pb-4">
+        <Card className="bg-danger/[0.04] backdrop-blur-xl border border-danger/30 p-6 md:p-8 rounded-2xl flex flex-col gap-4 shadow-xl">
+          <div className="flex items-center justify-between border-b border-danger/20 pb-4">
             <div className="flex items-center gap-2.5 text-red-400 font-bold text-lg">
               <div className="p-2 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400">
                 <AlertTriangle className="w-5 h-5" />

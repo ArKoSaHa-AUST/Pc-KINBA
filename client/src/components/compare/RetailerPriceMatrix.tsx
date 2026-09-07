@@ -44,15 +44,15 @@ export const RetailerPriceMatrix = ({
   ];
 
   return (
-    <div className="w-full rounded-3xl bg-slate-900/80 border border-white/10 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl overflow-hidden relative">
+    <div className="w-full rounded-3xl bg-glass border border-border backdrop-blur-2xl p-6 sm:p-8 shadow-2xl overflow-hidden relative">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-white/10 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-border pb-5">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mb-2">
             <Store className="w-3.5 h-3.5" />
             <span>Bangladeshi Retailer Live Aggregator</span>
           </div>
-          <h3 className="text-xl sm:text-2xl font-extrabold text-white">
+          <h3 className="text-xl sm:text-2xl font-extrabold text-text-primary">
             Multi-Seller Price & Stock Matrix
           </h3>
           <p className="text-xs sm:text-sm text-text-muted mt-1">
@@ -70,7 +70,7 @@ export const RetailerPriceMatrix = ({
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/40 text-text-primary hover:text-accent transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-fill-subtle hover:bg-fill-muted border border-border hover:border-accent/40 text-text-primary hover:text-accent transition-all disabled:opacity-50 cursor-pointer"
             title="Refresh Live Retailer Prices"
           >
             <RefreshCw
@@ -85,16 +85,16 @@ export const RetailerPriceMatrix = ({
       <div className="overflow-x-auto custom-compare-scroll pb-2">
         <table className="w-full text-left border-collapse min-w-[700px]">
           <thead>
-            <tr className="border-b border-white/10 text-xs uppercase font-bold text-text-muted">
+            <tr className="border-b border-border text-xs uppercase font-bold text-text-muted">
               <th className="py-3 px-4 w-[240px]">Verified Retailer</th>
               {slots.slice(0, 3).map((prod, idx) => (
                 <th key={idx} className="py-3 px-4">
                   {prod ? (
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-accent">
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-fill-subtle border border-border text-accent">
                         Slot {idx + 1}
                       </span>
-                      <span className="text-white truncate max-w-[200px]">{prod.name}</span>
+                      <span className="text-text-primary truncate max-w-[200px]">{prod.name}</span>
                     </div>
                   ) : (
                     <span className="text-text-muted/40">Slot {idx + 1} (Empty)</span>
@@ -103,17 +103,17 @@ export const RetailerPriceMatrix = ({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5 text-sm">
+          <tbody className="divide-y divide-border text-sm">
             {retailersList.map((retailer) => (
-              <tr key={retailer.slug} className="hover:bg-white/[0.02] transition-colors">
+              <tr key={retailer.slug} className="hover:bg-fill-subtle transition-colors">
                 {/* Retailer Info */}
                 <td className="py-4 px-4 align-top">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-accent font-bold text-xs">
+                    <div className="w-8 h-8 rounded-xl bg-fill-subtle border border-border flex items-center justify-center text-accent font-bold text-xs">
                       {retailer.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="font-bold text-white text-sm">{retailer.name}</div>
+                      <div className="font-bold text-text-primary text-sm">{retailer.name}</div>
                       <div className="text-xs text-text-muted">{retailer.website}</div>
                     </div>
                   </div>

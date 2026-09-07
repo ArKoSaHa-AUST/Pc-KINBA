@@ -69,7 +69,7 @@ export function NotificationPanel({ preferences, onChange }: NotificationPanelPr
       style={{ rotateX, rotateY, scale }}
       className="relative rounded-2xl overflow-hidden transition-all duration-300"
     >
-      <Card className="relative overflow-hidden bg-slate-900/60 backdrop-blur-xl border border-white/10 p-6 md:p-8 flex flex-col gap-5 shadow-2xl">
+      <Card className="relative overflow-hidden backdrop-blur-xl border border-border p-6 md:p-8 flex flex-col gap-5 shadow-2xl">
         {/* Gloss highlight */}
         <div
           className="absolute inset-0 pointer-events-none rounded-2xl transition-opacity duration-300"
@@ -79,7 +79,7 @@ export function NotificationPanel({ preferences, onChange }: NotificationPanelPr
           }}
         />
 
-        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2.5 text-text-primary font-bold text-lg">
             <div className="p-2 rounded-lg bg-accent/10 border border-accent/20 text-accent">
               <Bell className="w-5 h-5" />
@@ -89,7 +89,7 @@ export function NotificationPanel({ preferences, onChange }: NotificationPanelPr
           <span className="text-xs text-text-muted">Real-time sync</span>
         </div>
 
-        <div className="divide-y divide-white/5">
+        <div className="divide-y divide-border">
           {TOGGLE_ITEMS.map((item) => {
             const Icon = item.icon;
             const isChecked = !!preferences[item.key];
@@ -100,7 +100,7 @@ export function NotificationPanel({ preferences, onChange }: NotificationPanelPr
               >
                 <div className="flex items-start gap-3.5">
                   <div
-                    className={`p-2 rounded-lg bg-white/[0.03] border border-white/5 ${item.color} mt-0.5`}
+                    className={`p-2 rounded-lg bg-fill-subtle border border-border ${item.color} mt-0.5`}
                   >
                     <Icon className="w-4 h-4" />
                   </div>
@@ -117,7 +117,7 @@ export function NotificationPanel({ preferences, onChange }: NotificationPanelPr
                   aria-checked={isChecked}
                   onClick={() => handleToggle(item.key)}
                   className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                    isChecked ? 'bg-accent' : 'bg-slate-700'
+                    isChecked ? 'bg-accent' : 'bg-fill-muted border border-border'
                   }`}
                 >
                   <span

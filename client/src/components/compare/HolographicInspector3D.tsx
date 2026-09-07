@@ -480,10 +480,10 @@ export const HolographicInspector3D = ({
           transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           className={`relative w-full ${
             isFullscreen ? 'h-full max-w-none' : 'max-w-5xl h-[88vh]'
-          } flex flex-col bg-slate-950 border border-white/15 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden z-10`}
+          } flex flex-col bg-bg-surface border border-border rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden z-10`}
         >
           {/* Top Header Bar */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-slate-900/60 backdrop-blur-md">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-fill-subtle backdrop-blur-md">
             <div className="flex items-center gap-3">
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center border"
@@ -496,7 +496,7 @@ export const HolographicInspector3D = ({
                 <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <h3 className="text-base font-bold text-text-primary flex items-center gap-2">
                   <span>Holographic 3D Component Inspector</span>
                   <span
                     className="text-[10px] uppercase font-mono px-2 py-0.5 rounded border"
@@ -515,7 +515,7 @@ export const HolographicInspector3D = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
-                className="p-2 rounded-xl text-text-muted hover:text-white hover:bg-white/10 transition-colors"
+                className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-fill-muted transition-colors"
                 title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
               >
                 {isFullscreen ? (
@@ -526,7 +526,7 @@ export const HolographicInspector3D = ({
               </button>
               <button
                 onClick={onClose}
-                className="p-2 rounded-xl text-text-muted hover:text-white hover:bg-white/10 transition-colors"
+                className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-fill-muted transition-colors"
                 title="Close Inspector"
               >
                 <X className="w-5 h-5" />
@@ -535,7 +535,7 @@ export const HolographicInspector3D = ({
           </div>
 
           {/* Interactive WebGL Canvas Viewport */}
-          <div className="relative flex-1 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 overflow-hidden cursor-grab active:cursor-grabbing">
+          <div className="relative flex-1 bg-gradient-to-b from-bg-primary/50 via-bg-surface to-bg-primary/50 overflow-hidden cursor-grab active:cursor-grabbing">
             <canvas
               ref={canvasRef}
               onPointerDown={handlePointerDown}
@@ -546,13 +546,13 @@ export const HolographicInspector3D = ({
             />
 
             {/* View Mode & Control HUD (Top Left Floating) */}
-            <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2 bg-slate-900/80 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 shadow-lg">
+            <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2 bg-bg-surface/90 backdrop-blur-md p-1.5 rounded-2xl border border-border shadow-lg">
               <button
                 onClick={() => setViewMode('solid')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   viewMode === 'solid'
-                    ? 'bg-accent text-slate-950 font-bold'
-                    : 'text-text-muted hover:text-white hover:bg-white/5'
+                    ? 'bg-accent text-white font-bold shadow-md'
+                    : 'text-text-muted hover:text-text-primary hover:bg-fill-subtle'
                 }`}
               >
                 Solid PBR
@@ -561,8 +561,8 @@ export const HolographicInspector3D = ({
                 onClick={() => setViewMode('wireframe')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   viewMode === 'wireframe'
-                    ? 'bg-accent text-slate-950 font-bold'
-                    : 'text-text-muted hover:text-white hover:bg-white/5'
+                    ? 'bg-accent text-white font-bold shadow-md'
+                    : 'text-text-muted hover:text-text-primary hover:bg-fill-subtle'
                 }`}
               >
                 Wireframe
@@ -571,19 +571,19 @@ export const HolographicInspector3D = ({
                 onClick={() => setViewMode('xray')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   viewMode === 'xray'
-                    ? 'bg-accent text-slate-950 font-bold'
-                    : 'text-text-muted hover:text-white hover:bg-white/5'
+                    ? 'bg-accent text-white font-bold shadow-md'
+                    : 'text-text-muted hover:text-text-primary hover:bg-fill-subtle'
                 }`}
               >
                 X-Ray PCB
               </button>
 
-              <div className="h-4 w-px bg-white/10 mx-1" />
+              <div className="h-4 w-px bg-border mx-1" />
 
               <button
                 onClick={() => setAutoRotate(!autoRotate)}
                 className={`p-1.5 rounded-xl text-xs transition-all ${
-                  autoRotate ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-white'
+                  autoRotate ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-text-primary'
                 }`}
                 title={autoRotate ? 'Pause Auto Rotation' : 'Enable Auto Rotation'}
               >
@@ -592,24 +592,24 @@ export const HolographicInspector3D = ({
             </div>
 
             {/* Zoom Controls HUD (Bottom Right Floating) */}
-            <div className="absolute bottom-4 right-4 flex items-center gap-1.5 bg-slate-900/80 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 shadow-lg">
+            <div className="absolute bottom-4 right-4 flex items-center gap-1.5 bg-bg-surface/90 backdrop-blur-md p-1.5 rounded-2xl border border-border shadow-lg">
               <button
                 onClick={() => setZoomLevel((z) => Math.min(1.8, z + 0.15))}
-                className="p-2 rounded-xl text-text-muted hover:text-white hover:bg-white/10 transition-colors"
+                className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-fill-muted transition-colors"
                 title="Zoom In"
               >
                 <ZoomIn className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setZoomLevel((z) => Math.max(0.6, z - 0.15))}
-                className="p-2 rounded-xl text-text-muted hover:text-white hover:bg-white/10 transition-colors"
+                className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-fill-muted transition-colors"
                 title="Zoom Out"
               >
                 <ZoomOut className="w-4 h-4" />
               </button>
               <button
                 onClick={resetView}
-                className="px-2.5 py-1 rounded-xl text-xs font-mono font-semibold text-text-muted hover:text-white hover:bg-white/10 transition-colors"
+                className="px-2.5 py-1 rounded-xl text-xs font-mono font-semibold text-text-muted hover:text-text-primary hover:bg-fill-muted transition-colors"
                 title="Reset View"
               >
                 Reset
@@ -623,7 +623,7 @@ export const HolographicInspector3D = ({
                   initial={{ opacity: 0, y: 20, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                  className="absolute bottom-4 left-4 max-w-sm bg-slate-900/90 backdrop-blur-xl border border-accent/40 rounded-2xl p-4 shadow-2xl z-20"
+                  className="absolute bottom-4 left-4 max-w-sm bg-bg-surface/95 backdrop-blur-xl border border-accent/40 rounded-2xl p-4 shadow-2xl z-20"
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2 text-xs font-bold text-accent">
@@ -632,7 +632,7 @@ export const HolographicInspector3D = ({
                     </div>
                     <button
                       onClick={() => setSelectedHotspot(null)}
-                      className="p-1 rounded-lg text-text-muted hover:text-white"
+                      className="p-1 rounded-lg text-text-muted hover:text-text-primary"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>

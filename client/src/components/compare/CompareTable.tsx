@@ -131,7 +131,7 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
   };
 
   return (
-    <div className="w-full border border-white/10 rounded-3xl bg-slate-900/60 backdrop-blur-2xl overflow-hidden shadow-2xl">
+    <div className="w-full border border-border rounded-3xl bg-glass backdrop-blur-2xl overflow-hidden shadow-2xl">
       {SPEC_CATEGORIES.map((category) => {
         // Filter visible specs based on diffOnly
         const visibleSpecs = category.specs.filter((spec) => {
@@ -142,9 +142,9 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
         if (visibleSpecs.length === 0) return null;
 
         return (
-          <div key={category.id} className="border-b border-white/10 last:border-b-0">
+          <div key={category.id} className="border-b border-border last:border-b-0">
             {/* Category Header Row (Sticky Locking) */}
-            <div className="sticky top-[80px] z-30 flex items-center gap-2.5 px-6 py-3.5 bg-slate-950/90 backdrop-blur-md border-b border-white/10">
+            <div className="sticky top-[80px] z-30 flex items-center gap-2.5 px-6 py-3.5 bg-bg-surface/90 backdrop-blur-md border-b border-border">
               {getCategoryIcon(category.iconName)}
               <h3 className="text-xs font-bold uppercase tracking-wider text-accent">
                 {isBn ? category.titleBn || category.title : category.title}
@@ -152,7 +152,7 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
             </div>
 
             {/* Spec Rows */}
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-border">
               <AnimatePresence initial={false}>
                 {visibleSpecs.map((spec, sIdx) => {
                   const winnerInfo = getWinnerInfo(spec);
@@ -164,10 +164,10 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true, amount: 0.15 }}
                       transition={{ delay: sIdx * 0.03, duration: 0.3, ease: 'easeOut' }}
-                      className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 items-center hover:bg-white/[0.02] transition-colors"
+                      className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 items-center hover:bg-fill-subtle transition-colors"
                     >
                       {/* Column 0: Metric Label */}
-                      <div className="py-4 px-6 text-xs font-semibold text-text-muted flex items-center justify-between border-b md:border-b-0 md:border-r border-white/5 bg-slate-950/25">
+                      <div className="py-4 px-6 text-xs font-semibold text-text-muted flex items-center justify-between border-b md:border-b-0 md:border-r border-border bg-fill-subtle">
                         <span>{isBn ? spec.labelBn || spec.label : spec.label}</span>
                         {spec.unit && (
                           <span className="text-[10px] font-mono text-text-muted/60 lowercase ml-1">
@@ -182,7 +182,7 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
                           return (
                             <div
                               key={slotIdx}
-                              className="py-4 px-6 text-xs text-text-muted/40 font-mono text-center md:border-r border-white/5 last:border-r-0"
+                              className="py-4 px-6 text-xs text-text-muted/40 font-mono text-center md:border-r border-border last:border-r-0"
                             >
                               —
                             </div>
@@ -197,7 +197,7 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
                         return (
                           <div
                             key={slotIdx}
-                            className={`py-4 px-6 text-xs md:text-sm font-medium flex flex-col justify-center gap-1 md:border-r border-white/5 last:border-r-0 transition-colors ${
+                            className={`py-4 px-6 text-xs md:text-sm font-medium flex flex-col justify-center gap-1 md:border-r border-border last:border-r-0 transition-colors ${
                               isWinner ? 'bg-emerald-500/[0.04]' : ''
                             }`}
                           >
@@ -222,7 +222,7 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
 
                             {/* Animated Meter Progress Bar for numeric benchmarks & capacities */}
                             {barWidth !== null && typeof rawVal === 'number' && (
-                              <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden mt-1">
+                              <div className="w-full h-1.5 rounded-full bg-fill-muted overflow-hidden mt-1">
                                 <motion.div
                                   initial={{ width: 0 }}
                                   whileInView={{ width: `${barWidth}%` }}

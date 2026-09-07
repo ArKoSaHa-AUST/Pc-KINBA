@@ -156,7 +156,7 @@ export function ProfileHero3D({ user }: ProfileHero3DProps) {
         </div>
 
         {/* Animated Stats Row */}
-        <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border/40">
+        <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border">
           <div className="profile-stat-badge flex flex-col items-center md:items-start">
             <div className="flex items-center gap-1.5 text-xs text-text-muted font-medium">
               <Cpu className="w-3.5 h-3.5 text-accent" /> Builds

@@ -122,9 +122,9 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.2 }}
         onClick={() => onAddClick(slotIndex)}
-        className="h-full min-h-[300px] flex flex-col items-center justify-center p-6 rounded-3xl border-2 border-dashed border-white/10 hover:border-accent/40 bg-white/[0.02] hover:bg-white/[0.04] transition-all cursor-pointer group text-center"
+        className="h-full min-h-[300px] flex flex-col items-center justify-center p-6 rounded-3xl border-2 border-dashed border-border hover:border-accent/40 bg-fill-subtle hover:bg-fill-muted transition-all cursor-pointer group text-center"
       >
-        <div className="w-12 h-12 rounded-full bg-white/5 group-hover:bg-accent/10 border border-white/10 group-hover:border-accent/30 flex items-center justify-center text-text-muted group-hover:text-accent transition-all mb-3 group-hover:scale-110">
+        <div className="w-12 h-12 rounded-full bg-fill-subtle group-hover:bg-accent/10 border border-border group-hover:border-accent/30 flex items-center justify-center text-text-muted group-hover:text-accent transition-all mb-3 group-hover:scale-110">
           <Plus className="w-6 h-6" />
         </div>
         <div className="text-xs uppercase tracking-wider font-semibold text-text-muted mb-1">
@@ -163,7 +163,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.25 }}
-        className={`relative h-full flex flex-col justify-between p-6 rounded-3xl bg-slate-900/80 backdrop-blur-2xl border border-white/10 transition-all duration-300 ${vendorTheme.glowClass} group overflow-hidden`}
+        className={`relative h-full flex flex-col justify-between p-6 rounded-3xl bg-glass backdrop-blur-2xl border border-border transition-all duration-300 ${vendorTheme.glowClass} group overflow-hidden`}
       >
         {/* Dynamic Light Gloss Sheen Layer (Follows cursor coordinates) */}
         <div
@@ -176,7 +176,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
 
         {/* Top Slot Header Bar */}
         <div className="relative z-10 flex items-center justify-between gap-2 mb-3">
-          <span className="text-[11px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-accent">
+          <span className="text-[11px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-fill-subtle border border-border text-accent">
             {t('slots.slot', { index: slotIndex + 1, defaultValue: `Slot ${slotIndex + 1}` })}
           </span>
 
@@ -188,7 +188,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                   e.stopPropagation();
                   onSwapClick(slotIndex);
                 }}
-                className="p-1.5 rounded-lg text-text-muted hover:text-accent hover:bg-white/5 transition-colors"
+                className="p-1.5 rounded-lg text-text-muted hover:text-accent hover:bg-fill-subtle transition-colors"
                 title={t('actions.swap', 'Swap Slot')}
               >
                 <ArrowLeftRight className="w-3.5 h-3.5" />
@@ -210,15 +210,15 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         {/* Product 3D Pop-Out Image Container */}
         <div
           style={{ transform: 'translateZ(30px)', transformStyle: 'preserve-3d' }}
-          className="relative w-full h-36 rounded-2xl overflow-hidden bg-black/40 border border-white/5 mb-4 flex items-center justify-center p-3 shadow-inner"
+          className="relative w-full h-36 rounded-2xl overflow-hidden bg-fill-subtle border border-border mb-4 flex items-center justify-center p-3 shadow-inner"
         >
           <img
             src={product.image}
             alt={product.name}
-            className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.7)] group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.4)] group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
           />
-          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-slate-950/90 backdrop-blur-md border border-white/10 text-white">
+          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-bg-surface/90 backdrop-blur-md border border-border text-text-primary">
             {product.brand}
           </div>
 
@@ -229,7 +229,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                 e.stopPropagation();
                 onInspect3DClick(product);
               }}
-              className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-950/90 hover:bg-accent hover:text-slate-950 text-accent border border-accent/40 backdrop-blur-md transition-all shadow-md"
+              className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-bg-surface/90 hover:bg-accent hover:text-white text-accent border border-accent/40 backdrop-blur-md transition-all shadow-md"
               title="Inspect in 3D WebGL Modal"
             >
               <Eye className="w-3 h-3" />
@@ -240,7 +240,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
 
         {/* Product Title & Category */}
         <div style={{ transform: 'translateZ(15px)' }} className="flex-1 z-10">
-          <h3 className="text-sm font-bold text-white line-clamp-2 leading-snug hover:text-accent transition-colors">
+          <h3 className="text-sm font-bold text-text-primary line-clamp-2 leading-snug hover:text-accent transition-colors">
             {product.name}
           </h3>
           <div className="mt-1 flex items-center gap-1.5 text-[11px] text-text-muted">
@@ -253,7 +253,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         {/* Price & Retailer Status */}
         <div
           style={{ transform: 'translateZ(20px)' }}
-          className="mt-4 pt-3.5 border-t border-white/10 flex flex-col gap-1.5 z-10"
+          className="mt-4 pt-3.5 border-t border-border flex flex-col gap-1.5 z-10"
         >
           <div className="flex items-baseline justify-between gap-2">
             {product.basePriceBDT ? (

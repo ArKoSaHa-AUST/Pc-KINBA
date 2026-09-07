@@ -39,11 +39,11 @@
 
 .chat-header {
   padding: 1.5rem;
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   gap: 1rem;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--fill-subtle);
 }
 
 .bot-avatar {
@@ -93,7 +93,7 @@
 
 .bot-msg {
   background: var(--fill-subtle);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--border);
   border-bottom-left-radius: 4px;
   align-self: flex-start;
 }
@@ -118,8 +118,8 @@
 
 .chat-input-area {
   padding: 1.5rem;
-  border-top: 1px solid var(--glass-border);
-  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid var(--border);
+  background: var(--fill-subtle);
 }
 
 .chat-input {
