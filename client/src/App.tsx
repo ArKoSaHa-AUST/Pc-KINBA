@@ -9,6 +9,7 @@ import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import VerifyPage from './pages/auth/VerifyPage';
 import BuildCheckoutPage from './pages/BuildCheckoutPage';
 import ComparePage from './pages/ComparePage';
+import ComponentsPage from './pages/ComponentsPage';
 import Home from './pages/Home';
 import PCBuilderPage from './pages/PCBuilderPage';
 import ProductDetailsPage from './pages/ProductDetailsPage';
@@ -21,6 +22,7 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/components" element={<ComponentsPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
           <Route path="/compare" element={<ComparePage />} />
