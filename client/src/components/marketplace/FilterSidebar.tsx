@@ -20,10 +20,7 @@ interface FilterSidebarProps {
   availableRetailers: string[];
 }
 
-export default function FilterSidebar({
-  availableBrands,
-  availableRetailers,
-}: FilterSidebarProps) {
+export default function FilterSidebar({ availableBrands, availableRetailers }: FilterSidebarProps) {
   const filters = useComponentStore((s) => s.filters);
   const setFilter = useComponentStore((s) => s.setFilter);
   const toggleBrand = useComponentStore((s) => s.toggleBrand);
@@ -319,9 +316,7 @@ export default function FilterSidebar({
                           {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                         </div>
                         <span
-                          className={
-                            isChecked ? 'font-semibold text-accent' : 'text-text-primary'
-                          }
+                          className={isChecked ? 'font-semibold text-accent' : 'text-text-primary'}
                         >
                           {opt.label}
                         </span>

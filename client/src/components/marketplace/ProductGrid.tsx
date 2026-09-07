@@ -9,7 +9,7 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import { ProductCard } from './ProductCard';
-import type { ProductComponent } from '../../types/components';
+import type { ProductComponent, FilterState } from '../../types/components';
 import { useComponentStore, DEFAULT_PRICE_RANGE } from '../../store/useComponentStore';
 
 interface ProductGridProps {
@@ -139,7 +139,7 @@ export default function ProductGrid({
             <ArrowUpDown className="w-3.5 h-3.5 text-text-muted hidden sm:block" />
             <select
               value={filters.sortBy}
-              onChange={(e) => setFilter('sortBy', e.target.value as any)}
+              onChange={(e) => setFilter('sortBy', e.target.value as FilterState['sortBy'])}
               className="bg-bg-primary border border-border rounded-xl px-3 py-1.5 text-xs text-text-primary font-medium focus:outline-none focus:border-accent cursor-pointer"
             >
               <option value="featured">Featured / Popular</option>

@@ -9,7 +9,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Cpu',
     description: 'Latest Intel Core Ultra & AMD Ryzen desktop processors with multi-core power',
     accentColor: '#00e5ff',
-    heroImage: 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'intel-core-ultra', name: 'Intel Core Ultra (Series 2)' },
       { id: 'intel-14th-gen', name: 'Intel 14th / 13th Gen' },
@@ -26,7 +27,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Zap',
     description: 'NVIDIA GeForce RTX 50 & 40 series, AMD Radeon RX 7000, and Intel Arc GPUs',
     accentColor: '#10b981',
-    heroImage: 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'nvidia-rtx-50', name: 'NVIDIA RTX 50 Series' },
       { id: 'nvidia-rtx-40', name: 'NVIDIA RTX 40 Series' },
@@ -42,7 +44,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'CircuitBoard',
     description: 'High-speed ATX, mATX & ITX boards for AM5, AM4, LGA1851 & LGA1700 sockets',
     accentColor: '#8b5cf6',
-    heroImage: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1518770660439-4636190af475?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'amd-am5', name: 'AMD AM5 (X870 / B650)' },
       { id: 'intel-lga1851', name: 'Intel LGA1851 (Z890 / B860)' },
@@ -58,7 +61,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Layers',
     description: 'Ultra-low latency DDR5 and DDR4 desktop & laptop gaming memory kits',
     accentColor: '#f59e0b',
-    heroImage: 'https://images.unsplash.com/photo-1562976540-1502c2145186?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1562976540-1502c2145186?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'ddr5-desktop', name: 'DDR5 Desktop RAM' },
       { id: 'ddr4-desktop', name: 'DDR4 Desktop RAM' },
@@ -71,9 +75,11 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     name: 'Storage (SSD & HDD)',
     group: 'core',
     iconName: 'HardDrive',
-    description: 'PCIe 5.0 / 4.0 NVMe M.2 SSDs, 2.5" SATA SSDs, and high capacity surveillance HDDs',
+    description:
+      'PCIe 5.0 / 4.0 NVMe M.2 SSDs, 2.5" SATA SSDs, and high capacity surveillance HDDs',
     accentColor: '#3b82f6',
-    heroImage: 'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'nvme-gen5', name: 'PCIe Gen5 NVMe M.2' },
       { id: 'nvme-gen4', name: 'PCIe Gen4 NVMe M.2' },
@@ -87,9 +93,11 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     name: 'Power Supply (PSU)',
     group: 'core',
     iconName: 'BatteryCharging',
-    description: 'ATX 3.0 & PCIe 5.0 ready power supplies with 80+ Bronze, Gold, and Platinum efficiency',
+    description:
+      'ATX 3.0 & PCIe 5.0 ready power supplies with 80+ Bronze, Gold, and Platinum efficiency',
     accentColor: '#ef4444',
-    heroImage: 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'atx-3-0', name: 'ATX 3.0 / PCIe Gen 5' },
       { id: 'fully-modular', name: 'Fully Modular 80+ Gold' },
@@ -102,9 +110,11 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     name: 'PC Case / Casing',
     group: 'core',
     iconName: 'Box',
-    description: 'Panoramic glass dual-chamber cases, high airflow mesh mid-towers, and SFF enclosures',
+    description:
+      'Panoramic glass dual-chamber cases, high airflow mesh mid-towers, and SFF enclosures',
     accentColor: '#06b6d4',
-    heroImage: 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'dual-chamber', name: 'Dual Chamber Panoramic' },
       { id: 'mid-tower', name: 'High Airflow Mid Tower' },
@@ -117,9 +127,11 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     name: 'CPU Cooler (AIO / Air)',
     group: 'core',
     iconName: 'Fan',
-    description: '360mm / 240mm ARGB Liquid AIO coolers and high-performance dual-tower air coolers',
+    description:
+      '360mm / 240mm ARGB Liquid AIO coolers and high-performance dual-tower air coolers',
     accentColor: '#14b8a6',
-    heroImage: 'https://images.unsplash.com/photo-1624705002806-5d72df19c3ad?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1624705002806-5d72df19c3ad?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'liquid-360', name: '360mm / 420mm Liquid AIO' },
       { id: 'liquid-240', name: '240mm / 280mm Liquid AIO' },
@@ -134,7 +146,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Wind',
     description: '120mm / 140mm daisy-chain ARGB fans, reverse blade intake fans, and fan hubs',
     accentColor: '#a855f7',
-    heroImage: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'argb-120mm', name: '120mm ARGB Fan Kits' },
       { id: 'reverse-blade', name: 'Reverse Blade Intake Fans' },
@@ -150,7 +163,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Tv',
     description: 'Fast IPS, QD-OLED, and Mini-LED gaming monitors with up to 500Hz refresh rates',
     accentColor: '#00e5ff',
-    heroImage: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'oled-gaming', name: 'QD-OLED / OLED Gaming' },
       { id: '1440p-high-hz', name: '2K / 1440p High Refresh' },
@@ -163,9 +177,11 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     name: 'Mechanical Keyboards',
     group: 'peripherals',
     iconName: 'Keyboard',
-    description: 'Custom hot-swappable mechanical keyboards, magnetic switches (Rapid Trigger), and wireless',
+    description:
+      'Custom hot-swappable mechanical keyboards, magnetic switches (Rapid Trigger), and wireless',
     accentColor: '#ec4899',
-    heroImage: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'magnetic-rapid-trigger', name: 'Magnetic Hall Effect / Rapid Trigger' },
       { id: 'wireless-custom', name: 'Custom Hot-swap Wireless' },
@@ -179,7 +195,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Mouse',
     description: 'Ultralight wireless mice with 8000Hz polling rate and flagship optical sensors',
     accentColor: '#f97316',
-    heroImage: 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'ultralight-wireless', name: 'Ultralight Wireless (<55g)' },
       { id: '8k-polling', name: '8K Polling Esports Mice' },
@@ -193,7 +210,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Headphones',
     description: 'Spatial audio wireless gaming headsets, studio monitor headphones, and DAC/Amps',
     accentColor: '#6366f1',
-    heroImage: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'wireless-gaming', name: 'Wireless 2.4GHz Gaming' },
       { id: 'studio-audiophile', name: 'Studio Reference Headphones' },
@@ -207,7 +225,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Volume2',
     description: 'Desk soundbars, Bluetooth stereo bookshelf speakers, and 2.1 subwoofers',
     accentColor: '#e11d48',
-    heroImage: 'https://images.unsplash.com/photo-1545454675-3531b543be5d?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1545454675-3531b543be5d?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'desktop-soundbar', name: 'Gaming Soundbars' },
       { id: 'bookshelf-speakers', name: 'Hi-Fi Bookshelf Speakers' },
@@ -220,7 +239,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Camera',
     description: '4K HDR streaming webcams with auto-focus and dual AI noise-canceling mics',
     accentColor: '#0ea5e9',
-    heroImage: 'https://images.unsplash.com/photo-1588702547923-7093a6c3ba33?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1588702547923-7093a6c3ba33?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: '4k-streaming', name: '4K Ultra HD Streaming' },
       { id: '1080p-60fps', name: '1080p 60FPS Pro Webcams' },
@@ -233,7 +253,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Mic',
     description: 'USB cardioid condenser microphones and broadcast XLR dynamic mics for creators',
     accentColor: '#d946ef',
-    heroImage: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'usb-condenser', name: 'USB Condenser Plug & Play' },
       { id: 'xlr-broadcast', name: 'XLR Studio Dynamic Mics' },
@@ -248,7 +269,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Thermometer',
     description: 'High thermal conductivity paste, liquid metal, and high-performance thermal pads',
     accentColor: '#10b981',
-    heroImage: 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'thermal-paste-tube', name: 'Thermal Grease / Paste' },
       { id: 'thermal-pads', name: 'High-K Thermal Pads' },
@@ -261,7 +283,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Sliders',
     description: 'PWM fan splitters, ARGB 5V 3-pin sync hubs, and digital LED lighting controllers',
     accentColor: '#f43f5e',
-    heroImage: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'argb-controller', name: 'ARGB Hub Controllers' },
       { id: 'pwm-splitter', name: 'PWM Fan Splitters' },
@@ -272,9 +295,11 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     name: 'PCIe Expansion Cards',
     group: 'accessories',
     iconName: 'Cpu',
-    description: 'WiFi 7 / Bluetooth PCIe cards, 10GbE network cards, and M.2 PCIe expansion adapters',
+    description:
+      'WiFi 7 / Bluetooth PCIe cards, 10GbE network cards, and M.2 PCIe expansion adapters',
     accentColor: '#84cc16',
-    heroImage: 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'wifi7-pcie', name: 'WiFi 7 / WiFi 6E Cards' },
       { id: '10gbe-pcie', name: '10 Gigabit Ethernet Cards' },
@@ -287,7 +312,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Video',
     description: '4K60 HDR passthrough internal PCIe and USB-C external streaming capture devices',
     accentColor: '#8b5cf6',
-    heroImage: 'https://images.unsplash.com/photo-1588702547923-7093a6c3ba33?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1588702547923-7093a6c3ba33?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: '4k-pcie-capture', name: 'PCIe 4K60 Capture Cards' },
       { id: 'usb-capture-camlink', name: 'USB-C External Cam Links' },
@@ -300,7 +326,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Cable',
     description: 'HDMI 2.1, DP 2.1, braided PSU extension cables, and Thunderbolt 4 docks',
     accentColor: '#0284c7',
-    heroImage: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'hdmi-dp-cables', name: 'HDMI 2.1 & DisplayPort 2.1' },
       { id: 'sleeved-psu-cables', name: 'Custom Sleeved PSU Cables' },
@@ -314,7 +341,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Usb',
     description: 'High speed USB 3.2 Gen 2 type-C pendrives up to 1000MB/s read speed',
     accentColor: '#059669',
-    heroImage: 'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'usb-3-2-dual', name: 'Dual USB Type-C & Type-A' },
       { id: 'high-speed-pen', name: 'Extreme Speed 500MB/s+' },
@@ -325,9 +353,11 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     name: 'External SSD & HDD',
     group: 'accessories',
     iconName: 'HardDrive',
-    description: 'Rugged portable NVMe SSDs with IP65 dust/water resistance and external backup HDDs',
+    description:
+      'Rugged portable NVMe SSDs with IP65 dust/water resistance and external backup HDDs',
     accentColor: '#2563eb',
-    heroImage: 'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'portable-ssd', name: 'Portable NVMe SSD (USB 3.2 Gen 2x2)' },
       { id: 'portable-hdd', name: 'External Backup HDD' },
@@ -342,7 +372,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Wifi',
     description: 'Tri-band WiFi 7 and WiFi 6E gaming routers and whole-home seamless mesh systems',
     accentColor: '#00e5ff',
-    heroImage: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'wifi-7-routers', name: 'WiFi 7 Gaming Routers' },
       { id: 'mesh-systems', name: 'Whole-Home Mesh WiFi' },
@@ -356,7 +387,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Network',
     description: '2.5G & 10G Multi-Gigabit managed and unmanaged PoE switches',
     accentColor: '#7c3aed',
-    heroImage: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'multi-gig-switch', name: '2.5GbE / 10GbE Switches' },
       { id: 'poe-switch', name: 'PoE+ Smart Switches' },
@@ -369,7 +401,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Radio',
     description: 'High-gain USB WiFi adapters and Bluetooth 5.4 dongles',
     accentColor: '#10b981',
-    heroImage: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'high-gain-usb', name: 'High-Gain USB WiFi 6' },
       { id: 'mini-dongle', name: 'Nano USB Dongles' },
@@ -384,7 +417,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Server',
     description: 'Synology, QNAP, and Asustor multi-bay private cloud & RAID storage appliances',
     accentColor: '#f59e0b',
-    heroImage: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: '2-bay-home-nas', name: '2-Bay Home Cloud NAS' },
       { id: '4-8-bay-pro-nas', name: '4-Bay / 8-Bay Enterprise NAS' },
@@ -397,7 +431,8 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     iconName: 'Database',
     description: '1U/2U/4U Enterprise rackmount servers powered by AMD EPYC & Intel Xeon Scalable',
     accentColor: '#ef4444',
-    heroImage: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: '1u-2u-rack', name: '1U / 2U Rack Servers' },
       { id: 'tower-server', name: 'Small Business Tower Servers' },
@@ -408,9 +443,11 @@ export const CATEGORY_TAXONOMY: CategoryInfo[] = [
     name: 'AI & Workstation HPC',
     group: 'advanced',
     iconName: 'Cpu',
-    description: 'Deep learning & LLM training workstations with multi-GPU RTX 6000 Ada & Threadripper PRO',
+    description:
+      'Deep learning & LLM training workstations with multi-GPU RTX 6000 Ada & Threadripper PRO',
     accentColor: '#00e5ff',
-    heroImage: 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=900&auto=format&fit=crop&q=80',
+    heroImage:
+      'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=900&auto=format&fit=crop&q=80',
     subcategories: [
       { id: 'ai-training-rig', name: 'Multi-GPU AI Deep Learning' },
       { id: 'threadripper-workstation', name: 'Ryzen Threadripper PRO CAD/3D' },

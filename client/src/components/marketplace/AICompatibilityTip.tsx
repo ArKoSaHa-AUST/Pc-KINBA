@@ -19,8 +19,9 @@ export default function AICompatibilityTip() {
             </span>
           </div>
           <p className="text-xs text-text-muted max-w-2xl leading-relaxed">
-            Unsure if your CPU will bottleneck your GPU or if your DDR5 RAM matches your Motherboard?
-            Ask the PC-KINBA AI Engine for instantaneous compatibility checks, wattage calculations, and optimal value picks.
+            Unsure if your CPU will bottleneck your GPU or if your DDR5 RAM matches your
+            Motherboard? Ask the PC-KINBA AI Engine for instantaneous compatibility checks, wattage
+            calculations, and optimal value picks.
           </p>
         </div>
       </div>

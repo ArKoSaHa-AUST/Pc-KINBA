@@ -48,7 +48,8 @@ export function useCompare() {
   }, [isAuth, user?.id, queryClient, localCompareList]);
 
   // Active compare list
-  const compareList: CompareProductItem[] = isAuth && dbCompareList.length > 0 ? dbCompareList : localCompareList;
+  const compareList: CompareProductItem[] =
+    isAuth && dbCompareList.length > 0 ? dbCompareList : localCompareList;
 
   // Add Mutation
   const addMutation = useMutation({

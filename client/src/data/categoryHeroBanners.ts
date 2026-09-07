@@ -6,7 +6,8 @@ export const HERO_CATEGORY_BANNERS: HeroCategoryCard[] = [
     title: 'AI & Work Station HPC',
     category: 'workstation-ai',
     tag: 'Threadripper & Multi-GPU',
-    imageUrl: 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80',
+    imageUrl:
+      'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80',
     accentColor: '#ef4444',
     badge: 'Enterprise AI',
     linkUrl: '/components?category=workstation-ai',
@@ -16,7 +17,8 @@ export const HERO_CATEGORY_BANNERS: HeroCategoryCard[] = [
     title: 'Server and NAS',
     category: 'nas',
     tag: 'Rackmount & Private Cloud',
-    imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&auto=format&fit=crop&q=80',
+    imageUrl:
+      'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&auto=format&fit=crop&q=80',
     accentColor: '#3b82f6',
     badge: 'High Reliability',
     linkUrl: '/components?category=nas',
@@ -26,7 +28,8 @@ export const HERO_CATEGORY_BANNERS: HeroCategoryCard[] = [
     title: 'GeForce RTX 50 & Radeon',
     category: 'gpu',
     tag: 'Blackwell & RDNA 3.5',
-    imageUrl: 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80',
+    imageUrl:
+      'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80',
     accentColor: '#10b981',
     badge: 'Top Gaming',
     linkUrl: '/components?category=gpu',
@@ -36,7 +39,8 @@ export const HERO_CATEGORY_BANNERS: HeroCategoryCard[] = [
     title: 'Core Ultra & Ryzen 9000',
     category: 'cpu',
     tag: 'Zen 5 & Arrow Lake',
-    imageUrl: 'https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=800&auto=format&fit=crop&q=80',
+    imageUrl:
+      'https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=800&auto=format&fit=crop&q=80',
     accentColor: '#00e5ff',
     badge: 'Unmatched Speed',
     linkUrl: '/components?category=cpu',
@@ -46,7 +50,8 @@ export const HERO_CATEGORY_BANNERS: HeroCategoryCard[] = [
     title: 'Vendy & Extreme Cooling',
     category: 'cooler',
     tag: 'ARGB AIO & Case Airflow',
-    imageUrl: 'https://images.unsplash.com/photo-1624705002806-5d72df19c3ad?w=800&auto=format&fit=crop&q=80',
+    imageUrl:
+      'https://images.unsplash.com/photo-1624705002806-5d72df19c3ad?w=800&auto=format&fit=crop&q=80',
     accentColor: '#a855f7',
     badge: 'Zero Throttling',
     linkUrl: '/components?category=cooler',
@@ -56,7 +61,8 @@ export const HERO_CATEGORY_BANNERS: HeroCategoryCard[] = [
     title: 'X870E & Z890 Motherboards',
     category: 'motherboard',
     tag: 'PCIe 5.0 & WiFi 7 Ready',
-    imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80',
+    imageUrl:
+      'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80',
     accentColor: '#f59e0b',
     badge: 'OC Certified',
     linkUrl: '/components?category=motherboard',
@@ -66,7 +72,8 @@ export const HERO_CATEGORY_BANNERS: HeroCategoryCard[] = [
     title: 'QD-OLED & 500Hz Displays',
     category: 'monitor',
     tag: '0.03ms True Black',
-    imageUrl: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&auto=format&fit=crop&q=80',
+    imageUrl:
+      'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&auto=format&fit=crop&q=80',
     accentColor: '#ec4899',
     badge: 'Ultra Fast',
     linkUrl: '/components?category=monitor',
@@ -76,7 +83,8 @@ export const HERO_CATEGORY_BANNERS: HeroCategoryCard[] = [
     title: 'PCIe 5.0 NVMe Storage',
     category: 'storage',
     tag: '14,500 MB/s Read Speed',
-    imageUrl: 'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=800&auto=format&fit=crop&q=80',
+    imageUrl:
+      'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=800&auto=format&fit=crop&q=80',
     accentColor: '#06b6d4',
     badge: 'Instant Load',
     linkUrl: '/components?category=storage',
@@ -86,7 +94,8 @@ export const HERO_CATEGORY_BANNERS: HeroCategoryCard[] = [
     title: 'Hall Effect & Custom PCB',
     category: 'keyboard',
     tag: 'Rapid Trigger & CNC Case',
-    imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&auto=format&fit=crop&q=80',
+    imageUrl:
+      'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&auto=format&fit=crop&q=80',
     accentColor: '#8b5cf6',
     badge: 'Esports Grade',
     linkUrl: '/components?category=keyboard',

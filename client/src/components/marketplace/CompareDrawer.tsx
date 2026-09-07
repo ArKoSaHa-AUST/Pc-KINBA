@@ -1,24 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Layers,
-  X,
-  ArrowRight,
-  Trash2,
-  Check,
-  AlertCircle,
-  ExternalLink,
-} from 'lucide-react';
+import { Layers, X, ArrowRight, Trash2, Check, AlertCircle, ExternalLink } from 'lucide-react';
 import { useCompare } from '../../hooks/useCompare';
 
 export default function CompareDrawer() {
-  const {
-    compareList,
-    removeFromCompare,
-    clearCompare,
-    isCompareModalOpen,
-    setCompareModalOpen,
-  } = useCompare();
+  const { compareList, removeFromCompare, clearCompare, isCompareModalOpen, setCompareModalOpen } =
+    useCompare();
 
   const [highlightDiffs, setHighlightDiffs] = useState(false);
 

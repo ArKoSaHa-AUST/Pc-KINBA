@@ -35,28 +35,37 @@ export async function getFiltersConfig(categorySlug?: string): Promise<DynamicFi
       return CATEGORY_FACETS[categorySlug] || [];
     }
 
-    return data.map((f: any) => ({
-      id: f.filter_key,
-      title: f.filter_label,
-      type: f.filter_type,
-      options: Array.isArray(f.options)
-        ? f.options
-        : typeof f.options === 'string'
-        ? JSON.parse(f.options)
-        : [],
-    }));
+    return data.map(
+      (f: {
+        filter_key: string;
+        filter_label: string;
+        filter_type?: DynamicFilterFacet['type'];
+        options: unknown;
+      }) => ({
+        id: f.filter_key,
+        title: f.filter_label,
+        type: f.filter_type,
+        options: Array.isArray(f.options)
+          ? f.options
+          : typeof f.options === 'string'
+            ? JSON.parse(f.options)
+            : [],
+      }),
+    );
   } catch (err) {
     console.warn('[getFiltersConfig] Falling back to default facets:', err);
-    return categorySlug ? CATEGORY_FACETS[categorySlug] || [] : [];
+    return CATEGORY_FACETS[categorySlug!] || [];
   }
 }
 
 /**
  * Fetch available brands for a category
  */
-export async function getAvailableBrands(categorySlug?: string): Promise<{ brand: string; count: number }[]> {
+export async function getAvailableBrands(
+  categorySlug?: string,
+): Promise<{ brand: string; count: number }[]> {
   try {
-    let query = supabase.from('products').select(`
+    const query = supabase.from('products').select(`
       brand_id,
       brands:brand_id ( name ),
       categories:category_id ( slug, parent_id )
@@ -68,11 +77,20 @@ export async function getAvailableBrands(categorySlug?: string): Promise<{ brand
     }
 
     const brandCounts: Record<string, number> = {};
+    const rows = data as unknown as {
+      brands?: { name?: string } | { name?: string }[] | null;
+      categories?:
+        | { slug?: string; parent_id?: string | null }
+        | { slug?: string; parent_id?: string | null }[]
+        | null;
+    }[];
 
-    data.forEach((p: any) => {
-      const pCatSlug = p.categories?.slug || '';
+    rows.forEach((p) => {
+      const pCat = Array.isArray(p.categories) ? p.categories[0] : p.categories;
+      const pBrand = Array.isArray(p.brands) ? p.brands[0] : p.brands;
+      const pCatSlug = pCat?.slug || '';
       if (!categorySlug || categorySlug === 'all' || pCatSlug.startsWith(categorySlug)) {
-        const brandName = p.brands?.name || 'Generic';
+        const brandName = pBrand?.name || 'Generic';
         brandCounts[brandName] = (brandCounts[brandName] || 0) + 1;
       }
     });

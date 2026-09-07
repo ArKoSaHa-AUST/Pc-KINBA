@@ -11,7 +11,8 @@ export async function getUserCart(userId: string): Promise<CartItem[]> {
   try {
     const { data, error } = await supabase
       .from('cart')
-      .select(`
+      .select(
+        `
         id,
         user_id,
         product_id,
@@ -35,27 +36,36 @@ export async function getUserCart(userId: string): Promise<CartItem[]> {
           product_images ( id, image_url, is_primary, display_order ),
           product_specs ( id, spec_key, spec_value, spec_group )
         )
-      `)
+      `,
+      )
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error || !data) {
+    if (error) {
       console.warn('[getUserCart] Error fetching cart:', error);
       return [];
     }
 
-    return data.map((item: any) => ({
-      id: item.id,
-      userId: item.user_id,
-      productId: item.product_id,
-      quantity: item.quantity,
-      createdAt: item.created_at,
-      product: mapDbProductToComponent(
-        item.products,
-        item.products?.product_images || [],
-        item.products?.product_specs || [],
-      ),
-    }));
+    return (data || []).map((item) => {
+      const productRow = item.products as unknown as Parameters<typeof mapDbProductToComponent>[0];
+      const productImages =
+        (item.products as { product_images?: unknown[] } | null)?.product_images || [];
+      const productSpecs =
+        (item.products as { product_specs?: unknown[] } | null)?.product_specs || [];
+
+      return {
+        id: item.id,
+        userId: item.user_id,
+        productId: item.product_id,
+        quantity: item.quantity,
+        createdAt: item.created_at,
+        product: mapDbProductToComponent(
+          productRow,
+          productImages as Parameters<typeof mapDbProductToComponent>[1],
+          productSpecs as Parameters<typeof mapDbProductToComponent>[2],
+        ),
+      };
+    });
   } catch (err) {
     console.error('[getUserCart] Unexpected error:', err);
     return [];
@@ -97,9 +107,9 @@ export async function addToUserCart(
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[addToUserCart] Error:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
 
@@ -122,9 +132,9 @@ export async function updateUserCartItemQty(
 
     if (error) throw error;
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[updateUserCartItemQty] Error:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
 
@@ -138,9 +148,9 @@ export async function removeFromUserCart(
     const { error } = await supabase.from('cart').delete().eq('id', cartId);
     if (error) throw error;
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[removeFromUserCart] Error:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
 

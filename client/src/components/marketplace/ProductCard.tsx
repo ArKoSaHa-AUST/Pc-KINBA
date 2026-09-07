@@ -220,8 +220,8 @@ export const ProductCard = memo(function ProductCard({ product }: ProductCardPro
                 !product.inStock
                   ? 'bg-bg-primary text-text-muted border border-border cursor-not-allowed opacity-60'
                   : addedToCart
-                  ? 'bg-success text-black shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-                  : 'bg-accent text-black hover:brightness-110 active:scale-98 shadow-[0_0_15px_rgba(0,229,255,0.25)] hover:shadow-[0_0_20px_rgba(0,229,255,0.4)]'
+                    ? 'bg-success text-black shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                    : 'bg-accent text-black hover:brightness-110 active:scale-98 shadow-[0_0_15px_rgba(0,229,255,0.25)] hover:shadow-[0_0_20px_rgba(0,229,255,0.4)]'
               }`}
             >
               {addedToCart ? (

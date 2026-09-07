@@ -11,7 +11,8 @@ export async function getUserCompareList(userId: string): Promise<CompareProduct
   try {
     const { data, error } = await supabase
       .from('compare_list')
-      .select(`
+      .select(
+        `
         id,
         user_id,
         product_id,
@@ -32,7 +33,8 @@ export async function getUserCompareList(userId: string): Promise<CompareProduct
           product_images ( id, image_url, is_primary, display_order ),
           product_specs ( id, spec_key, spec_value, spec_group )
         )
-      `)
+      `,
+      )
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
@@ -40,13 +42,21 @@ export async function getUserCompareList(userId: string): Promise<CompareProduct
       return [];
     }
 
-    return data
-      .filter((item: any) => item.products)
-      .map((item: any) => {
+    return (data || [])
+      .filter((item) => item.products)
+      .map((item) => {
+        const productRow = item.products as unknown as Parameters<
+          typeof mapDbProductToComponent
+        >[0];
+        const productImages =
+          (item.products as { product_images?: unknown[] } | null)?.product_images || [];
+        const productSpecs =
+          (item.products as { product_specs?: unknown[] } | null)?.product_specs || [];
+
         const prod = mapDbProductToComponent(
-          item.products,
-          item.products?.product_images || [],
-          item.products?.product_specs || [],
+          productRow,
+          productImages as Parameters<typeof mapDbProductToComponent>[1],
+          productSpecs as Parameters<typeof mapDbProductToComponent>[2],
         );
         return {
           id: prod.id,
@@ -94,9 +104,9 @@ export async function addToUserCompare(
 
     if (error) throw error;
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[addToUserCompare] Error:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
 
@@ -116,9 +126,9 @@ export async function removeFromUserCompare(
 
     if (error) throw error;
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[removeFromUserCompare] Error:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
 

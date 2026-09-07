@@ -1588,7 +1588,7 @@ app.post("/api/send-welcome", authActionLimiter, async (req, res) => {
 // 1. Get Products with joined specs & images
 app.get("/api/products", apiLimiter, async (req, res) => {
   try {
-    const { category, brand, min_price, max_price, in_stock, on_sale, search, sort, limit = 50, page = 1 } = req.query;
+    const { min_price, max_price, in_stock, on_sale, search, sort, limit = 50, page = 1 } = req.query;
 
     let query = supabase.from("products").select(`
       id,

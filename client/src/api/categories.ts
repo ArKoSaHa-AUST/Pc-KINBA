@@ -1,5 +1,10 @@
 import { createClient } from '../utils/supabase/client';
-import type { CategoryInfo, DBCategory } from '../types/components';
+import type {
+  CategoryInfo,
+  DBCategory,
+  ComponentCategory,
+  CategoryGroup,
+} from '../types/components';
 import { CATEGORY_TAXONOMY } from '../data/categoryTaxonomy';
 
 const supabase = createClient();
@@ -30,15 +35,17 @@ export async function getCategories(): Promise<CategoryInfo[]> {
       const existingInfo = CATEGORY_TAXONOMY.find((c: CategoryInfo) => c.id === root.slug);
 
       return {
-        id: root.slug as any,
+        id: root.slug as ComponentCategory,
         name: root.name,
-        group: (existingInfo?.group || 'core') as any,
+        group: (existingInfo?.group || 'core') as CategoryGroup,
         iconName: root.icon || existingInfo?.iconName || 'Cpu',
         description: existingInfo?.description || `${root.name} components and hardware`,
         subcategories: subcategories.length > 0 ? subcategories : existingInfo?.subcategories || [],
         badge: existingInfo?.badge,
         accentColor: root.accent_color || existingInfo?.accentColor || '#00e5ff',
-        heroImage: existingInfo?.heroImage || 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=1200&auto=format&fit=crop&q=80',
+        heroImage:
+          existingInfo?.heroImage ||
+          'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=1200&auto=format&fit=crop&q=80',
       };
     });
 

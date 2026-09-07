@@ -1,9 +1,4 @@
-export type CategoryGroup =
-  | 'core'
-  | 'peripherals'
-  | 'accessories'
-  | 'networking'
-  | 'advanced';
+export type CategoryGroup = 'core' | 'peripherals' | 'accessories' | 'networking' | 'advanced';
 
 export type ComponentCategory =
   // Core

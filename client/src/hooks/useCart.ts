@@ -44,7 +44,11 @@ export function useCart() {
   const isAuth = !!user?.id && !user.id.startsWith('demo_');
 
   // Supabase Cart Query for authenticated users
-  const { data: dbCart = [], isLoading, refetch } = useQuery<CartItem[]>({
+  const {
+    data: dbCart = [],
+    isLoading,
+    refetch,
+  } = useQuery<CartItem[]>({
     queryKey: ['cart', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -75,7 +79,13 @@ export function useCart() {
 
   // Add mutation
   const addMutation = useMutation({
-    mutationFn: async ({ product, quantity = 1 }: { product: ProductComponent; quantity?: number }) => {
+    mutationFn: async ({
+      product,
+      quantity = 1,
+    }: {
+      product: ProductComponent;
+      quantity?: number;
+    }) => {
       if (isAuth && user?.id) {
         return addToUserCart(user.id, product.id, quantity);
       } else {
@@ -107,7 +117,15 @@ export function useCart() {
 
   // Update quantity mutation
   const updateQtyMutation = useMutation({
-    mutationFn: async ({ cartId, productId, quantity }: { cartId: string; productId: string; quantity: number }) => {
+    mutationFn: async ({
+      cartId,
+      productId,
+      quantity,
+    }: {
+      cartId: string;
+      productId: string;
+      quantity: number;
+    }) => {
       if (isAuth) {
         return updateUserCartItemQty(cartId, quantity);
       } else {
@@ -171,7 +189,8 @@ export function useCart() {
     subtotal,
     isLoading,
     refetch,
-    addToCart: (product: ProductComponent, quantity = 1) => addMutation.mutateAsync({ product, quantity }),
+    addToCart: (product: ProductComponent, quantity = 1) =>
+      addMutation.mutateAsync({ product, quantity }),
     updateQuantity: (cartId: string, productId: string, quantity: number) =>
       updateQtyMutation.mutateAsync({ cartId, productId, quantity }),
     removeFromCart: (cartId: string, productId: string) =>

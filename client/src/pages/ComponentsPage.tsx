@@ -20,13 +20,8 @@ export default function ComponentsPage() {
   useRealtimeStock();
 
   // Query & Filter Pipeline (Connected to Supabase)
-  const {
-    products,
-    totalCount,
-    isLoading,
-    availableBrands,
-    availableRetailers,
-  } = useComponentQuery();
+  const { products, totalCount, isLoading, availableBrands, availableRetailers } =
+    useComponentQuery();
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
@@ -52,8 +47,9 @@ export default function ComponentsPage() {
             PC Components & Hardware
           </h1>
           <p className="text-sm sm:text-base text-text-muted max-w-3xl leading-relaxed">
-            Discover, compare, and verify authentic computer components across all major
-            Bangladeshi retailers with live Supabase database pricing, technical specifications, and AI compatibility checks.
+            Discover, compare, and verify authentic computer components across all major Bangladeshi
+            retailers with live Supabase database pricing, technical specifications, and AI
+            compatibility checks.
           </p>
         </div>
 

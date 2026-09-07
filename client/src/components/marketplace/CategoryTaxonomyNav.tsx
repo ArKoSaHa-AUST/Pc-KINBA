@@ -17,13 +17,14 @@ import {
   Server,
   Grid,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getCategories } from '../../api/categories';
 import { CATEGORY_TAXONOMY } from '../../data/categoryTaxonomy';
 import { useComponentStore } from '../../store/useComponentStore';
 import type { CategoryInfo, ComponentCategory } from '../../types/components';
 
-const CATEGORY_ICON_MAP: Record<string, any> = {
+const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
   cpu: Cpu,
   gpu: Zap,
   motherboard: CircuitBoard,

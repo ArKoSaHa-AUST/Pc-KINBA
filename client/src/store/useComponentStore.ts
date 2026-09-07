@@ -1,11 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type {
-  CompareProductItem,
-  FilterState,
-  ProductComponent,
-} from '../types/components';
-
+import type { CompareProductItem, FilterState, ProductComponent } from '../types/components';
 
 export const DEFAULT_PRICE_RANGE: [number, number] = [0, 500000];
 
@@ -32,7 +27,11 @@ interface ComponentStore {
   toggleDynamicSpec: (facetId: string, value: string) => void;
   setPriceRange: (range: [number, number]) => void;
   clearAllFilters: () => void;
-  removeFilterChip: (type: 'category' | 'subcategory' | 'brand' | 'retailer' | 'inStock' | 'onSale' | 'spec', keyOrVal?: string, specVal?: string) => void;
+  removeFilterChip: (
+    type: 'category' | 'subcategory' | 'brand' | 'retailer' | 'inStock' | 'onSale' | 'spec',
+    keyOrVal?: string,
+    specVal?: string,
+  ) => void;
 
   // Comparison System
   compareList: CompareProductItem[];

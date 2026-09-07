@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useComponentStore, DEFAULT_PRICE_RANGE } from '../store/useComponentStore';
-import type { ComponentCategory } from '../types/components';
+import type { ComponentCategory, FilterState } from '../types/components';
 
 export function useFilterSync() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -20,7 +20,7 @@ export function useFilterSync() {
     const maxPrice = searchParams.get('maxPrice');
     const inStock = searchParams.get('inStock');
     const onSale = searchParams.get('onSale');
-    const sortParam = searchParams.get('sort') as any;
+    const sortParam = searchParams.get('sort') as FilterState['sortBy'] | null;
 
     if (categoryParam) {
       setFilter('category', categoryParam);
@@ -65,6 +65,7 @@ export function useFilterSync() {
     if (Object.keys(dynamicSpecs).length > 0) {
       setFilter('dynamicSpecs', dynamicSpecs);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync from Store to URL whenever filters change

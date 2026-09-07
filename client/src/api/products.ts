@@ -1,5 +1,5 @@
 import { createClient } from '../utils/supabase/client';
-import type { ProductComponent, FilterState } from '../types/components';
+import type { ProductComponent, FilterState, ComponentCategory } from '../types/components';
 import { MOCK_COMPONENTS } from '../data/mockComponentsData';
 
 const supabase = createClient();
@@ -9,13 +9,46 @@ export interface FetchProductsResponse {
   totalCount: number;
 }
 
+export interface DBProductImageRow {
+  id?: string;
+  image_url: string;
+  is_primary?: boolean;
+  display_order?: number;
+}
+
+export interface DBProductSpecRow {
+  id?: string;
+  spec_key: string;
+  spec_value: string;
+  spec_group?: string;
+}
+
+export interface DBProductRow {
+  id: string;
+  name: string;
+  slug: string;
+  category_id?: string;
+  brand_id?: string;
+  price: number;
+  discount_price?: number | null;
+  stock?: number;
+  rating?: number;
+  review_count?: number;
+  is_featured?: boolean;
+  is_new_arrival?: boolean;
+  categories?: { id: string; name: string; slug: string; parent_id?: string | null } | null;
+  brands?: { id: string; name: string; slug: string } | null;
+  product_images?: DBProductImageRow[];
+  product_specs?: DBProductSpecRow[];
+}
+
 /**
  * Maps raw database joined row to standard ProductComponent entity
  */
 export function mapDbProductToComponent(
-  row: any,
-  images: any[] = [],
-  specs: any[] = [],
+  row: DBProductRow,
+  images: DBProductImageRow[] = [],
+  specs: DBProductSpecRow[] = [],
 ): ProductComponent {
   const brandName = row.brands?.name || 'Generic';
   const categorySlug = row.categories?.slug || 'cpu';
@@ -47,8 +80,7 @@ export function mapDbProductToComponent(
 
   const stock = Number(row.stock) || 0;
   const inStock = stock > 0;
-  const stockStatus =
-    stock > 10 ? 'in_stock' : stock > 0 ? 'limited_stock' : 'out_of_stock';
+  const stockStatus = stock > 10 ? 'in_stock' : stock > 0 ? 'limited_stock' : 'out_of_stock';
 
   return {
     id: row.id,
@@ -56,7 +88,7 @@ export function mapDbProductToComponent(
     name: row.name,
     brand: brandName,
     brandId: row.brand_id,
-    category: categorySlug as any,
+    category: categorySlug as ComponentCategory,
     subcategory: subcategorySlug,
     categoryId: row.category_id,
     price: discountPrice || price,
@@ -133,10 +165,8 @@ export async function getProducts(filters: FilterState): Promise<FetchProductsRe
     }
 
     // 2. Build base query with joins
-    let query = supabase
-      .from('products')
-      .select(
-        `
+    let query = supabase.from('products').select(
+      `
         id,
         name,
         slug,
@@ -155,8 +185,8 @@ export async function getProducts(filters: FilterState): Promise<FetchProductsRe
         product_images ( id, image_url, is_primary, display_order ),
         product_specs ( id, spec_key, spec_value, spec_group )
       `,
-        { count: 'exact' },
-      );
+      { count: 'exact' },
+    );
 
     // Apply category IDs
     if (categoryIds && categoryIds.length > 0) {
@@ -198,14 +228,18 @@ export async function getProducts(filters: FilterState): Promise<FetchProductsRe
         query = query.order('rating', { ascending: false });
         break;
       case 'newest':
-        query = query.order('is_new_arrival', { ascending: false }).order('created_at', { ascending: false });
+        query = query
+          .order('is_new_arrival', { ascending: false })
+          .order('created_at', { ascending: false });
         break;
       case 'discount':
         query = query.order('discount_price', { ascending: true, nullsFirst: false });
         break;
       case 'featured':
       default:
-        query = query.order('is_featured', { ascending: false }).order('rating', { ascending: false });
+        query = query
+          .order('is_featured', { ascending: false })
+          .order('rating', { ascending: false });
         break;
     }
 
@@ -225,8 +259,12 @@ export async function getProducts(filters: FilterState): Promise<FetchProductsRe
     }
 
     // Map rows
-    let mappedProducts: ProductComponent[] = data.map((row: any) =>
-      mapDbProductToComponent(row, row.product_images || [], row.product_specs || []),
+    let mappedProducts: ProductComponent[] = data.map((row) =>
+      mapDbProductToComponent(
+        row as unknown as DBProductRow,
+        (row.product_images || []) as DBProductImageRow[],
+        (row.product_specs || []) as DBProductSpecRow[],
+      ),
     );
 
     // Apply client-side brand and dynamic specs filtering
@@ -236,7 +274,7 @@ export async function getProducts(filters: FilterState): Promise<FetchProductsRe
 
     // Apply dynamic specs filtering
     const activeSpecEntries = Object.entries(filters.dynamicSpecs).filter(
-      ([_, vals]) => vals && vals.length > 0,
+      ([, vals]) => vals && vals.length > 0,
     );
 
     if (activeSpecEntries.length > 0) {
@@ -275,10 +313,8 @@ export async function getProductById(idOrSlug: string): Promise<ProductComponent
   try {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
 
-    let query = supabase
-      .from('products')
-      .select(
-        `
+    let query = supabase.from('products').select(
+      `
         id,
         name,
         slug,
@@ -296,7 +332,7 @@ export async function getProductById(idOrSlug: string): Promise<ProductComponent
         product_images ( id, image_url, is_primary, display_order ),
         product_specs ( id, spec_key, spec_value, spec_group )
       `,
-      );
+    );
 
     if (isUuid) {
       query = query.eq('id', idOrSlug);
@@ -307,16 +343,14 @@ export async function getProductById(idOrSlug: string): Promise<ProductComponent
     const { data, error } = await query.maybeSingle();
 
     if (error || !data) {
-      const mockFound = MOCK_COMPONENTS.find(
-        (m) => m.id === idOrSlug || m.slug === idOrSlug,
-      );
+      const mockFound = MOCK_COMPONENTS.find((m) => m.id === idOrSlug || m.slug === idOrSlug);
       return mockFound || null;
     }
 
     return mapDbProductToComponent(
-      data,
-      data.product_images || [],
-      data.product_specs || [],
+      data as unknown as DBProductRow,
+      (data.product_images || []) as DBProductImageRow[],
+      (data.product_specs || []) as DBProductSpecRow[],
     );
   } catch (err) {
     console.error('[getProductById] Error fetching product:', err);

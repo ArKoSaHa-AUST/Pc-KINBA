@@ -265,17 +265,13 @@ export default function ProductQuickViewModal() {
                   {product.compatibility.socket && (
                     <div className="flex justify-between py-1 border-b border-border/40">
                       <span className="text-text-muted">CPU / Mobo Socket</span>
-                      <span className="font-bold text-accent">
-                        {product.compatibility.socket}
-                      </span>
+                      <span className="font-bold text-accent">{product.compatibility.socket}</span>
                     </div>
                   )}
                   {product.compatibility.ramType && (
                     <div className="flex justify-between py-1 border-b border-border/40">
                       <span className="text-text-muted">Required RAM Gen</span>
-                      <span className="font-bold text-purple">
-                        {product.compatibility.ramType}
-                      </span>
+                      <span className="font-bold text-purple">{product.compatibility.ramType}</span>
                     </div>
                   )}
                   {product.compatibility.recommendedPsuWattage && (
@@ -307,8 +303,8 @@ export default function ProductQuickViewModal() {
                   !product.inStock
                     ? 'bg-bg-primary text-text-muted border border-border cursor-not-allowed opacity-60'
                     : addedToCart
-                    ? 'bg-success text-black shadow-[0_0_20px_rgba(16,185,129,0.4)]'
-                    : 'bg-accent text-black hover:brightness-110 active:scale-98 shadow-[0_0_20px_rgba(0,229,255,0.4)]'
+                      ? 'bg-success text-black shadow-[0_0_20px_rgba(16,185,129,0.4)]'
+                      : 'bg-accent text-black hover:brightness-110 active:scale-98 shadow-[0_0_20px_rgba(0,229,255,0.4)]'
                 }`}
               >
                 {addedToCart ? (
