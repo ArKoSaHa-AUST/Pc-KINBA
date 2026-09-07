@@ -57,7 +57,12 @@ export default function ComponentsPage() {
         {/* 4. Main Marketplace Layout (Sticky Left Sidebar + Right Responsive Grid) */}
         <div className="flex items-start gap-8">
           {/* Desktop Filter Sidebar */}
-          <div className="hidden lg:block w-72 flex-shrink-0 sticky top-24">
+          <div
+            data-lenis-prevent="true"
+            data-lenis-prevent-wheel="true"
+            data-lenis-prevent-touch="true"
+            className="hidden lg:block w-72 flex-shrink-0 sticky top-24 z-10"
+          >
             <FilterSidebar
               availableBrands={availableBrands}
               availableRetailers={availableRetailers}

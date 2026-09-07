@@ -78,7 +78,12 @@ export default function FilterSidebar({ availableBrands, availableRetailers }: F
     Object.keys(filters.dynamicSpecs).length > 0;
 
   return (
-    <aside className="w-full max-h-[calc(100vh-110px)] overflow-y-auto overscroll-contain bg-bg-surface/70 backdrop-blur-xl border border-border rounded-2xl p-5 shadow-lg select-none space-y-6 custom-scrollbar">
+    <aside
+      data-lenis-prevent="true"
+      data-lenis-prevent-wheel="true"
+      data-lenis-prevent-touch="true"
+      className="w-full max-h-[calc(100vh-110px)] overflow-y-auto overscroll-contain bg-bg-surface/70 backdrop-blur-xl border border-border rounded-2xl p-5 shadow-lg select-none space-y-6 custom-scrollbar"
+    >
       {/* Sticky Header */}
       <div className="sticky top-0 bg-bg-surface/95 backdrop-blur-md z-10 -mx-5 -mt-5 p-5 border-b border-border rounded-t-2xl flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -232,7 +237,10 @@ export default function FilterSidebar({ availableBrands, availableRetailers }: F
                 </div>
               )}
 
-              <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+              <div
+                data-lenis-prevent="true"
+                className="max-h-48 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin"
+              >
                 {filteredBrands.map(({ brand, count }) => {
                   const isChecked = filters.brands.includes(brand);
                   return (
@@ -356,7 +364,10 @@ export default function FilterSidebar({ availableBrands, availableRetailers }: F
 
           {openSections.retailer && (
             <div className="space-y-1.5 pt-1">
-              <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+              <div
+                data-lenis-prevent="true"
+                className="max-h-52 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin"
+              >
                 {availableRetailers.map((ret) => {
                   const isChecked = filters.retailers.includes(ret);
                   return (
