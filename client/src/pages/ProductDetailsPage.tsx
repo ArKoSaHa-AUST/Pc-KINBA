@@ -14,7 +14,7 @@ export default function ProductDetailsPage() {
     if (!id) return;
 
     setLoading(true);
-    fetch(`http://localhost:3001/api/product/${id}`)
+    fetch(`/api/product/${id}`)
       .then((res) => res.json())
       .then((data) => {
         if (!data.error) {
@@ -30,10 +30,10 @@ export default function ProductDetailsPage() {
       <ProductHero product={product} loading={loading} />
       {/* 200px Empty Space between Live Price Comparison / Price History and Product Reviews */}
       <div style={{ height: '200px' }} className="w-full pointer-events-none aria-hidden" />
-      <ProductReviews />
+      <ProductReviews productId={id} product={product} />
       {/* 220px Empty Space between Product Reviews and Alternative Parts */}
       <div style={{ height: '220px' }} className="w-full pointer-events-none aria-hidden" />
-      <AlternativePartsSection />
+      <AlternativePartsSection product={product} />
     </div>
   );
 }
