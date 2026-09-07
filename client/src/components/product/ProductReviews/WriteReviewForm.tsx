@@ -146,8 +146,8 @@ export default function WriteReviewForm({
               </div>
               <h4 className="text-2xl font-bold text-white mb-2">Review Published!</h4>
               <p className="text-gray-400 max-w-md mx-auto text-sm">
-                Thank you, <span className="text-cyan-400 font-semibold">{user.name}</span>! Your review
-                has been recorded and is now live for all PC builders.
+                Thank you, <span className="text-cyan-400 font-semibold">{user.name}</span>! Your
+                review has been recorded and is now live for all PC builders.
               </p>
               <button
                 onClick={() => {
@@ -210,7 +210,9 @@ export default function WriteReviewForm({
                 </label>
                 <StarRating rating={rating} interactive onRatingChange={setRating} size="xl" />
                 {rating === 0 && (
-                  <p className="text-rose-400 text-xs mt-2 font-medium">Please select a star rating.</p>
+                  <p className="text-rose-400 text-xs mt-2 font-medium">
+                    Please select a star rating.
+                  </p>
                 )}
               </div>
 
@@ -327,7 +329,8 @@ export default function WriteReviewForm({
                 <div>
                   <p className="text-sm font-semibold text-white">Community Review Guidelines</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Your authentic feedback will be immediately visible to all PC builders across the platform.
+                    Your authentic feedback will be immediately visible to all PC builders across
+                    the platform.
                   </p>
                 </div>
               </div>

@@ -14,7 +14,9 @@ const defaultDistribution: RatingDistributionItem[] = [
   { stars: 1, count: 0, percentage: 0 },
 ];
 
-export default function RatingBreakdown({ distribution = defaultDistribution }: RatingBreakdownProps) {
+export default function RatingBreakdown({
+  distribution = defaultDistribution,
+}: RatingBreakdownProps) {
   const items = distribution && distribution.length > 0 ? distribution : defaultDistribution;
 
   return (

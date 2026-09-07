@@ -91,20 +91,56 @@ export default function AlternativeCard({
             alt={product.name}
             onError={() => {
               const n = (product.name || '').toLowerCase();
-              if (n.includes('rtx') || n.includes('gtx') || n.includes('graphics') || n.includes('rx ') || n.includes('geforce') || n.includes('radeon')) {
-                setImgSrc('https://images.unsplash.com/photo-1587202372775-e229f172b9d7?auto=format&fit=crop&q=80&w=600');
-              } else if (n.includes('motherboard') || n.includes('mainboard') || n.includes('b650') || n.includes('b760')) {
-                setImgSrc('https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=600');
-              } else if (n.includes('ram') || n.includes('ddr4') || n.includes('ddr5') || n.includes('memory')) {
-                setImgSrc('https://images.unsplash.com/photo-1562976540-1502c2145186?auto=format&fit=crop&q=80&w=600');
+              if (
+                n.includes('rtx') ||
+                n.includes('gtx') ||
+                n.includes('graphics') ||
+                n.includes('rx ') ||
+                n.includes('geforce') ||
+                n.includes('radeon')
+              ) {
+                setImgSrc(
+                  'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?auto=format&fit=crop&q=80&w=600',
+                );
+              } else if (
+                n.includes('motherboard') ||
+                n.includes('mainboard') ||
+                n.includes('b650') ||
+                n.includes('b760')
+              ) {
+                setImgSrc(
+                  'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=600',
+                );
+              } else if (
+                n.includes('ram') ||
+                n.includes('ddr4') ||
+                n.includes('ddr5') ||
+                n.includes('memory')
+              ) {
+                setImgSrc(
+                  'https://images.unsplash.com/photo-1562976540-1502c2145186?auto=format&fit=crop&q=80&w=600',
+                );
               } else if (n.includes('ssd') || n.includes('nvme') || n.includes('m.2')) {
-                setImgSrc('https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&q=80&w=600');
+                setImgSrc(
+                  'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&q=80&w=600',
+                );
               } else if (n.includes('power supply') || n.includes('psu') || n.includes('ups')) {
-                setImgSrc('https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&fit=crop&q=80&w=600');
-              } else if (n.includes('processor') || n.includes('core i') || n.includes('ryzen') || n.includes('cpu')) {
-                setImgSrc('https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?auto=format&fit=crop&q=80&w=600');
+                setImgSrc(
+                  'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&fit=crop&q=80&w=600',
+                );
+              } else if (
+                n.includes('processor') ||
+                n.includes('core i') ||
+                n.includes('ryzen') ||
+                n.includes('cpu')
+              ) {
+                setImgSrc(
+                  'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?auto=format&fit=crop&q=80&w=600',
+                );
               } else {
-                setImgSrc('https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=600');
+                setImgSrc(
+                  'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=600',
+                );
               }
             }}
             className="w-full h-full object-contain transform group-hover:scale-105 transition-transform duration-500"
@@ -173,8 +209,8 @@ export default function AlternativeCard({
               {product.lowestStore} ({product.storeCount} stores)
             </span>
             <span className="flex items-center gap-1 text-cyan-400 font-medium">
-              {product.priceTrend?.direction === 'down' ? '↓' : '↑'} {product.priceTrend?.percent || 3}%
-              (30d)
+              {product.priceTrend?.direction === 'down' ? '↓' : '↑'}{' '}
+              {product.priceTrend?.percent || 3}% (30d)
             </span>
           </div>
         </div>
@@ -258,16 +294,28 @@ export default function AlternativeCard({
                 <span className="font-bold text-white block mb-1">Specifications</span>
                 <div className="grid grid-cols-2 gap-2 text-gray-400">
                   <div>
-                    Socket/Type: <span className="text-white font-medium">{product.specs.vram || 'Standard'}</span>
+                    Socket/Type:{' '}
+                    <span className="text-white font-medium">
+                      {product.specs.vram || 'Standard'}
+                    </span>
                   </div>
                   <div>
-                    Cores/Bus: <span className="text-white font-medium">{product.specs.bus || 'Standard'}</span>
+                    Cores/Bus:{' '}
+                    <span className="text-white font-medium">
+                      {product.specs.bus || 'Standard'}
+                    </span>
                   </div>
                   <div>
-                    Power/TDP: <span className="text-white font-medium">{product.specs.power || 'Standard TDP'}</span>
+                    Power/TDP:{' '}
+                    <span className="text-white font-medium">
+                      {product.specs.power || 'Standard TDP'}
+                    </span>
                   </div>
                   <div>
-                    Warranty: <span className="text-white font-medium">{product.specs.warranty || '3 Years'}</span>
+                    Warranty:{' '}
+                    <span className="text-white font-medium">
+                      {product.specs.warranty || '3 Years'}
+                    </span>
                   </div>
                 </div>
               </div>

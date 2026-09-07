@@ -148,7 +148,9 @@ export default function PriceAlertModal({
       }
 
       onSubscriptionChange(true);
-      setSuccessMessage('Price alert activated! You will receive email notifications when the price drops or changes.');
+      setSuccessMessage(
+        'Price alert activated! You will receive email notifications when the price drops or changes.',
+      );
       setTimeout(() => {
         setSuccessMessage(null);
         onClose();
@@ -228,7 +230,9 @@ export default function PriceAlertModal({
                   <h3 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
                     <span>Price Change Alert</span>
                   </h3>
-                  <p className="text-xs text-gray-400">Get notified the second the price updates or drops</p>
+                  <p className="text-xs text-gray-400">
+                    Get notified the second the price updates or drops
+                  </p>
                 </div>
               </div>
 
@@ -297,7 +301,9 @@ export default function PriceAlertModal({
                         <UserCheck className="w-4 h-4" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-white truncate">{user.name || 'Member'}</p>
+                        <p className="text-xs font-bold text-white truncate">
+                          {user.name || 'Member'}
+                        </p>
                         <p className="text-xs text-cyan-300 truncate">{user.email}</p>
                       </div>
                       <span className="text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20 uppercase">

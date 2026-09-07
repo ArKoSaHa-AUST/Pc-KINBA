@@ -5,10 +5,7 @@ interface ReviewSearchProps {
   onSearchChange?: (query: string) => void;
 }
 
-export default function ReviewSearch({
-  searchQuery = '',
-  onSearchChange,
-}: ReviewSearchProps) {
+export default function ReviewSearch({ searchQuery = '', onSearchChange }: ReviewSearchProps) {
   return (
     <div className="relative group">
       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">

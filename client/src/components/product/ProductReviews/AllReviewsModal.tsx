@@ -100,7 +100,10 @@ export default function AllReviewsModal({
       e.stopPropagation();
 
       // If pointer is inside or over the modal container, scroll the modal body directly
-      if (modalEl.contains(target) || (target && target.closest?.('[data-modal-container="true"]'))) {
+      if (
+        modalEl.contains(target) ||
+        (target && target.closest?.('[data-modal-container="true"]'))
+      ) {
         modalEl.scrollTop += e.deltaY;
       }
     };
@@ -200,7 +203,9 @@ export default function AllReviewsModal({
     else if (activeFilter === '1★') list = list.filter((r) => r.rating === 1);
     else if (activeFilter === 'Verified') list = list.filter((r) => r.verified);
     else if (activeFilter === 'Newest') {
-      list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      list.sort(
+        (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+      );
     }
 
     // Sort order
@@ -211,7 +216,9 @@ export default function AllReviewsModal({
     } else if (sortBy === 'lowest') {
       list.sort((a, b) => a.rating - b.rating);
     } else if (sortBy === 'newest') {
-      list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      list.sort(
+        (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+      );
     }
 
     return list;
@@ -319,22 +326,24 @@ export default function AllReviewsModal({
 
                   {isSortDropdownOpen && (
                     <div className="absolute right-0 top-full mt-2 w-48 bg-[#0c1228] border border-white/10 rounded-xl shadow-xl z-20 overflow-hidden py-1">
-                      {(['helpful', 'newest', 'highest', 'lowest'] as SortOption[]).map((option) => (
-                        <button
-                          key={option}
-                          onClick={() => {
-                            setSortBy(option);
-                            setIsSortDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-2.5 text-xs sm:text-sm transition-colors ${
-                            sortBy === option
-                              ? 'bg-cyan-500/20 text-cyan-400 font-bold'
-                              : 'text-gray-300 hover:bg-white/5'
-                          }`}
-                        >
-                          {sortLabels[option]}
-                        </button>
-                      ))}
+                      {(['helpful', 'newest', 'highest', 'lowest'] as SortOption[]).map(
+                        (option) => (
+                          <button
+                            key={option}
+                            onClick={() => {
+                              setSortBy(option);
+                              setIsSortDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 text-xs sm:text-sm transition-colors ${
+                              sortBy === option
+                                ? 'bg-cyan-500/20 text-cyan-400 font-bold'
+                                : 'text-gray-300 hover:bg-white/5'
+                            }`}
+                          >
+                            {sortLabels[option]}
+                          </button>
+                        ),
+                      )}
                     </div>
                   )}
                 </div>
@@ -346,9 +355,7 @@ export default function AllReviewsModal({
               {/* Reviews List */}
               <div className="flex flex-col gap-6">
                 {paginatedReviews.length > 0 ? (
-                  paginatedReviews.map((review) => (
-                    <ReviewCard key={review.id} review={review} />
-                  ))
+                  paginatedReviews.map((review) => <ReviewCard key={review.id} review={review} />)
                 ) : (
                   <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-white/[0.01] border border-white/5 rounded-3xl">
                     <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4">

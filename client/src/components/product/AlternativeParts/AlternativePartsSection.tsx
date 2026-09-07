@@ -43,10 +43,17 @@ export default function AlternativePartsSection({ product }: AlternativePartsSec
           setTargetCategory(data.target_category || product.category || 'Components');
         } else {
           // If no specific alternatives found in DB, fallback to category search
-          fetch(`/api/alternatives?category=${encodeURIComponent(product.category || 'Component')}&price=${product.price || 25000}`)
+          fetch(
+            `/api/alternatives?category=${encodeURIComponent(product.category || 'Component')}&price=${product.price || 25000}`,
+          )
             .then((r) => r.json())
             .then((catData) => {
-              if (isMounted && catData.success && Array.isArray(catData.alternatives) && catData.alternatives.length > 0) {
+              if (
+                isMounted &&
+                catData.success &&
+                Array.isArray(catData.alternatives) &&
+                catData.alternatives.length > 0
+              ) {
                 setAlternatives(catData.alternatives);
                 setTargetCategory(product.category || 'Components');
               } else if (isMounted) {
@@ -99,9 +106,7 @@ export default function AlternativePartsSection({ product }: AlternativePartsSec
           const q = searchQuery.toLowerCase();
           const matchesName = item.name.toLowerCase().includes(q);
           const matchesBrand = item.brand.toLowerCase().includes(q);
-          const matchesChips = item.featureChips.some((chip) =>
-            chip.toLowerCase().includes(q),
-          );
+          const matchesChips = item.featureChips.some((chip) => chip.toLowerCase().includes(q));
           if (!matchesName && !matchesBrand && !matchesChips) {
             return false;
           }
@@ -113,7 +118,8 @@ export default function AlternativePartsSection({ product }: AlternativePartsSec
         if (sortBy === 'highest-rated') return b.rating - a.rating;
         if (sortBy === 'cheapest') return a.price - b.price;
         if (sortBy === 'best-performance') return b.scores.gaming - a.scores.gaming;
-        if (sortBy === 'newest') return (b.specs?.releaseDate || '').localeCompare(a.specs?.releaseDate || '');
+        if (sortBy === 'newest')
+          return (b.specs?.releaseDate || '').localeCompare(a.specs?.releaseDate || '');
         return b.aiMatch - a.aiMatch; // default most-similar
       });
   }, [alternatives, activeFilter, searchQuery, sortBy]);

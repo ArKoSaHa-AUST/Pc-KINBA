@@ -43,13 +43,11 @@ export default function ReviewSummary({ stats, loading = false }: ReviewSummaryP
           <span>⭐ Product Reviews</span>
         </h2>
         <p className="text-gray-400 font-medium">
-          {loading ? (
-            'Loading reviews...'
-          ) : total > 0 ? (
-            `Based on ${total} ${total === 1 ? 'verified review' : 'verified reviews'}`
-          ) : (
-            'No customer reviews yet'
-          )}
+          {loading
+            ? 'Loading reviews...'
+            : total > 0
+              ? `Based on ${total} ${total === 1 ? 'verified review' : 'verified reviews'}`
+              : 'No customer reviews yet'}
         </p>
       </div>
 
@@ -63,9 +61,7 @@ export default function ReviewSummary({ stats, loading = false }: ReviewSummaryP
             <span className="text-xs sm:text-sm text-gray-500 font-bold mt-1">out of 5</span>
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-1 mb-2">
-              {renderStars(rating)}
-            </div>
+            <div className="flex items-center gap-1 mb-2">{renderStars(rating)}</div>
             <p className="text-xs sm:text-sm text-gray-400">
               {total > 0
                 ? rating >= 4

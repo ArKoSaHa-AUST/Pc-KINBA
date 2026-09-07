@@ -38,7 +38,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
     fetchReviews();
   }, [fetchReviews]);
 
-  const handleReviewSubmitted = (_newReview: Review) => {
+  const handleReviewSubmitted = () => {
     // Refresh reviews from backend to get freshly calculated statistics
     fetchReviews();
   };

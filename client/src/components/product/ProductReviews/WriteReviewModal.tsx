@@ -83,7 +83,10 @@ export default function WriteReviewModal({
       e.stopPropagation();
 
       // If pointer is inside or over the modal container, scroll the modal body directly
-      if (modalEl.contains(target) || (target && target.closest?.('[data-modal-container="true"]'))) {
+      if (
+        modalEl.contains(target) ||
+        (target && target.closest?.('[data-modal-container="true"]'))
+      ) {
         modalEl.scrollTop += e.deltaY;
       }
     };

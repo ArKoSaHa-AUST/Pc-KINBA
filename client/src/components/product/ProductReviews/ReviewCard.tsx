@@ -71,7 +71,10 @@ export default function ReviewCard({ review, onHelpfulVote }: ReviewCardProps) {
               className="w-12 h-12 rounded-full object-cover border-2 border-white/10 bg-slate-800"
             />
             {review.verified && (
-              <div className="absolute -bottom-1 -right-1 bg-[#0c1228] rounded-full p-0.5" title="Verified Customer">
+              <div
+                className="absolute -bottom-1 -right-1 bg-[#0c1228] rounded-full p-0.5"
+                title="Verified Customer"
+              >
                 <CheckCircle className="w-4 h-4 text-cyan-400 fill-cyan-400/20" />
               </div>
             )}
@@ -102,7 +105,9 @@ export default function ReviewCard({ review, onHelpfulVote }: ReviewCardProps) {
 
       <div className="mb-6">
         <h5 className="text-lg sm:text-xl font-bold text-white mb-2">{review.title}</h5>
-        <p className="text-gray-300 leading-relaxed text-sm sm:text-base whitespace-pre-line">{review.content}</p>
+        <p className="text-gray-300 leading-relaxed text-sm sm:text-base whitespace-pre-line">
+          {review.content}
+        </p>
 
         {/* Pros and Cons */}
         {((review.pros && review.pros.length > 0) || (review.cons && review.cons.length > 0)) && (
@@ -117,7 +122,10 @@ export default function ReviewCard({ review, onHelpfulVote }: ReviewCardProps) {
                 </div>
                 <ul className="space-y-1">
                   {review.pros.map((pro, idx) => (
-                    <li key={idx} className="text-xs sm:text-sm text-gray-300 flex items-start gap-2">
+                    <li
+                      key={idx}
+                      className="text-xs sm:text-sm text-gray-300 flex items-start gap-2"
+                    >
                       <span className="text-emerald-400 mt-0.5">•</span> {pro}
                     </li>
                   ))}
@@ -134,7 +142,10 @@ export default function ReviewCard({ review, onHelpfulVote }: ReviewCardProps) {
                 </div>
                 <ul className="space-y-1">
                   {review.cons.map((con, idx) => (
-                    <li key={idx} className="text-xs sm:text-sm text-gray-300 flex items-start gap-2">
+                    <li
+                      key={idx}
+                      className="text-xs sm:text-sm text-gray-300 flex items-start gap-2"
+                    >
                       <span className="text-rose-400 mt-0.5">•</span> {con}
                     </li>
                   ))}
@@ -165,8 +176,12 @@ export default function ReviewCard({ review, onHelpfulVote }: ReviewCardProps) {
               : 'text-gray-400 hover:text-cyan-400 bg-white/5 hover:bg-cyan-500/10 border border-transparent'
           }`}
         >
-          <ThumbsUp className={`w-4 h-4 ${hasVoted ? 'fill-cyan-400' : 'group-hover:-translate-y-0.5 transition-transform'}`} />
-          <span>{hasVoted ? 'Helpful' : 'Helpful'} ({helpfulCount})</span>
+          <ThumbsUp
+            className={`w-4 h-4 ${hasVoted ? 'fill-cyan-400' : 'group-hover:-translate-y-0.5 transition-transform'}`}
+          />
+          <span>
+            {hasVoted ? 'Helpful' : 'Helpful'} ({helpfulCount})
+          </span>
         </button>
 
         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

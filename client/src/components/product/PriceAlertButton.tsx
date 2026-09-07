@@ -25,7 +25,9 @@ export default function PriceAlertButton({ product, bestPriceStr }: PriceAlertBu
     }
 
     try {
-      const query = email ? `email=${encodeURIComponent(email)}` : `userId=${encodeURIComponent(userId!)}`;
+      const query = email
+        ? `email=${encodeURIComponent(email)}`
+        : `userId=${encodeURIComponent(userId!)}`;
       const res = await fetch(`/api/product/${product.id}/price-alert?${query}`);
       if (res.ok) {
         const data = await res.json();
