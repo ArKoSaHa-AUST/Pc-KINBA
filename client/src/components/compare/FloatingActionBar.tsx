@@ -49,7 +49,7 @@ export const FloatingActionBar = ({
               onClick={onToggleDiffOnly}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 diffOnly
-                  ? 'bg-accent text-white shadow-md'
+                  ? 'bg-accent text-slate-950 shadow-md'
                   : 'bg-fill-subtle hover:bg-fill-muted text-text-secondary hover:text-text-primary'
               }`}
               title={
@@ -61,7 +61,7 @@ export const FloatingActionBar = ({
               <SlidersHorizontal className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{diffOnly ? 'All' : 'Diff Only'}</span>
               {diffOnly && hiddenDiffCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-black/20 text-white font-black">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-black/20 text-slate-950 font-black">
                   -{hiddenDiffCount}
                 </span>
               )}

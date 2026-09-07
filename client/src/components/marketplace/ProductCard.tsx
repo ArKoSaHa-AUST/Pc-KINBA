@@ -193,7 +193,7 @@ export const ProductCard = memo(function ProductCard({ product }: ProductCardPro
             className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               inCompare
                 ? 'bg-purple/20 border-purple text-purple shadow-[0_0_15px_rgba(124,58,237,0.3)]'
-                : 'bg-bg-primary/80 border-border text-text-muted hover:text-text-primary hover:border-accent/50 hover:bg-bg-primary'
+                : 'bg-bg-primary/80 border-border text-text-muted hover:text-accent hover:border-accent/50 hover:bg-bg-primary'
             }`}
             title={inCompare ? 'Remove from Compare' : 'Add to Compare'}
           >
@@ -212,11 +212,11 @@ export const ProductCard = memo(function ProductCard({ product }: ProductCardPro
 
           <Link
             to={`/product/${product.id}`}
-            className="flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold bg-accent/15 border border-accent/40 text-accent hover:bg-accent hover:text-black transition-all flex items-center justify-center gap-1.5 shadow-sm hover:shadow-[0_0_15px_rgba(0,229,255,0.3)] cursor-pointer text-center"
+            className="flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold bg-bg-primary/80 border border-border text-text-muted hover:text-accent hover:border-accent/50 hover:bg-bg-primary transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
             title="View full specs & price history"
           >
+            <ExternalLink className="w-3.5 h-3.5 text-accent" />
             <span>View Details</span>
-            <ExternalLink className="w-3.5 h-3.5" />
           </Link>
         </div>
       </div>

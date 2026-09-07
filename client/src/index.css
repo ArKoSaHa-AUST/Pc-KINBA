@@ -540,12 +540,37 @@ h4,
   color: #ffffff;
 }
 
-/* Ensure headings in light mode always use readable dark text unless on saturated gradient/accent badges */
-:root[data-theme='light']
-  :is(h1, h2, h3, h4, h5, h6):not([class*='bg-gradient']):not([class*='bg-accent']):not(
-    [class*='bg-purple']
-  ):not([class*='bg-danger']) {
-  color: var(--text-primary);
+/* ==========================================================================
+   High-Contrast Safety: Prevent text & icons from disappearing on Cyan / Accent fills
+   ========================================================================== */
+
+/* Dark Mode: Accent is bright neon cyan (#00e5ff) -> text & SVGs must be deep dark slate */
+:root[data-theme='dark'] :is(.bg-accent, .hover\:bg-accent:hover, .bg-cyan-400, .hover\:bg-cyan-400:hover, .bg-cyan-300, .hover\:bg-cyan-300:hover),
+:root:not([data-theme='light']) :is(.bg-accent, .hover\:bg-accent:hover, .bg-cyan-400, .hover\:bg-cyan-400:hover, .bg-cyan-300, .hover\:bg-cyan-300:hover) {
+  color: #050816 !important;
+}
+
+:root[data-theme='dark'] :is(.bg-accent, .hover\:bg-accent:hover, .bg-cyan-400, .hover\:bg-cyan-400:hover, .bg-cyan-300, .hover\:bg-cyan-300:hover) :is(span, p, h1, h2, h3, h4, h5, h6, strong, b, div, a, button) {
+  color: #050816 !important;
+}
+
+:root[data-theme='dark'] :is(.bg-accent, .hover\:bg-accent:hover, .bg-cyan-400, .hover\:bg-cyan-400:hover, .bg-cyan-300, .hover\:bg-cyan-300:hover) svg {
+  color: #050816 !important;
+  stroke: #050816 !important;
+}
+
+/* Light Mode: Accent is deep cyan/teal (#0e7490) -> solid fills need clean white text */
+:root[data-theme='light'] :is(.bg-accent, .hover\:bg-accent:hover) {
+  color: #ffffff !important;
+}
+
+:root[data-theme='light'] :is(.bg-accent, .hover\:bg-accent:hover) :is(span, p, h1, h2, h3, h4, h5, h6, strong, b, div, a, button) {
+  color: #ffffff !important;
+}
+
+:root[data-theme='light'] :is(.bg-accent, .hover\:bg-accent:hover) svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
 }
 
 /* ==========================================================================
