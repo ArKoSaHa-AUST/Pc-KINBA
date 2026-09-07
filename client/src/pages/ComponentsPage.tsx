@@ -35,7 +35,7 @@ export default function ComponentsPage() {
       <div className="container max-w-[1440px] mx-auto px-4 sm:px-6 md:px-8">
         {/* Page Hero Header */}
         <div className="mb-6">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white mb-2">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-text-primary mb-2">
             PC Components & Hardware
           </h1>
           <p className="text-sm sm:text-base text-text-muted max-w-3xl leading-relaxed">

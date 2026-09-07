@@ -33,7 +33,7 @@ export const CompareHero: React.FC<CompareHeroProps> = ({
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           {/* Header Title & Subtitle */}
           <div className="max-w-3xl">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-text-primary">
               {t('title', 'Hardware Battleground')}{' '}
               <span className="bg-gradient-to-r from-accent via-cyan-400 to-purple bg-clip-text text-transparent">
                 Matrix

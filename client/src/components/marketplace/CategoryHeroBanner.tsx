@@ -136,7 +136,7 @@ export default function CategoryHeroBanner() {
                   />
                   {banner.tag}
                 </p>
-                <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight leading-snug group-hover:text-accent transition-colors line-clamp-2">
+                <h3 className="text-lg sm:text-xl font-bold text-text-primary tracking-tight leading-snug group-hover:text-accent transition-colors line-clamp-2">
                   {banner.title}
                 </h3>
 
