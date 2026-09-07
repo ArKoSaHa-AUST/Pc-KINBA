@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Store, ExternalLink, RefreshCw, Clock, ShieldCheck, Tag, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { sanitizeHref } from '../../utils/image';
 import type { CompareProduct } from '../../types/compare';
 
 interface RetailerPriceMatrixProps {
@@ -197,7 +198,7 @@ export const RetailerPriceMatrix = ({
 
                         {/* Direct Store Link Button */}
                         <a
-                          href={info.productUrl}
+                          href={sanitizeHref(info.productUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-[11px] font-semibold text-text-muted hover:text-accent transition-colors mt-0.5"

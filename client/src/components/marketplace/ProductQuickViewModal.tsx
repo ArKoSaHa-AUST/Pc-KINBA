@@ -1,16 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  X,
-  Star,
-  ExternalLink,
-  Layers,
-  CheckCircle2,
-  Info,
-  Building2,
-} from 'lucide-react';
+import { X, Star, ExternalLink, Layers, CheckCircle2, Info, Building2 } from 'lucide-react';
 import { useComponentStore } from '../../store/useComponentStore';
 import { useCompare } from '../../hooks/useCompare';
+import { sanitizeHref } from '../../utils/image';
 
 export default function ProductQuickViewModal() {
   const product = useComponentStore((s) => s.quickViewProduct);
@@ -230,9 +223,9 @@ export default function ProductQuickViewModal() {
                       </div>
 
                       <a
-                        href={ret.url}
+                        href={sanitizeHref(ret.url)}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="p-2 rounded-lg bg-bg-surface hover:bg-accent hover:text-black text-text-muted transition-colors"
                         aria-label={`Open store page for ${ret.name}`}
                       >

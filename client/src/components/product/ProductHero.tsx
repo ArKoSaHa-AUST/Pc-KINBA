@@ -16,6 +16,7 @@ import {
   Sparkles,
   Globe,
 } from 'lucide-react';
+import { sanitizeHref } from '../../utils/image';
 import PriceAlertButton from './PriceAlertButton';
 
 export interface ShopOffer {
@@ -98,7 +99,7 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
     if (!product?.id || isScanning) return;
     setIsScanning(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/product/${product.id}/live-prices`);
+      const res = await fetch(`/api/product/${encodeURIComponent(product.id)}/live-prices`);
       if (res.ok) {
         const data = await res.json();
         if (data.shops && data.shops.length > 0) {
@@ -207,10 +208,12 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                 <button
                   onClick={() => {
                     if (navigator.share) {
-                      navigator.share({
-                        title: product?.title || 'Product Details',
-                        url: window.location.href,
-                      }).catch(() => {});
+                      navigator
+                        .share({
+                          title: product?.title || 'Product Details',
+                          url: window.location.href,
+                        })
+                        .catch(() => {});
                     } else {
                       navigator.clipboard.writeText(window.location.href);
                     }
@@ -313,7 +316,7 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
 
               {/* Bottom Right: View More Details button */}
               <a
-                href={product?.product_url || '#'}
+                href={sanitizeHref(product?.product_url)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 hover:text-cyan-200 text-xs font-bold transition-all backdrop-blur-md shadow-lg hover:scale-105"
@@ -443,7 +446,7 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
 
                     <div>
                       <a
-                        href={shop.product_url || product?.product_url || '#'}
+                        href={sanitizeHref(shop.product_url || product?.product_url)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-cyan-500/20 hover:scale-105"

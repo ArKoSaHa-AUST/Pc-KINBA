@@ -123,7 +123,8 @@ export default function Features() {
             Why Build With <span className="gradient-text">PC-KINBA?</span>
           </h2>
           <p className="section-subtitle text-base sm:text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
-            Everything you need to build the ultimate gaming or workstation rig, powered by advanced AI and live price telemetry.
+            Everything you need to build the ultimate gaming or workstation rig, powered by advanced
+            AI and live price telemetry.
           </p>
         </motion.div>
 

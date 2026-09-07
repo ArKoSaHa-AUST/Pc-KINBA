@@ -545,16 +545,50 @@ h4,
    ========================================================================== */
 
 /* Dark Mode: Accent is bright neon cyan (#00e5ff) -> text & SVGs must be deep dark slate */
-:root[data-theme='dark'] :is(.bg-accent, .hover\:bg-accent:hover, .bg-cyan-400, .hover\:bg-cyan-400:hover, .bg-cyan-300, .hover\:bg-cyan-300:hover),
-:root:not([data-theme='light']) :is(.bg-accent, .hover\:bg-accent:hover, .bg-cyan-400, .hover\:bg-cyan-400:hover, .bg-cyan-300, .hover\:bg-cyan-300:hover) {
+:root[data-theme='dark']
+  :is(
+    .bg-accent,
+    .hover\:bg-accent:hover,
+    .bg-cyan-400,
+    .hover\:bg-cyan-400:hover,
+    .bg-cyan-300,
+    .hover\:bg-cyan-300:hover
+  ),
+:root:not([data-theme='light'])
+  :is(
+    .bg-accent,
+    .hover\:bg-accent:hover,
+    .bg-cyan-400,
+    .hover\:bg-cyan-400:hover,
+    .bg-cyan-300,
+    .hover\:bg-cyan-300:hover
+  ) {
   color: #050816 !important;
 }
 
-:root[data-theme='dark'] :is(.bg-accent, .hover\:bg-accent:hover, .bg-cyan-400, .hover\:bg-cyan-400:hover, .bg-cyan-300, .hover\:bg-cyan-300:hover) :is(span, p, h1, h2, h3, h4, h5, h6, strong, b, div, a, button) {
+:root[data-theme='dark']
+  :is(
+    .bg-accent,
+    .hover\:bg-accent:hover,
+    .bg-cyan-400,
+    .hover\:bg-cyan-400:hover,
+    .bg-cyan-300,
+    .hover\:bg-cyan-300:hover
+  )
+  :is(span, p, h1, h2, h3, h4, h5, h6, strong, b, div, a, button) {
   color: #050816 !important;
 }
 
-:root[data-theme='dark'] :is(.bg-accent, .hover\:bg-accent:hover, .bg-cyan-400, .hover\:bg-cyan-400:hover, .bg-cyan-300, .hover\:bg-cyan-300:hover) svg {
+:root[data-theme='dark']
+  :is(
+    .bg-accent,
+    .hover\:bg-accent:hover,
+    .bg-cyan-400,
+    .hover\:bg-cyan-400:hover,
+    .bg-cyan-300,
+    .hover\:bg-cyan-300:hover
+  )
+  svg {
   color: #050816 !important;
   stroke: #050816 !important;
 }
@@ -564,7 +598,9 @@ h4,
   color: #ffffff !important;
 }
 
-:root[data-theme='light'] :is(.bg-accent, .hover\:bg-accent:hover) :is(span, p, h1, h2, h3, h4, h5, h6, strong, b, div, a, button) {
+:root[data-theme='light']
+  :is(.bg-accent, .hover\:bg-accent:hover)
+  :is(span, p, h1, h2, h3, h4, h5, h6, strong, b, div, a, button) {
   color: #ffffff !important;
 }
 

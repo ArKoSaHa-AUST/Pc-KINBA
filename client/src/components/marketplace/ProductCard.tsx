@@ -1,14 +1,6 @@
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Star,
-  Eye,
-  CheckCircle2,
-  Clock,
-  ExternalLink,
-  Layers,
-  Sparkles,
-} from 'lucide-react';
+import { Star, Eye, CheckCircle2, Clock, ExternalLink, Layers, Sparkles } from 'lucide-react';
 import type { ProductComponent } from '../../types/components';
 import { useComponentStore } from '../../store/useComponentStore';
 import { useCompare } from '../../hooks/useCompare';

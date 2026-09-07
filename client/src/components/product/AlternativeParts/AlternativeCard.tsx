@@ -14,6 +14,7 @@ import {
   Plus,
   ExternalLink,
 } from 'lucide-react';
+import { sanitizeHref } from '../../../utils/image';
 import type { AlternativeProduct } from './dummyData';
 
 interface AlternativeCardProps {
@@ -344,7 +345,7 @@ export default function AlternativeCard({
             {product.product_url && (
               <div className="pt-2">
                 <a
-                  href={product.product_url}
+                  href={sanitizeHref(product.product_url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-2 px-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
