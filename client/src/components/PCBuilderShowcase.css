@@ -134,7 +134,10 @@
   align-items: center;
   padding: 1rem 1.5rem;
   gap: 1.5rem;
-  transition: transform 0.2s, background 0.2s, border-color 0.2s;
+  transition:
+    transform 0.2s,
+    background 0.2s,
+    border-color 0.2s;
   background: var(--fill-subtle);
   border: 1px solid var(--border);
   border-radius: 16px;

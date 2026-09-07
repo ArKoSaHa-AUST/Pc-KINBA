@@ -170,7 +170,9 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
                 {bottleneck.riskPercent}%
               </span>
             </div>
-            <div className="text-sm font-bold text-text-primary line-clamp-1">{bottleneck.title}</div>
+            <div className="text-sm font-bold text-text-primary line-clamp-1">
+              {bottleneck.title}
+            </div>
             <p className="text-[11px] text-text-muted mt-1 leading-normal line-clamp-2">
               {bottleneck.description}
             </p>

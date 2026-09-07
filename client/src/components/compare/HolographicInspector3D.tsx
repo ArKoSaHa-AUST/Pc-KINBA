@@ -583,7 +583,9 @@ export const HolographicInspector3D = ({
               <button
                 onClick={() => setAutoRotate(!autoRotate)}
                 className={`p-1.5 rounded-xl text-xs transition-all ${
-                  autoRotate ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-text-primary'
+                  autoRotate
+                    ? 'text-accent bg-accent/10'
+                    : 'text-text-muted hover:text-text-primary'
                 }`}
                 title={autoRotate ? 'Pause Auto Rotation' : 'Enable Auto Rotation'}
               >
