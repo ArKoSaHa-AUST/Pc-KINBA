@@ -1,7 +1,11 @@
 /* Build-vs-build compare — reuses PCBuilderPage.css / BuildCheckoutPage.css shared styles */
 
+.compare-table {
+  table-layout: fixed;
+}
+
 .compare-table th:first-child {
-  width: 180px;
+  width: 200px;
 }
 
 .compare-table .compare-delta-col {
@@ -10,18 +14,16 @@
   white-space: nowrap;
 }
 
-.compare-select {
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--fill-subtle);
-  color: var(--text-primary);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0;
+/* Header cells hold the pickers: the trigger spans the column so its text lines up with the values below */
+.compare-table thead th:not(:first-child):not(.compare-delta-col) {
+  padding-left: 0;
+  padding-right: 12px;
+  overflow: visible;
+}
+
+/* Let the open picker panel escape the card's overflow-x: auto */
+.compare-table-card {
+  overflow: visible;
 }
 
 .compare-metric-row td {

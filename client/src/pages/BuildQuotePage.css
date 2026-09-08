@@ -17,14 +17,22 @@
   gap: 8px;
 }
 
+/* The sheet is laid out at A4 size on screen too, so what you see is exactly the printed page.
+   --quote-zoom is set by the page when the content is taller than one page. */
 .quote-sheet {
+  box-sizing: border-box;
+  width: 210mm;
+  max-width: 100%;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 12mm 14mm;
   background: #fff;
   color: #111827;
   border-radius: 12px;
-  padding: 40px 44px;
   box-shadow: 0 20px 60px rgb(0 0 0 / 0.35);
   font-size: 14px;
   line-height: 1.45;
+  zoom: var(--quote-zoom, 1);
 }
 
 .quote-header {
@@ -139,9 +147,10 @@
 }
 
 @media print {
+  /* Zero page margin: the sheet carries its own, and Chrome then drops its URL/date header & footer */
   @page {
     size: A4;
-    margin: 14mm;
+    margin: 0;
   }
 
   nav,
@@ -162,9 +171,9 @@
   }
 
   .quote-sheet {
+    min-height: 0;
     box-shadow: none;
     border-radius: 0;
-    padding: 0;
   }
 
   .quote-table tr {

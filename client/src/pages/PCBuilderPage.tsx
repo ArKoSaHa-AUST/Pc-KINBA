@@ -2,7 +2,7 @@ import Lenis from 'lenis';
 import { Trash2, Wand2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { saveBuild } from '../api/builds';
+import { defaultBuildName, saveBuild } from '../api/builds';
 import { useAuth } from '../auth/useAuth';
 import AIOptimizer from '../components/builder/AIOptimizer';
 import AssemblyViewport3D from '../components/builder/AssemblyViewport3D';
@@ -12,6 +12,7 @@ import BuildLibraryTeaser from '../components/builder/BuildLibraryTeaser';
 import ComponentGrid from '../components/builder/ComponentGrid';
 import ComponentSelectModal from '../components/builder/ComponentSelectModal';
 import ExportActions from '../components/builder/ExportActions';
+import SaveBuildModal from '../components/builder/SaveBuildModal';
 import { autoBuild } from '../components/builder/autoBuild';
 import {
   BUDGET_MAX,
@@ -61,6 +62,7 @@ export default function PCBuilderPage() {
   const [build, setBuild] = useState<BuildSelection>({});
   const [hydrated, setHydrated] = useState(false);
   const [activeSlot, setActiveSlot] = useState<ComponentCategory | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
 
   // Hydrate once the catalog is available: share link wins, otherwise the saved draft.
   useEffect(() => {
@@ -162,23 +164,31 @@ export default function PCBuilderPage() {
     });
   }, [build, budget, purpose, catalog.products, toast]);
 
-  const handleSaveBuild = useCallback(async () => {
+  const handleSaveBuild = useCallback(() => {
     if (status !== 'authenticated') {
       toast({ message: 'Sign in to save your build.', variant: 'info' });
       navigate('/login');
       return;
     }
-    try {
-      const saved = await saveBuild(build, purpose);
-      toast({
-        message: `“${saved.name}” saved. Publish it to the Build Library from your profile.`,
-        variant: 'success',
-      });
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to save build.';
-      toast({ message: msg, variant: 'danger' });
-    }
-  }, [status, build, purpose, navigate, toast]);
+    setSaveOpen(true);
+  }, [status, navigate, toast]);
+
+  const handleConfirmSave = useCallback(
+    async (name: string) => {
+      try {
+        const saved = await saveBuild(build, purpose, name);
+        setSaveOpen(false);
+        toast({
+          message: `“${saved.name}” saved. Publish it to the Build Library from your profile.`,
+          variant: 'success',
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Failed to save build.';
+        toast({ message: msg, variant: 'danger' });
+      }
+    },
+    [build, purpose, toast],
+  );
 
   const handleCheckout = useCallback(() => {
     navigate(`/pc-builder/checkout?parts=${partIdsOf(build).join(',')}`);
@@ -298,6 +308,12 @@ export default function PCBuilderPage() {
         remainingBudget={remainingBudget}
         onClose={() => setActiveSlot(null)}
         onSelect={handleSelectProduct}
+      />
+      <SaveBuildModal
+        open={saveOpen}
+        defaultName={defaultBuildName(build)}
+        onClose={() => setSaveOpen(false)}
+        onSave={handleConfirmSave}
       />
     </div>
   );

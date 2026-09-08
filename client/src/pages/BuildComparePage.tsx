@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ArrowLeftRight } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { listBuilds } from '../api/builds';
+import { listBuilds, listPublicBuilds } from '../api/builds';
 import { useAuth } from '../auth/useAuth';
+import BuildPicker from '../components/builder/BuildPicker';
 import { estimateFps, GAME_BENCHMARKS } from '../components/builder/benchmarks';
 import { formatTaka } from '../components/builder/buildConfig';
 import { BUILD_PRESETS, resolvePreset } from '../components/builder/buildPresets';
@@ -65,8 +66,9 @@ const METRICS: Metric[] = [
   })),
 ];
 
+/** How A stands against B: positive means A has more; colour says whether that's better. */
 function Delta({ a, b, metric }: { a: number; b: number; metric: Metric }) {
-  const diff = b - a;
+  const diff = a - b;
   if (!diff || !a || !b) return <span className="compare-delta">—</span>;
   const better = metric.higherIsBetter ? diff > 0 : diff < 0;
   return (
@@ -87,18 +89,46 @@ export default function BuildComparePage() {
     queryFn: listBuilds,
     enabled: status === 'authenticated',
   });
+  const { data: community = [] } = useQuery({
+    queryKey: ['public-builds'],
+    queryFn: () => listPublicBuilds(),
+    staleTime: 60_000,
+  });
 
-  const sources = useMemo<Source[]>(
+  const groups = useMemo(
     () => [
-      ...BUILD_PRESETS.map((p) => ({
-        id: `preset:${p.id}`,
-        name: p.name,
-        partIds: partIdsOf(resolvePreset(p, catalog.products, catalog.byId)),
-      })),
-      ...saved.map((b) => ({ id: `saved:${b.id}`, name: b.name, partIds: b.partIds })),
+      {
+        label: 'Templates',
+        sources: BUILD_PRESETS.map<Source>((p) => ({
+          id: `preset:${p.id}`,
+          name: p.name,
+          partIds: partIdsOf(resolvePreset(p, catalog.products, catalog.byId)),
+        })),
+      },
+      {
+        label: 'My saved builds',
+        sources: saved.map<Source>((b) => ({
+          id: `saved:${b.id}`,
+          name: b.name,
+          partIds: b.partIds,
+        })),
+      },
+      {
+        label: 'Community builds',
+        sources: community.map<Source>((b) => ({
+          id: `public:${b.id}`,
+          name: b.authorName ? `${b.name} · ${b.authorName}` : b.name,
+          partIds: b.partIds,
+        })),
+      },
     ],
-    [catalog, saved],
+    [catalog, saved, community],
   );
+  const sources = useMemo(() => groups.flatMap((g) => g.sources), [groups]);
+  const pickerGroups = groups.map((g) => ({
+    label: g.label,
+    options: g.sources.map((s) => ({ id: s.id, label: s.name })),
+  }));
 
   const sides = (['a', 'b'] as const).map((key) => {
     const ids = params.get(key)?.split(',').filter(Boolean) ?? [];
@@ -140,63 +170,47 @@ export default function BuildComparePage() {
               </h1>
               <p className="builder-section-subtitle">
                 Parts, price, compatibility, power and estimated FPS — side by side. Choose a
-                template or one of your saved builds for either column.
+                template, a community build or one of your saved builds for either column.
               </p>
             </div>
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() =>
-                navigate(a.ids.length ? `/pc-builder?parts=${a.ids.join(',')}` : '/pc-builder')
-              }
-            >
-              <ArrowLeft size={16} /> Back to Builder
-            </button>
+            <div className="checkout-actions">
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => setParams({}, { replace: true })}
+                disabled={!a.ids.length && !b.ids.length}
+              >
+                <Trash2 size={15} /> Clear
+              </button>
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() =>
+                  navigate(a.ids.length ? `/pc-builder?parts=${a.ids.join(',')}` : '/pc-builder')
+                }
+              >
+                <ArrowLeft size={16} /> Back to Builder
+              </button>
+            </div>
           </div>
 
-          <div className="glass-card parts-table-card">
+          <div className="glass-card parts-table-card compare-table-card">
             <table className="parts-table compare-table">
               <thead>
                 <tr>
                   <th />
                   {sides.map((side) => (
                     <th key={side.key}>
-                      <select
-                        className="compare-select"
-                        value={side.source?.id ?? (side.ids.length ? 'custom' : '')}
-                        onChange={(e) => setSide(side.key, e.target.value)}
-                        aria-label={`Build ${side.key.toUpperCase()}`}
-                      >
-                        <option value="" disabled>
-                          Pick a build…
-                        </option>
-                        {side.ids.length > 0 && !side.source && (
-                          <option value="custom">Custom build (current)</option>
-                        )}
-                        <optgroup label="Templates">
-                          {sources
-                            .filter((s) => s.id.startsWith('preset:'))
-                            .map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.name}
-                              </option>
-                            ))}
-                        </optgroup>
-                        {saved.length > 0 && (
-                          <optgroup label="My saved builds">
-                            {sources
-                              .filter((s) => s.id.startsWith('saved:'))
-                              .map((s) => (
-                                <option key={s.id} value={s.id}>
-                                  {s.name}
-                                </option>
-                              ))}
-                          </optgroup>
-                        )}
-                      </select>
+                      <BuildPicker
+                        ariaLabel={`Build ${side.key.toUpperCase()}`}
+                        groups={pickerGroups}
+                        value={side.source?.id}
+                        valueLabel={side.ids.length ? 'Custom build (current)' : undefined}
+                        onChange={(id) => setSide(side.key, id)}
+                      />
                     </th>
                   ))}
-                  <th className="compare-delta-col">B vs A</th>
+                  <th className="compare-delta-col">A vs B</th>
                 </tr>
               </thead>
               <tbody>

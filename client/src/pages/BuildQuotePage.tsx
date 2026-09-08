@@ -1,5 +1,5 @@
 import { ArrowLeft, Printer } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { formatTaka } from '../components/builder/buildConfig';
 import {
@@ -25,6 +25,9 @@ const dateFmt = new Intl.DateTimeFormat('en-GB', {
   year: 'numeric',
 });
 
+/** A4 height at CSS 96dpi — the same unit the sheet's `mm` sizes resolve to. */
+const A4_HEIGHT_PX = (297 * 96) / 25.4;
+
 /** Printable quotation: what a buyer takes to the shop. `?print=1` opens the print dialog on load. */
 export default function BuildQuotePage() {
   const [params] = useSearchParams();
@@ -37,8 +40,27 @@ export default function BuildQuotePage() {
     .map((meta) => ({ meta, part: build[meta.id] }))
     .filter((r): r is { meta: (typeof r)['meta']; part: BuilderProduct } => !!r.part);
 
+  // Fit-to-page: the sheet is A4-sized on screen, so if it runs taller than 297mm we zoom
+  // the whole sheet down until it fits — the print output is then guaranteed to be one page.
+  const sheetRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (!catalog.isLoading && rows.length && params.get('print')) window.print();
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+    const fit = () => {
+      sheet.style.setProperty('--quote-zoom', '1');
+      sheet.style.minHeight = '0';
+      const ratio = A4_HEIGHT_PX / sheet.getBoundingClientRect().height;
+      sheet.style.minHeight = '';
+      if (ratio < 1) sheet.style.setProperty('--quote-zoom', (ratio * 0.99).toFixed(3));
+    };
+    fit();
+    document.fonts.ready.then(fit);
+  }, [rows.length, catalog.isLoading]);
+
+  useEffect(() => {
+    if (!catalog.isLoading && rows.length && params.get('print')) {
+      document.fonts.ready.then(() => window.print());
+    }
   }, [catalog.isLoading, rows.length, params]);
 
   if (catalog.isLoading) return <p className="checkout-loading">Preparing your quote…</p>;
@@ -63,7 +85,7 @@ export default function BuildQuotePage() {
         </button>
       </div>
 
-      <article className="quote-sheet">
+      <article className="quote-sheet" ref={sheetRef}>
         <header className="quote-header">
           <div>
             <div className="quote-brand">PC KINBA</div>
