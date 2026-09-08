@@ -41,23 +41,131 @@ function checkPsuHeadroom(wattage: number, draw: number): CompatResult {
   return { status: 'compatible', message: 'Compatible' };
 }
 
+// ---- Rule functions: return null when the required parts/specs aren't selected yet ----
+
+type P = BuilderProduct | undefined;
+
+function checkGpuClearance(gpu: P, pcCase: P): CompatResult | null {
+  if (!gpu?.lengthMm || !pcCase?.maxGpuLengthMm) return null;
+  const spare = pcCase.maxGpuLengthMm - gpu.lengthMm;
+  if (spare < 0) {
+    return {
+      status: 'incompatible',
+      message: `${gpu.lengthMm}mm GPU exceeds ${pcCase.maxGpuLengthMm}mm case limit`,
+    };
+  }
+  if (spare < 15) {
+    return { status: 'warning', message: `Only ${spare}mm spare — a front radiator may block it` };
+  }
+  return { status: 'compatible', message: `${gpu.lengthMm}mm GPU, ${spare}mm spare` };
+}
+
+function checkCoolerClearance(cooler: P, pcCase: P): CompatResult | null {
+  if (!cooler || !pcCase) return null;
+  if (cooler.radiatorMm) {
+    if (!pcCase.radiatorSupportMm) return null;
+    return pcCase.radiatorSupportMm.includes(cooler.radiatorMm)
+      ? { status: 'compatible', message: `${cooler.radiatorMm}mm radiator mount available` }
+      : {
+          status: 'incompatible',
+          message: `No ${cooler.radiatorMm}mm mount (case takes ${pcCase.radiatorSupportMm.join('/')}mm)`,
+        };
+  }
+  if (!cooler.heightMm || !pcCase.maxCoolerHeightMm) return null;
+  const spare = pcCase.maxCoolerHeightMm - cooler.heightMm;
+  if (spare < 0) {
+    return {
+      status: 'incompatible',
+      message: `${cooler.heightMm}mm cooler exceeds ${pcCase.maxCoolerHeightMm}mm clearance`,
+    };
+  }
+  if (spare < 5) {
+    return { status: 'warning', message: `${spare}mm spare — side panel may touch the cooler` };
+  }
+  return { status: 'compatible', message: `${cooler.heightMm}mm cooler, ${spare}mm spare` };
+}
+
+function checkPsuConnectors(psu: P, gpu: P, storage: P): CompatResult | null {
+  if (!psu?.pcie8pin || (!gpu?.gpuPower && !storage?.storageInterface)) return null;
+  if (storage?.storageInterface === 'sata' && !psu.sataPower) {
+    return { status: 'incompatible', message: 'PSU has no SATA power connector for the drive' };
+  }
+  if (!gpu?.gpuPower) return { status: 'compatible', message: 'No PCIe power required' };
+  const { type, pcie8pin } = gpu.gpuPower;
+  if (type === '12vhpwr') {
+    if (psu.has12vhpwr) return { status: 'compatible', message: 'Native 12VHPWR cable' };
+    return psu.pcie8pin >= pcie8pin
+      ? {
+          status: 'warning',
+          message: `12VHPWR via ${pcie8pin}×8-pin adapter — an ATX 3.0 PSU is safer`,
+        }
+      : {
+          status: 'incompatible',
+          message: `Adapter needs ${pcie8pin}×8-pin, PSU has ${psu.pcie8pin}`,
+        };
+  }
+  return psu.pcie8pin >= pcie8pin
+    ? { status: 'compatible', message: `${pcie8pin}×8-pin available` }
+    : { status: 'incompatible', message: `GPU needs ${pcie8pin}×8-pin, PSU has ${psu.pcie8pin}` };
+}
+
+/** 'YYYY-MM' strings compare lexicographically; a CPU newer than its board is the classic BIOS trap. */
+function checkBios(cpu: P, motherboard: P): CompatResult | null {
+  if (!cpu?.released || !motherboard?.released || cpu.socket !== motherboard.socket) return null;
+  return cpu.released > motherboard.released
+    ? {
+        status: 'warning',
+        message:
+          'CPU is newer than this board — older stock may need a BIOS update (ask the retailer to flash it)',
+      }
+    : { status: 'compatible', message: 'Supported out of the box' };
+}
+
+function checkM2Sata(storage: P, motherboard: P): CompatResult | null {
+  if (!storage?.storageInterface || !motherboard?.m2Slots) return null;
+  const ports = `${motherboard.m2Slots}× M.2 · ${motherboard.sataPorts ?? 0}× SATA`;
+  if (!motherboard.m2SataShared)
+    return { status: 'compatible', message: `${ports}, no shared lanes` };
+  return storage.storageInterface === 'sata'
+    ? { status: 'warning', message: `${motherboard.m2SataShared} — keep the drive on SATA 1–4` }
+    : {
+        status: 'compatible',
+        message: `${motherboard.m2SataShared} — use M.2_1 to keep all SATA ports`,
+      };
+}
+
+const SEVERITY: Record<CompatStatus, number> = { compatible: 0, warning: 1, incompatible: 2 };
+
+function worst(results: (CompatResult | null)[]): CompatResult {
+  return results.reduce<CompatResult>(
+    (acc, r) => (r && SEVERITY[r.status] > SEVERITY[acc.status] ? r : acc),
+    { status: 'compatible', message: 'Compatible' },
+  );
+}
+
 /** Checks a candidate product against the rest of the build (its own slot is ignored). */
 export function checkCompatibility(candidate: BuilderProduct, build: BuildSelection): CompatResult {
   const b: BuildSelection = { ...build };
   delete b[candidate.category];
+  const results: (CompatResult | null)[] = [];
 
   switch (candidate.category) {
     case 'cpu': {
       if (b.motherboard && b.motherboard.socket !== candidate.socket) {
         return { status: 'incompatible', message: `Socket ${candidate.socket} ≠ motherboard` };
       }
+      results.push(checkBios(candidate, b.motherboard));
       if (b.psu?.wattage)
-        return checkPsuHeadroom(b.psu.wattage, estimatePowerDraw({ ...b, cpu: candidate }));
+        results.push(checkPsuHeadroom(b.psu.wattage, estimatePowerDraw({ ...b, cpu: candidate })));
       break;
     }
     case 'gpu': {
       if (b.psu?.wattage)
-        return checkPsuHeadroom(b.psu.wattage, estimatePowerDraw({ ...b, gpu: candidate }));
+        results.push(checkPsuHeadroom(b.psu.wattage, estimatePowerDraw({ ...b, gpu: candidate })));
+      results.push(
+        checkGpuClearance(candidate, b.case),
+        checkPsuConnectors(b.psu, candidate, b.storage),
+      );
       break;
     }
     case 'motherboard': {
@@ -83,6 +191,7 @@ export function checkCompatibility(candidate: BuilderProduct, build: BuildSelect
           message: `${candidate.formFactor} won't fit ${b.case.formFactor} case`,
         };
       }
+      results.push(checkBios(b.cpu, candidate), checkM2Sata(b.storage, candidate));
       break;
     }
     case 'ram': {
@@ -94,8 +203,17 @@ export function checkCompatibility(candidate: BuilderProduct, build: BuildSelect
       }
       break;
     }
+    case 'storage': {
+      results.push(
+        checkM2Sata(candidate, b.motherboard),
+        checkPsuConnectors(b.psu, b.gpu, candidate),
+      );
+      break;
+    }
     case 'psu': {
-      if (candidate.wattage) return checkPsuHeadroom(candidate.wattage, estimatePowerDraw(b));
+      if (candidate.wattage)
+        results.push(checkPsuHeadroom(candidate.wattage, estimatePowerDraw(b)));
+      results.push(checkPsuConnectors(candidate, b.gpu, b.storage));
       break;
     }
     case 'case': {
@@ -106,12 +224,17 @@ export function checkCompatibility(candidate: BuilderProduct, build: BuildSelect
       ) {
         return { status: 'incompatible', message: `${b.motherboard.formFactor} board won't fit` };
       }
+      results.push(checkGpuClearance(b.gpu, candidate), checkCoolerClearance(b.cooling, candidate));
+      break;
+    }
+    case 'cooling': {
+      results.push(checkCoolerClearance(candidate, b.case));
       break;
     }
     default:
       break;
   }
-  return { status: 'compatible', message: 'Compatible' };
+  return worst(results);
 }
 
 export type BuildCheckStatus = CompatStatus | 'pending';
@@ -125,9 +248,19 @@ export interface BuildCheck {
 
 /** Whole-build checks for the analytics dashboard (pending = parts not selected yet). */
 export function getBuildChecks(build: BuildSelection): BuildCheck[] {
-  const { cpu, motherboard, ram, psu, cooling } = build;
+  const { cpu, motherboard, ram, psu, cooling, gpu, storage } = build;
   const pcCase = build.case;
   const draw = estimatePowerDraw(build);
+
+  const toCheck = (
+    id: string,
+    label: string,
+    result: CompatResult | null,
+    pendingDetail: string,
+  ): BuildCheck =>
+    result
+      ? { id, label, status: result.status, detail: result.message }
+      : { id, label, status: 'pending', detail: pendingDetail };
 
   const socket: BuildCheck =
     !cpu || !motherboard
@@ -232,7 +365,43 @@ export function getBuildChecks(build: BuildSelection): BuildCheck[] {
             detail: 'Stock cooling sufficient',
           };
 
-  return [socket, ramType, psuCheck, formFit, coolingCheck];
+  return [
+    socket,
+    ramType,
+    psuCheck,
+    formFit,
+    coolingCheck,
+    toCheck(
+      'gpu_fit',
+      'GPU length clearance (GPU ↔ Case)',
+      checkGpuClearance(gpu, pcCase),
+      'Select GPU and case',
+    ),
+    toCheck(
+      'cooler_fit',
+      'Cooler height / radiator support (Cooler ↔ Case)',
+      checkCoolerClearance(cooling, pcCase),
+      'Select cooler and case',
+    ),
+    toCheck(
+      'psu_connectors',
+      'PSU connectors (PCIe 8-pin / 12VHPWR / SATA)',
+      checkPsuConnectors(psu, gpu, storage),
+      'Select PSU and GPU or storage',
+    ),
+    toCheck(
+      'bios',
+      'BIOS support (CPU ↔ Motherboard)',
+      checkBios(cpu, motherboard),
+      'Select CPU and motherboard',
+    ),
+    toCheck(
+      'm2_sata',
+      'M.2 / SATA port sharing',
+      checkM2Sata(storage, motherboard),
+      'Select storage and motherboard',
+    ),
+  ];
 }
 
 export function getCompatibilityScore(checks: BuildCheck[]): number {
