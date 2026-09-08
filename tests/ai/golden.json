@@ -1,0 +1,198 @@
+[
+  {
+    "id": "prompt-01",
+    "prompt": "I need an AI and machine learning workstation with NVIDIA GPU. Budget is around 2 lakh taka.",
+    "expected_purpose": "ai_ml",
+    "expected_budget": 200000,
+    "min_vram_gb": 12,
+    "min_ram_gb": 32,
+    "require_nvidia": true,
+    "language": "en"
+  },
+  {
+    "id": "prompt-02",
+    "prompt": "গেমিং পিসি ৮০ হাজার টাকার মধ্যে চাই",
+    "expected_purpose": "gaming",
+    "expected_budget": 80000,
+    "language": "bn"
+  },
+  {
+    "id": "prompt-03",
+    "prompt": "Office PC 60k no gpu needed, only processor with integrated graphics",
+    "expected_purpose": "office",
+    "expected_budget": 60000,
+    "require_igpu": true,
+    "require_no_gpu": true,
+    "language": "en"
+  },
+  {
+    "id": "prompt-04",
+    "prompt": "4K video editing workstation 2.5 lakh Intel CPU only with 32GB or 64GB RAM",
+    "expected_purpose": "content_creation",
+    "expected_budget": 250000,
+    "min_ram_gb": 32,
+    "prefer_cpu": "intel",
+    "language": "en"
+  },
+  {
+    "id": "prompt-05",
+    "prompt": "Compact ITX build 1.5 lakh for 1440p gaming",
+    "expected_purpose": "gaming",
+    "expected_budget": 150000,
+    "form_factor": "ITX",
+    "language": "en"
+  },
+  {
+    "id": "prompt-06",
+    "prompt": "1440p high FPS gaming PC under 1.2 lakh taka",
+    "expected_purpose": "gaming",
+    "expected_budget": 120000,
+    "language": "en"
+  },
+  {
+    "id": "prompt-07",
+    "prompt": "Deep learning research rig with high VRAM budget 3 lakh",
+    "expected_purpose": "ai_ml",
+    "expected_budget": 300000,
+    "min_vram_gb": 16,
+    "min_ram_gb": 32,
+    "require_nvidia": true,
+    "language": "en"
+  },
+  {
+    "id": "prompt-08",
+    "prompt": "Student programming and web development PC 50k",
+    "expected_purpose": "office",
+    "expected_budget": 50000,
+    "language": "en"
+  },
+  {
+    "id": "prompt-09",
+    "prompt": "Streaming and gaming PC 1.8 lakh with NVENC GPU",
+    "expected_purpose": "streaming",
+    "expected_budget": 180000,
+    "language": "en"
+  },
+  {
+    "id": "prompt-10",
+    "prompt": "White RGB aesthetic gaming PC under 1.6 lakh taka",
+    "expected_purpose": "gaming",
+    "expected_budget": 160000,
+    "language": "en"
+  },
+  {
+    "id": "prompt-11",
+    "prompt": "Blender 3D rendering and animation workstation 2.2 lakh",
+    "expected_purpose": "content_creation",
+    "expected_budget": 220000,
+    "min_ram_gb": 32,
+    "language": "en"
+  },
+  {
+    "id": "prompt-12",
+    "prompt": "Budget 1080p competitive esports PC 65k",
+    "expected_purpose": "gaming",
+    "expected_budget": 65000,
+    "language": "en"
+  },
+  {
+    "id": "prompt-13",
+    "prompt": "AMD Ryzen 7 7800X3D gaming build 1.7 lakh",
+    "expected_purpose": "gaming",
+    "expected_budget": 170000,
+    "prefer_cpu": "amd",
+    "language": "en"
+  },
+  {
+    "id": "prompt-14",
+    "prompt": "Hybrid gaming and DaVinci Resolve editing PC 2 lakh",
+    "expected_purpose": "content_creation",
+    "expected_budget": 200000,
+    "language": "en"
+  },
+  {
+    "id": "prompt-15",
+    "prompt": "গেমিং পিসি ১ লাখ ২০ হাজার টাকা",
+    "expected_purpose": "gaming",
+    "expected_budget": 120000,
+    "language": "bn"
+  },
+  {
+    "id": "prompt-16",
+    "prompt": "ভিডিও এডিটিং ও গ্রাফিক্স ডিজাইন পিসি ১.৫ লাখ টাকা",
+    "expected_purpose": "content_creation",
+    "expected_budget": 150000,
+    "language": "bn"
+  },
+  {
+    "id": "prompt-17",
+    "prompt": "অফিস কাজের জন্য পিসি ৪০ হাজার টাকা গ্রাফিক্স কার্ড লাগবে না",
+    "expected_purpose": "office",
+    "expected_budget": 40000,
+    "require_igpu": true,
+    "require_no_gpu": true,
+    "language": "bn"
+  },
+  {
+    "id": "prompt-18",
+    "prompt": "এআই এবং মেশিন লার্নিং এর জন্য পিসি ৩ লাখ টাকা",
+    "expected_purpose": "ai_ml",
+    "expected_budget": 300000,
+    "min_vram_gb": 16,
+    "min_ram_gb": 32,
+    "language": "bn"
+  },
+  {
+    "id": "prompt-19",
+    "prompt": "সফটওয়্যার ডেভেলপমেন্ট ও কোডিং পিসি ৭০ হাজার টাকা",
+    "expected_purpose": "office",
+    "expected_budget": 70000,
+    "language": "bn"
+  },
+  {
+    "id": "prompt-20",
+    "prompt": "4K Ultra high refresh rate gaming rig 2.8 lakh",
+    "expected_purpose": "gaming",
+    "expected_budget": 280000,
+    "language": "en"
+  },
+  {
+    "id": "prompt-21",
+    "prompt": "Data science and Python machine learning workstation 2.2 lakh",
+    "expected_purpose": "ai_ml",
+    "expected_budget": 220000,
+    "min_vram_gb": 12,
+    "min_ram_gb": 32,
+    "language": "en"
+  },
+  {
+    "id": "prompt-22",
+    "prompt": "Quiet workstation for audio production and music recording 1.4 lakh",
+    "expected_purpose": "content_creation",
+    "expected_budget": 140000,
+    "language": "en"
+  },
+  {
+    "id": "prompt-23",
+    "prompt": "Intel Core i5 gaming PC 90k with 16GB RAM and fast SSD",
+    "expected_purpose": "gaming",
+    "expected_budget": 90000,
+    "prefer_cpu": "intel",
+    "language": "en"
+  },
+  {
+    "id": "prompt-24",
+    "prompt": "Heavy multitasking virtual machine workstation 3.5 lakh",
+    "expected_purpose": "content_creation",
+    "expected_budget": 350000,
+    "min_ram_gb": 32,
+    "language": "en"
+  },
+  {
+    "id": "prompt-25",
+    "prompt": "Ultimate gaming and live streaming battlestation 4 lakh taka",
+    "expected_purpose": "streaming",
+    "expected_budget": 400000,
+    "language": "en"
+  }
+]

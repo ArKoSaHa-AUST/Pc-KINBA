@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot,
@@ -10,6 +10,8 @@ import {
   Cpu,
   CornerDownLeft,
   ArrowDownUp,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { use3DTilt } from './use3DTilt';
@@ -23,22 +25,31 @@ export interface ChatMessage {
   parts?: BuildComponentItem[];
   highlightChips?: { label: string; actionQuery?: string }[];
   timestamp: string;
+  isError?: boolean;
+}
+
+export interface BuildUpdatePayload {
+  parts: BuildComponentItem[];
+  totalBDT: number;
+  validation: {
+    score: number;
+    wattage: number;
+    psuWattage: number;
+    ok: boolean;
+    violations: Array<{ rule: string; detail: string }>;
+  };
+  alternatives?: Array<{ category: string; id: string; delta_bdt: number; label: string }>;
+  diff?: {
+    category: string;
+    priceDelta: number;
+    newPartName?: string;
+  };
 }
 
 interface ChatWorkspaceProps {
   initialPrompt?: string;
-  isProcessing?: boolean;
-  onSendMessage?: (text: string) => void;
-  onRefineBuild?: (
-    action:
-      | 'downgrade_ram'
-      | 'swap_gpu_4060'
-      | 'swap_gpu_4080'
-      | 'upgrade_ram_64'
-      | 'swap_cooler_aio'
-      | 'custom',
-    customQuery?: string,
-  ) => void;
+  sessionId?: string;
+  onBuildUpdated?: (payload: BuildUpdatePayload) => void;
   onResetSession?: () => void;
   className?: string;
 }
@@ -47,21 +58,21 @@ const DEFAULT_MESSAGES: ChatMessage[] = [
   {
     id: 'msg-1',
     sender: 'bot',
-    text: 'Hello! I am **Tonima AI**, your next-generation PC Architect. I can craft fully optimized PC configurations, audit motherboard socket clearances, simulate real-time thermal/wattage overhead, and compare live retailer prices across Bangladesh.\n\nWhat kind of PC setup are you planning to build today?',
+    text: 'Hello! I am **Tonima AI**, your next-generation PC Architect. I craft 100% compatible PC configurations, audit socket clearances, simulate real-time thermal/wattage overhead, and aggregate **live, lowest prices across 12 Bangladeshi stores**.\n\nWhat kind of PC setup are you planning to build today?',
     highlightChips: [
       {
         label: '🎮 1440p Gaming Under ৳150K',
-        actionQuery: 'Build me a white aesthetic gaming PC for 1440p gaming under ৳ 1,50,000',
+        actionQuery: 'Build me a gaming PC for 1440p high-FPS gaming under ৳ 1,50,000',
       },
       {
         label: '🎬 4K Video Editing ৳220K',
         actionQuery:
-          'Recommend a high-end 4K video editing workstation with 64GB RAM and fast NVMe storage',
+          'Recommend a high-end 4K video editing workstation with 64GB RAM and fast NVMe storage around ৳ 2,20,000',
       },
       {
-        label: '🧠 AI Deep Learning Rig ৳350K',
+        label: '🧠 AI Deep Learning Rig ৳200K',
         actionQuery:
-          'Design an AI deep learning workstation with RTX GPU and high CUDA core density',
+          'I need a PC for machine learning and deep learning. Budget is around 2 lakh taka.',
       },
     ],
     timestamp: 'Just now',
@@ -72,42 +83,39 @@ const REFINEMENT_SHORTCUTS = [
   {
     label: '📉 Downgrade RAM (-৳5,000)',
     query: 'Can we downgrade RAM to save ৳5000?',
-    action: 'downgrade_ram' as const,
   },
   {
-    label: '🎮 Swap GPU to RTX 4060 (-৳28,000)',
+    label: '🎮 Swap GPU to RTX 4060',
     query: 'Change GPU to RTX 4060 to stay within budget',
-    action: 'swap_gpu_4060' as const,
   },
   {
-    label: '🚀 Upgrade to RTX 4080 (+৳45,000)',
+    label: '🚀 Upgrade to RTX 4080',
     query: 'Upgrade GPU to RTX 4080 Super for 4K Ultra',
-    action: 'swap_gpu_4080' as const,
   },
   {
     label: '❄️ Upgrade to 360mm AIO Cooler',
     query: 'Swap air cooler for a 360mm AIO liquid cooler',
-    action: 'swap_cooler_aio' as const,
   },
   {
     label: '💾 Upgrade to 64GB RAM',
     query: 'Upgrade memory to 64GB DDR5 for heavy multitasking',
-    action: 'upgrade_ram_64' as const,
   },
 ];
 
 export default function ChatWorkspace({
   initialPrompt = '',
-  isProcessing = false,
-  onSendMessage,
-  onRefineBuild,
+  sessionId: propSessionId,
+  onBuildUpdated,
   onResetSession,
   className = '',
 }: ChatWorkspaceProps) {
-  const { t } = useTranslation('ai');
+  const { i18n } = useTranslation();
+  const [sessionId, setSessionId] = useState<string>(() => propSessionId || `session-${Date.now()}`);
   const [messages, setMessages] = useState<ChatMessage[]>(DEFAULT_MESSAGES);
   const [inputVal, setInputVal] = useState('');
-  const [isTypingStream, setIsTypingStream] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [thinkingStatus, setThinkingStatus] = useState<string>('');
+  const [hasActiveBuild, setHasActiveBuild] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // 3D Parallax Tilt Physics with Framer Motion spring
@@ -128,99 +136,170 @@ export default function ChatWorkspace({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isProcessing, isTypingStream]);
+  }, [messages, isProcessing, thinkingStatus]);
+
+  const handleUserSubmit = useCallback(async (userQuery: string) => {
+    if (!userQuery.trim() || isProcessing) return;
+
+    const queryText = userQuery.trim();
+    const userMsgId = `usr-${Date.now()}`;
+    const botMsgId = `bot-${Date.now()}`;
+
+    const userMsg: ChatMessage = {
+      id: userMsgId,
+      sender: 'user',
+      text: queryText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    // Insert user message and prepare empty streaming bot message
+    setMessages((prev) => [
+      ...prev,
+      userMsg,
+      {
+        id: botMsgId,
+        sender: 'bot',
+        text: '',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+
+    setInputVal('');
+    setIsProcessing(true);
+    setThinkingStatus('Tonima is analyzing hardware specifications...');
+
+    // Determine endpoint: use /api/ai/refine if we already have an active build, otherwise /api/ai/build
+    const isRefine = hasActiveBuild && !/build\s+(me|a)\s+new|start\s+over|reset/i.test(queryText);
+    const endpoint = isRefine ? '/api/ai/refine' : '/api/ai/build';
+    const bodyPayload = isRefine
+      ? { sessionId, message: queryText, language: i18n.language === 'bn' ? 'bn' : 'en' }
+      : { message: queryText, sessionId, language: i18n.language === 'bn' ? 'bn' : 'en' };
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bodyPayload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error('Readable stream not supported');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let accumulatedText = '';
+      let currentAlternatives: Array<{ category: string; id: string; delta_bdt: number; label: string }> = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        let currentEvent = '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith(':')) continue;
+
+          if (trimmed.startsWith('event: ')) {
+            currentEvent = trimmed.slice(7).trim();
+            continue;
+          }
+
+          if (trimmed.startsWith('data: ')) {
+            const rawData = trimmed.slice(6).trim();
+            try {
+              const data = JSON.parse(rawData);
+
+              if (currentEvent === 'thinking') {
+                setThinkingStatus(data.message || 'Processing hardware constraints...');
+              } else if (currentEvent === 'build') {
+                setHasActiveBuild(true);
+                if (data.sessionId) setSessionId(data.sessionId);
+                if (data.alternatives) currentAlternatives = data.alternatives;
+
+                // Propagate build payload to update HUD immediately
+                if (onBuildUpdated && data.parts) {
+                  onBuildUpdated({
+                    parts: data.parts,
+                    totalBDT: data.totalBDT || 0,
+                    validation: data.validation || { score: 100, wattage: 420, psuWattage: 750, ok: true, violations: [] },
+                    alternatives: data.alternatives,
+                    diff: data.diff,
+                  });
+                }
+              } else if (currentEvent === 'token') {
+                accumulatedText += data.token || '';
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === botMsgId ? { ...msg, text: accumulatedText } : msg
+                  )
+                );
+              } else if (currentEvent === 'done') {
+                if (data.sessionId) setSessionId(data.sessionId);
+              } else if (currentEvent === 'error') {
+                throw new Error(data.message || 'Error from AI server');
+              }
+            } catch (jsonErr) {
+              console.warn('[SSE Parse Warning]:', jsonErr);
+            }
+          }
+        }
+      }
+
+      // Finalize bot message with dynamic chips from alternatives
+      const dynamicChips = currentAlternatives.map((alt) => ({
+        label: alt.label,
+        actionQuery: alt.label.replace(/^[^\w]+/, '').trim(),
+      }));
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === botMsgId
+            ? {
+                ...msg,
+                text: accumulatedText || 'Here is your configured PC architecture blueprint.',
+                highlightChips: dynamicChips.length > 0 ? dynamicChips : undefined,
+              }
+            : msg
+        )
+      );
+    } catch (err: any) {
+      console.error('[Tonima Chat Error]:', err);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === botMsgId
+            ? {
+                ...msg,
+                text: `⚠️ **Connection Note**: Could not reach Tonima AI service (${err.message || 'Network error'}). Please try again or refine your query.`,
+                isError: true,
+              }
+            : msg
+        )
+      );
+    } finally {
+      setIsProcessing(false);
+      setThinkingStatus('');
+    }
+  }, [hasActiveBuild, i18n.language, isProcessing, onBuildUpdated, sessionId]);
 
   // Handle incoming initial prompt from Hero
   useEffect(() => {
     if (initialPrompt && initialPrompt.trim()) {
       handleUserSubmit(initialPrompt);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialPrompt]);
-
-  const handleUserSubmit = (userQuery: string) => {
-    if (!userQuery.trim()) return;
-
-    const userMsg: ChatMessage = {
-      id: `usr-${Date.now()}`,
-      sender: 'user',
-      text: userQuery,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
-    setInputVal('');
-
-    if (onSendMessage) {
-      onSendMessage(userQuery);
-    }
-
-    // Determine if user query is a Stage 4 refinement
-    const lower = userQuery.toLowerCase();
-    let refinementAction:
-      | 'downgrade_ram'
-      | 'swap_gpu_4060'
-      | 'swap_gpu_4080'
-      | 'upgrade_ram_64'
-      | 'swap_cooler_aio'
-      | 'custom' = 'custom';
-    let botReplyText = '';
-
-    if (
-      lower.includes('downgrade ram') ||
-      lower.includes('save ৳5000') ||
-      lower.includes('save 5000')
-    ) {
-      refinementAction = 'downgrade_ram';
-      botReplyText = `✅ **Re-optimization complete!** I have downgraded the RAM to **Corsair Vengeance 16GB DDR5 5200MHz**, saving you **৳ 5,000**. \n\nThe updated total is now **৳ 1,99,500**. System compatibility remains **98%** and thermal headroom is fully preserved.`;
-    } else if (lower.includes('4060')) {
-      refinementAction = 'swap_gpu_4060';
-      botReplyText = `✅ **GPU Reconfigured!** Swapped graphics card to **MSI RTX 4060 Ventus 2X 8GB**. \n\nTotal price reduced by **৳ 28,500** to **৳ 1,76,000**. Estimated power draw drops to **340W**, providing **+120% PSU headroom** with your 750W unit.`;
-    } else if (lower.includes('4080')) {
-      refinementAction = 'swap_gpu_4080';
-      botReplyText = `🚀 **Tier Elevated!** Upgraded to **ZOTAC RTX 4080 Super 16GB Trinity OC** for uncompromised 4K high-FPS gaming. \n\nRecalculated wattage: **580W**. PSU remains adequate with **+29% headroom**. Live price adjusted to **৳ 2,49,500** across Star Tech & Ryans.`;
-    } else if (lower.includes('64gb')) {
-      refinementAction = 'upgrade_ram_64';
-      botReplyText = `💾 **Memory Expanded!** Upgraded to **G.Skill Trident Z5 RGB 64GB (2x32GB) DDR5 6000MHz** for 4K video rendering and heavy virtualization. Price adjusted by **+৳ 12,500**.`;
-    } else if (lower.includes('aio') || lower.includes('liquid cooler')) {
-      refinementAction = 'swap_cooler_aio';
-      botReplyText = `❄️ **Cooling Enhanced!** Upgraded to **DeepCool LT720 360mm Liquid Cooler**. Peak CPU thermals drop to **~58°C** under maximum all-core synthetic load.`;
-    } else {
-      botReplyText = `Here is an optimized architectural blueprint designed for your requirements. I've selected the **AMD Ryzen 7 7800X3D** paired with the **MSI RTX 4070 Ti Super 16GB**, cooled by a 360mm AIO inside a Lian Li O11 Dynamic chassis. \n\nAll components have been verified with **98% compatibility rating** and +25% PSU power headroom. Live pricing aggregated from **Star Tech**, **Tech Land**, and **Ryans** totals **৳ 2,04,500**.`;
-    }
-
-    if (onRefineBuild) {
-      onRefineBuild(refinementAction, userQuery);
-    }
-
-    // Trigger simulated Stage 2 Neural Processing & Stage 3 Streaming response
-    setIsTypingStream(true);
-
-    setTimeout(() => {
-      setIsTypingStream(false);
-      const botResponse: ChatMessage = {
-        id: `bot-${Date.now()}`,
-        sender: 'bot',
-        text: botReplyText,
-        highlightChips: [
-          {
-            label: '📉 Downgrade RAM (-৳5,000)',
-            actionQuery: 'Can we downgrade RAM to save ৳5000?',
-          },
-          {
-            label: '🎮 Swap to RTX 4060',
-            actionQuery: 'Change GPU to RTX 4060 to stay within budget',
-          },
-          {
-            label: '🚀 Upgrade to RTX 4080',
-            actionQuery: 'Upgrade GPU to RTX 4080 Super for 4K Ultra',
-          },
-        ],
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages((prev) => [...prev, botResponse]);
-    }, 1400);
-  };
+  }, [initialPrompt, handleUserSubmit]);
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,6 +308,8 @@ export default function ChatWorkspace({
 
   const handleClear = () => {
     setMessages(DEFAULT_MESSAGES);
+    setHasActiveBuild(false);
+    setSessionId(`session-${Date.now()}`);
     if (onResetSession) {
       onResetSession();
     }
@@ -262,23 +343,23 @@ export default function ChatWorkspace({
         <div className="tonima-chat-header">
           <div className="flex items-center gap-3">
             <div className="tonima-avatar-pulse">
-              <Bot className="w-5 h-5" />
+              <Bot className="w-5 h-5 text-accent" />
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm text-text-primary">Tonima AI Core</span>
                 <span className="flex items-center gap-1 text-[11px] text-green font-medium">
                   <span className="w-2 h-2 rounded-full bg-green animate-pulse" />
-                  Online
+                  Live Engine
                 </span>
               </div>
               <div className="flex items-center gap-2 text-[11px] text-text-muted mt-0.5">
                 <span className="flex items-center gap-1">
                   <Cpu className="w-3 h-3 text-accent" />
-                  v2.0 Neural Engine
+                  Multi-Model Team (Groq Pool)
                 </span>
                 <span>•</span>
-                <span className="text-accent/90 font-mono">28ms Latency</span>
+                <span className="text-accent/90 font-mono">Real-Time Prices</span>
               </div>
             </div>
           </div>
@@ -319,11 +400,19 @@ export default function ChatWorkspace({
                         type="button"
                         className="tonima-hardware-chip"
                         onClick={() => chip.actionQuery && handleUserSubmit(chip.actionQuery)}
+                        disabled={isProcessing}
                       >
                         <ArrowDownUp className="w-3 h-3" />
                         <span>{chip.label}</span>
                       </button>
                     ))}
+                  </div>
+                )}
+
+                {msg.isError && (
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-400">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>Click reset or submit another query to restart.</span>
                   </div>
                 )}
 
@@ -338,8 +427,8 @@ export default function ChatWorkspace({
             ))}
           </AnimatePresence>
 
-          {/* Stage 2 & 3 Thinking / Streaming Indicator */}
-          {(isProcessing || isTypingStream) && (
+          {/* Thinking / Streaming Indicator */}
+          {isProcessing && (
             <motion.div
               className="tonima-msg-bot flex items-center gap-2 text-accent"
               initial={{ opacity: 0, y: 10 }}
@@ -347,9 +436,7 @@ export default function ChatWorkspace({
             >
               <Sparkles className="w-4 h-4 animate-spin text-accent" />
               <span className="text-xs font-medium">
-                {t('thinking', {
-                  defaultValue: 'Tonima is calculating hardware matrices & BDT pricing...',
-                })}
+                {thinkingStatus || 'Tonima is calculating hardware matrices & lowest store prices...'}
               </span>
               <div className="flex gap-1 ml-1">
                 <span
@@ -371,7 +458,7 @@ export default function ChatWorkspace({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Stage 4 Interactive Refinement Quick Ticker Bar */}
+        {/* Interactive Refinement Quick Ticker Bar */}
         <div className="px-4 py-2 bg-fill-subtle border-t border-glass-border overflow-x-auto flex items-center gap-1.5 scrollbar-none">
           <span className="text-[10px] font-bold text-accent uppercase tracking-wider whitespace-nowrap mr-1 flex items-center gap-1">
             <Sparkles className="w-3 h-3" /> Refine:
@@ -380,8 +467,9 @@ export default function ChatWorkspace({
             <button
               key={idx}
               type="button"
-              className="px-2.5 py-1 rounded-full glass border border-glass-border text-[11px] text-text-secondary hover:text-text-primary hover:border-accent whitespace-nowrap transition-all flex items-center gap-1"
+              className="px-2.5 py-1 rounded-full glass border border-glass-border text-[11px] text-text-secondary hover:text-text-primary hover:border-accent whitespace-nowrap transition-all flex items-center gap-1 disabled:opacity-50"
               onClick={() => handleUserSubmit(refine.query)}
+              disabled={isProcessing}
             >
               <span>{refine.label}</span>
             </button>
@@ -394,7 +482,7 @@ export default function ChatWorkspace({
             <button
               type="button"
               className="p-1.5 rounded-full text-text-muted hover:text-text-primary hover:bg-fill-muted transition-colors"
-              title="Attach benchmark or specification sheet"
+              title="Attach benchmark or requirement notes"
             >
               <Paperclip className="w-4 h-4" />
             </button>
@@ -402,12 +490,14 @@ export default function ChatWorkspace({
             <input
               type="text"
               className="tonima-input-field"
-              placeholder={t('placeholder', {
-                defaultValue: 'Ask Tonima: e.g. Swap GPU to RTX 4080 Super or adjust budget...',
-              })}
+              placeholder={
+                i18n.language === 'bn'
+                  ? 'তনিমাকে জিজ্ঞাসা করুন: যেমন ২ লাখ টাকায় এআই ওয়ার্কস্টেশন পিসি বিল্ড করো...'
+                  : 'Ask Tonima: e.g. AI workstation 2 lakh or 1440p gaming under 150k...'
+              }
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
-              disabled={isProcessing || isTypingStream}
+              disabled={isProcessing}
             />
 
             <button
@@ -421,10 +511,14 @@ export default function ChatWorkspace({
             <button
               type="submit"
               className="w-8 h-8 rounded-full bg-gradient-to-r from-accent to-purple text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_0_12px_var(--glass-glow)]"
-              disabled={!inputVal.trim() || isProcessing || isTypingStream}
+              disabled={!inputVal.trim() || isProcessing}
               aria-label="Send Message"
             >
-              <Send className="w-3.5 h-3.5" />
+              {isProcessing ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
             </button>
           </form>
           <div className="flex items-center justify-between text-[11px] text-text-muted mt-2 px-2">
