@@ -7,10 +7,12 @@ import AIOptimizer from '../components/builder/AIOptimizer';
 import AssemblyViewport3D from '../components/builder/AssemblyViewport3D';
 import BuildSummary from '../components/builder/BuildSummary';
 import BuilderHero from '../components/builder/BuilderHero';
+import BuildLibraryTeaser from '../components/builder/BuildLibraryTeaser';
 import ComponentGrid from '../components/builder/ComponentGrid';
 import ComponentSelectModal from '../components/builder/ComponentSelectModal';
 import ExportActions from '../components/builder/ExportActions';
 import { BUDGET_MAX, BUDGET_MIN, type BuildPurpose } from '../components/builder/buildConfig';
+import type { BuildPreset } from '../components/builder/buildPresets';
 import type { BuilderProduct, ComponentCategory } from '../components/builder/builderCatalog';
 import { selectionFromPartIds, type BuildSelection } from '../components/builder/compatibility';
 import { useToast } from '../components/ui/useToast';
@@ -68,6 +70,16 @@ export default function PCBuilderPage() {
     setActiveCategory(null);
   }, []);
 
+  const handleApplyPreset = useCallback(
+    (preset: BuildPreset) => {
+      setBuild(selectionFromPartIds(preset.partIds.join(',')));
+      setPurpose(preset.purpose);
+      toast({ message: `Loaded “${preset.name}” — customise any part below.`, variant: 'success' });
+      handleStartBuilding();
+    },
+    [toast, handleStartBuilding],
+  );
+
   const handleRemove = useCallback((category: ComponentCategory) => {
     setBuild((prev) => {
       const next = { ...prev };
@@ -83,13 +95,16 @@ export default function PCBuilderPage() {
       return;
     }
     try {
-      const saved = await saveBuild(build);
-      toast({ message: `“${saved.name}” saved to your profile.`, variant: 'success' });
+      const saved = await saveBuild(build, purpose);
+      toast({
+        message: `“${saved.name}” saved. Publish it to the Build Library from your profile.`,
+        variant: 'success',
+      });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to save build.';
       toast({ message: msg, variant: 'danger' });
     }
-  }, [status, build, navigate, toast]);
+  }, [status, build, purpose, navigate, toast]);
 
   const handleCheckout = useCallback(() => {
     const ids = Object.values(build)
@@ -117,6 +132,7 @@ export default function PCBuilderPage() {
           <p className="builder-section-subtitle">
             Pick parts across 8 hardware categories — compatibility is checked in real time.
           </p>
+          <BuildLibraryTeaser onApplyPreset={handleApplyPreset} />
           <ComponentGrid build={build} onOpenCategory={setActiveCategory} onRemove={handleRemove} />
         </div>
       </section>

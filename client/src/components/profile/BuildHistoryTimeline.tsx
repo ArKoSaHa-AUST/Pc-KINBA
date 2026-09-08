@@ -1,8 +1,18 @@
 import { motion } from 'framer-motion';
-import { ArrowUpRight, Calendar, CheckCircle2, Cpu, Layers, Trash2, Upload } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Calendar,
+  CheckCircle2,
+  Cpu,
+  Globe2,
+  Layers,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { deleteBuild, listBuilds, type SavedBuild } from '../../api/builds';
+import { deleteBuild, listBuilds, setBuildVisibility, type SavedBuild } from '../../api/builds';
+import { useAuth } from '../../auth/useAuth';
 import { BUILDER_CATALOG } from '../builder/builderCatalog';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -19,6 +29,7 @@ interface SavedBuildItem {
   status: 'Complete' | 'Draft';
   /** ids for reloading into the builder — only present on Supabase-backed rows */
   partIds?: string[];
+  isPublic?: boolean;
 }
 
 function toItem(build: SavedBuild): SavedBuildItem {
@@ -34,12 +45,14 @@ function toItem(build: SavedBuild): SavedBuildItem {
     parts: names.slice(0, 4),
     status: 'Complete',
     partIds: build.partIds,
+    isPublic: build.isPublic,
   };
 }
 
 export function BuildHistoryTimeline() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [builds, setBuilds] = useState<SavedBuildItem[]>([]);
 
   useEffect(() => {
@@ -73,6 +86,23 @@ export function BuildHistoryTimeline() {
       toast({ message: `“${item.name}” deleted.`, variant: 'info' });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to delete build.';
+      toast({ message: msg, variant: 'danger' });
+    }
+  };
+
+  const handleToggleVisibility = async (item: SavedBuildItem) => {
+    const next = !item.isPublic;
+    try {
+      await setBuildVisibility(item.id, next, user?.name || 'PC Kinba builder');
+      setBuilds((prev) => prev.map((b) => (b.id === item.id ? { ...b, isPublic: next } : b)));
+      toast({
+        message: next
+          ? `“${item.name}” is now public in the Build Library.`
+          : `“${item.name}” removed from the Build Library.`,
+        variant: 'success',
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to update visibility.';
       toast({ message: msg, variant: 'danger' });
     }
   };
@@ -222,6 +252,11 @@ export function BuildHistoryTimeline() {
                     >
                       <CheckCircle2 className="w-3 h-3 mr-1" /> {build.status}
                     </Badge>
+                    {build.isPublic && (
+                      <Badge variant="accent" className="text-xs">
+                        <Globe2 className="w-3 h-3 mr-1" /> Public
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 text-xs text-text-muted mt-1">
                     <span className="flex items-center gap-1">
@@ -269,6 +304,14 @@ export function BuildHistoryTimeline() {
                     leftIcon={<Upload className="w-3.5 h-3.5" />}
                   >
                     Load in Builder
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleToggleVisibility(build)}
+                    leftIcon={<Globe2 className="w-3.5 h-3.5" />}
+                  >
+                    {build.isPublic ? 'Unpublish' : 'Publish'}
                   </Button>
                   <Button
                     variant="ghost"
