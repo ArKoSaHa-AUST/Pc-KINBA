@@ -15,6 +15,9 @@ interface ProductListing {
   last_scraped_at: string;
   base_product_name?: string;
   category?: string;
+  is_call_for_price?: boolean;
+  estimated_price?: number;
+  estimation_source?: string;
 }
 
 interface StructuredSuggestion {
@@ -27,6 +30,9 @@ interface StructuredSuggestion {
   image_url?: string;
   product_url?: string;
   type?: 'retailer_listing' | 'catalog_product' | 'keyword';
+  is_call_for_price?: boolean;
+  estimated_price?: number;
+  estimation_source?: string;
 }
 
 const DEFAULT_TRENDING = ['RTX 4060', 'RTX 4060 Ti', 'RTX 5060', 'Ryzen 7 7700', 'Core i5 13400', 'Samsung 990 Pro'];
@@ -307,10 +313,17 @@ export default function SearchPage() {
                                   {item.category}
                                 </span>
                               )}
-                              {item.price_str && item.price_str !== 'Call for Price' && (
-                                <span className="text-xs font-bold text-emerald-400">
-                                  {item.price_str}
-                                </span>
+                              {item.price_str && (
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className={`text-xs font-bold ${item.is_call_for_price ? 'text-amber-300' : 'text-emerald-400'}`}>
+                                    {item.price_str}
+                                  </span>
+                                  {item.is_call_for_price && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider">
+                                      Call for Price
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </button>
@@ -523,9 +536,37 @@ export default function SearchPage() {
                           <span className="text-[10px] text-text-muted block uppercase tracking-wider font-semibold">
                             Price (BDT)
                           </span>
-                          <span className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">
-                            {product.price_str || `${product.price.toLocaleString()}৳`}
-                          </span>
+                          {(() => {
+                            const rawCardPrice =
+                              typeof product.price === 'number'
+                                ? product.price
+                                : parseInt(String(product.price || '').replace(/[^0-9]/g, ''), 10);
+                            const isCardCallForPrice =
+                              isNaN(rawCardPrice) ||
+                              rawCardPrice <= 0 ||
+                              product.price_str === 'Call for Price' ||
+                              Boolean(product.is_call_for_price);
+                            const cardPriceNum =
+                              !isNaN(rawCardPrice) && rawCardPrice > 0
+                                ? rawCardPrice
+                                : product.estimated_price && product.estimated_price > 0
+                                  ? product.estimated_price
+                                  : 25000;
+                            const cardPriceDisplay = `${cardPriceNum.toLocaleString()}৳`;
+
+                            return (
+                              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                <span className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">
+                                  {cardPriceDisplay}
+                                </span>
+                                {isCardCallForPrice && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider">
+                                    Call for Price
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                         <Link
                           to={`/product/${product.id}`}

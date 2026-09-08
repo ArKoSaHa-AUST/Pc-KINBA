@@ -33,6 +33,12 @@ export interface ShopOffer {
   availability?: string;
   is_verified?: boolean;
   source?: string;
+  is_call_for_price?: boolean;
+  call_for_price_estimated?: boolean;
+  estimated_price?: number;
+  estimation_source?: string;
+  estimation_confidence?: number;
+  original_price_str?: string;
 }
 
 export interface KeyFeature {
@@ -64,6 +70,10 @@ export interface ProductDetails {
   best_price?: number;
   best_price_str?: string;
   error?: string;
+  is_call_for_price?: boolean;
+  call_for_price_estimated?: boolean;
+  estimated_price?: number;
+  estimation_source?: string;
 }
 
 interface ProductHeroProps {
@@ -150,10 +160,27 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
     { label: 'Source', value: product?.retailer || 'StarTech BD / Ryans' },
   ];
 
-  const validPricedShops = shops.filter((s: ShopOffer) => s.price && s.price > 0);
+  const validPricedShops = shops.filter((s: ShopOffer) => {
+    const p = typeof s.price === 'number' ? s.price : parseInt(String(s.price || '').replace(/[^0-9]/g, ''), 10);
+    return !isNaN(p) && p > 0 && !s.is_call_for_price && s.price_str !== 'Call for Price';
+  });
+
+  const fallbackEstimatedPrice =
+    validPricedShops.length > 0
+      ? Math.round(
+          validPricedShops.reduce((sum: number, s: ShopOffer) => sum + (Number(s.price) || 0), 0) /
+            validPricedShops.length /
+            50
+        ) * 50
+      : product?.best_price && product.best_price > 0
+        ? product.best_price
+        : product?.price && product.price > 0
+          ? product.price
+          : 25000;
+
   const lowestPriceNum =
     validPricedShops.length > 0
-      ? Math.min(...validPricedShops.map((s: ShopOffer) => s.price))
+      ? Math.min(...validPricedShops.map((s: ShopOffer) => Number(s.price)))
       : product?.price || 0;
 
   return (
@@ -234,11 +261,18 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
               <h1 className="text-2xl lg:text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight text-white mb-3">
                 {title}
               </h1>
-              <div className="flex items-baseline gap-3">
-                <span className="text-3xl lg:text-4xl font-black text-cyan-400 tracking-tight">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className={`text-3xl lg:text-4xl font-black tracking-tight ${product?.is_call_for_price ? 'text-amber-400' : 'text-cyan-400'}`}>
                   {displayPrice}
                 </span>
-                <span className="text-xs text-gray-400">Aggregated real-time price</span>
+                {product?.is_call_for_price && (
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                    Call for Price
+                  </span>
+                )}
+                <span className="text-xs text-gray-400">
+                  {product?.is_call_for_price ? 'Estimated market price based on retailer & AI data' : 'Aggregated real-time price'}
+                </span>
               </div>
             </div>
 
@@ -386,7 +420,27 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
           <div className="flex flex-col gap-3">
             {shops.length > 0 ? (
               shops.map((shop: ShopOffer, idx: number) => {
-                const isBestDeal = shop.price > 0 && shop.price === lowestPriceNum;
+                const rawPrice =
+                  typeof shop.price === 'number'
+                    ? shop.price
+                    : parseInt(String(shop.price || '').replace(/[^0-9]/g, ''), 10);
+                const hasRealPrice =
+                  !isNaN(rawPrice) &&
+                  rawPrice > 0 &&
+                  shop.price_str !== 'Call for Price' &&
+                  !shop.is_call_for_price;
+                const isCallForPrice =
+                  !hasRealPrice || shop.is_call_for_price || shop.price_str === 'Call for Price';
+
+                const finalPriceNum = hasRealPrice
+                  ? rawPrice
+                  : shop.estimated_price && shop.estimated_price > 0
+                    ? shop.estimated_price
+                    : fallbackEstimatedPrice;
+
+                const isBestDeal = hasRealPrice && finalPriceNum === lowestPriceNum;
+                const displayShopPriceStr = `${finalPriceNum.toLocaleString()}৳`;
+
                 return (
                   <motion.div
                     key={idx}
@@ -428,7 +482,7 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                     </div>
 
                     <div>
-                      {shop.price > 0 && shop.stock !== false ? (
+                      {hasRealPrice && shop.stock !== false ? (
                         <span className="text-xs font-semibold text-green-400 bg-green-400/10 border border-green-400/20 px-2.5 py-1 rounded-full inline-flex items-center gap-1">
                           <PackageCheck className="w-3 h-3" /> In Stock
                         </span>
@@ -440,12 +494,27 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                     </div>
 
                     <div>
-                      <span
-                        className={`text-lg font-extrabold ${isBestDeal ? 'text-green-400' : 'text-white'}`}
-                      >
-                        {shop.price_str ||
-                          (shop.price > 0 ? `${shop.price?.toLocaleString()}৳` : 'Call for Price')}
-                      </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`text-lg font-extrabold ${isCallForPrice ? 'text-amber-300' : isBestDeal ? 'text-green-400' : 'text-white'}`}
+                        >
+                          {displayShopPriceStr}
+                        </span>
+                        {isCallForPrice && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider">
+                            Call for Price
+                          </span>
+                        )}
+                      </div>
+                      {isCallForPrice && (
+                        <span className="text-[10px] text-gray-400 block font-medium mt-0.5">
+                          {shop.estimation_source === 'history'
+                            ? '⏱ Past Recorded Price'
+                            : validPricedShops.length > 0
+                              ? '📊 Market Cross-Store Est.'
+                              : '✨ AI Market Estimate'}
+                        </span>
+                      )}
                     </div>
 
                     <div>

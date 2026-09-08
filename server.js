@@ -13,6 +13,7 @@ import { sendWelcomeEmail, sendPriceAlertConfirmationEmail, sendPriceDropAlertEm
 import { extractAttributes, generateFingerprint, isSameProductVariant, group5StoreOffers } from "./lib/normalizer.js";
 import { getGroqSuggestions } from "./lib/groq.js";
 import { buildProductAlternatives, deriveCategory, getCategoryFallbackImage } from "./lib/alternatives.js";
+import { batchEnrichCallForPrice, enrichGroupedShops, estimateSingleProductPrice } from "./lib/priceEstimator.js";
 
 dotenv.config();
 
@@ -373,8 +374,11 @@ async function searchSupabaseListings(query, requestedCategory = null) {
       return 0;
     });
 
-    console.log(`[Supabase Precision Search] Found ${scored.length} verified listings for "${sanitizeLog(query)}" (Intent: ${intent.category}, Model: ${intent.modelCode || 'None'})`);
-    return scored;
+    // Intelligent Call for Price Estimation (Historical -> DB KNN -> Groq LLM)
+    const enrichedResults = await batchEnrichCallForPrice(scored, supabase);
+
+    console.log(`[Supabase Precision Search] Found ${enrichedResults.length} verified listings for "${sanitizeLog(query)}" (Intent: ${intent.category}, Model: ${intent.modelCode || 'None'})`);
+    return enrichedResults;
   } catch (err) {
     console.warn("[Supabase Search Warning]:", sanitizeLog(err.message));
     return [];
@@ -413,6 +417,22 @@ const authActionLimiter = rateLimit({
 
 // Apply default API limiter to all API endpoints
 app.use("/api/", apiLimiter);
+
+// Root Status & Health Endpoint
+app.get("/", (req, res) => {
+  res.json({
+    status: "online",
+    service: "PC Kinba API Server",
+    frontend_url: "http://localhost:5173",
+    message: "Backend API is running. Access the web app at http://localhost:5173 or use the /api endpoints.",
+    endpoints: {
+      search: "/api/search?q=",
+      suggest: "/api/search/suggest?q=",
+      categories: "/api/categories",
+      products: "/api/products"
+    }
+  });
+});
 
 // Feature 1: Multi-Retailer Search Autosuggest Endpoint (StarTech, Ryans, Techland, Skyland, etc.)
 app.get("/api/search/suggest", apiLimiter, async (req, res) => {
@@ -547,11 +567,12 @@ app.get("/api/search/suggest", apiLimiter, async (req, res) => {
 
   // Quick query terms array (clean strings for keyboard navigation / fast chips)
   const suggestionsArray = Array.from(uniqueTitles).slice(0, 10);
+  const enrichedSuggestions = await batchEnrichCallForPrice(structuredSuggestions.slice(0, 10), supabase);
 
   return res.json({
     query,
     suggestions: suggestionsArray,
-    structured_suggestions: structuredSuggestions.slice(0, 10),
+    structured_suggestions: enrichedSuggestions,
     retailers_found: Array.from(retailersFoundSet)
   });
 });
@@ -710,6 +731,10 @@ app.get("/api/product/:id", apiLimiter, async (req, res) => {
     }
   }
 
+  // Intelligent Call for Price Estimation across all store offers (KNN / Historical / Groq)
+  groupedResult.shops = await enrichGroupedShops(groupedResult.shops, item, supabase);
+  const enrichedItem = await estimateSingleProductPrice(item, supabase, groupedResult.shops);
+
   // Construct dynamic key features
   const keyFeatures = [
     { label: "Brand", value: attributes.brand || item.brand || "Generic" },
@@ -719,7 +744,7 @@ app.get("/api/product/:id", apiLimiter, async (req, res) => {
     { label: "Speed / Clock", value: attributes.speed || "Standard" },
     { label: "Canonical Key", value: fingerprint },
     { label: "Category", value: category },
-    { label: "Last Verified Price", value: item.price_str }
+    { label: "Last Verified Price", value: enrichedItem.price_str || item.price_str }
   ];
 
   const responsePayload = {
@@ -729,10 +754,13 @@ app.get("/api/product/:id", apiLimiter, async (req, res) => {
     canonical_name: canonical_name,
     fingerprint: fingerprint,
     brand: attributes.brand || item.brand || "Generic",
-    price: item.price,
-    price_str: item.price_str,
-    best_price: groupedResult.best_price,
-    best_price_str: groupedResult.best_price_str,
+    price: enrichedItem.price,
+    price_str: enrichedItem.price_str,
+    is_call_for_price: enrichedItem.is_call_for_price,
+    estimated_price: enrichedItem.estimated_price,
+    estimation_source: enrichedItem.estimation_source,
+    best_price: groupedResult.best_price || enrichedItem.price,
+    best_price_str: groupedResult.best_price_str || enrichedItem.price_str,
     product: {
       id: item.id,
       canonical_name: canonical_name,
@@ -841,6 +869,9 @@ app.get("/api/product/:id/live-prices", commandLimiter, async (req, res) => {
     const jsonMatch = stdout.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const liveData = JSON.parse(jsonMatch[0]);
+      if (liveData && Array.isArray(liveData.shops)) {
+        liveData.shops = await enrichGroupedShops(liveData.shops, item, supabase);
+      }
       processPriceDropEvents().catch(err => console.error("[Price Drop Events Error]:", sanitizeLog(err.message)));
       return res.json({ success: true, ...liveData });
     }
@@ -872,6 +903,9 @@ app.get("/api/live-scan", commandLimiter, async (req, res) => {
     const jsonMatch = stdout.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const liveData = JSON.parse(jsonMatch[0]);
+      if (liveData && Array.isArray(liveData.shops)) {
+        liveData.shops = await enrichGroupedShops(liveData.shops, { title: query }, supabase);
+      }
       return res.json({ success: true, ...liveData });
     }
     return res.status(500).json({ error: "Failed to parse live scanner output" });
