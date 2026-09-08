@@ -357,6 +357,7 @@ app.get("/api/search", apiLimiter, async (req, res) => {
       });
 
       results = await searchSupabaseListings(query, category);
+      processPriceDropEvents().catch(err => console.error("[Price Drop Events Error]:", sanitizeLog(err.message)));
     } catch (err) {
       console.error("[Auto-Scraper Error]:", sanitizeLog(err.message));
     }
@@ -495,6 +496,7 @@ app.get("/api/product/:id", apiLimiter, async (req, res) => {
 
   const responsePayload = {
     id: item.id,
+    product_id: item.product_id || null,
     title: item.title,
     canonical_name: canonical_name,
     fingerprint: fingerprint,
@@ -611,6 +613,7 @@ app.get("/api/product/:id/live-prices", commandLimiter, async (req, res) => {
     const jsonMatch = stdout.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const liveData = JSON.parse(jsonMatch[0]);
+      processPriceDropEvents().catch(err => console.error("[Price Drop Events Error]:", sanitizeLog(err.message)));
       return res.json({ success: true, ...liveData });
     }
     return res.status(500).json({ error: "Failed to parse live scanner output" });
@@ -1130,6 +1133,208 @@ app.get("/api/user/price-alerts", apiLimiter, async (req, res) => {
   }
 
   return res.json({ success: true, alerts });
+});
+
+// ==============================================================================
+// Price History (populated by DB trigger on listings) & Price-Drop Processing
+// ==============================================================================
+
+const PRICE_HISTORY_WINDOWS = new Set([30, 90, 180, 365]);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// 5. Price trend for a listing (or its canonical product across all retailers)
+app.get("/api/product/:id/price-history", apiLimiter, async (req, res) => {
+  const id = (req.params.id || "").trim();
+  if (!UUID_RE.test(id)) {
+    return res.status(400).json({ error: "Valid product ID format required" });
+  }
+  const days = PRICE_HISTORY_WINDOWS.has(Number(req.query.days)) ? Number(req.query.days) : 30;
+
+  try {
+    const { data: listing } = await supabase
+      .from("listings")
+      .select("id, product_id, price")
+      .eq("id", id)
+      .maybeSingle();
+    if (!listing) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const [scopeCol, scopeVal] = listing.product_id
+      ? ["product_id", listing.product_id]
+      : ["listing_id", listing.id];
+    const { data: rows, error } = await supabase
+      .from("price_history")
+      .select("retailer, price, scraped_at")
+      .eq(scopeCol, scopeVal)
+      .order("scraped_at", { ascending: true })
+      .limit(2000);
+    if (error) throw error;
+
+    const since = Date.now() - days * 86400000;
+    const inWindow = rows.filter(r => Date.parse(r.scraped_at) >= since);
+    // Carry the last known price from before the window so the trend has a starting point.
+    const carry = rows.filter(r => Date.parse(r.scraped_at) < since).pop();
+    if (carry) inWindow.unshift({ ...carry, scraped_at: new Date(since).toISOString() });
+
+    // One point per day: the best (lowest) price observed that day.
+    const daily = new Map();
+    for (const r of inWindow) {
+      const day = r.scraped_at.slice(0, 10);
+      if (!daily.has(day) || r.price < daily.get(day).price) {
+        daily.set(day, { date: day, price: r.price, retailer: r.retailer });
+      }
+    }
+    const points = [...daily.values()];
+
+    const current = listing.price > 0 ? listing.price : (points.at(-1)?.price ?? 0);
+    const prices = points.map(p => p.price).concat(current > 0 ? [current] : []);
+    const lowest = prices.length ? Math.min(...prices) : 0;
+    const highest = prices.length ? Math.max(...prices) : 0;
+    const first = points[0]?.price ?? current;
+
+    return res.json({
+      id,
+      days,
+      current_price: current,
+      lowest_price: lowest,
+      highest_price: highest,
+      is_lowest: current > 0 && current <= lowest,
+      change_pct: first > 0 ? Math.round(((current - first) / first) * 1000) / 10 : 0,
+      buy_signal: deriveBuySignal(points, current, lowest, highest, days),
+      points
+    });
+  } catch (err) {
+    console.error("[Price History Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to load price history" });
+  }
+});
+
+/**
+ * "Best time to buy" heuristic: where the current price sits in the window's range,
+ * combined with the direction of the last 7 days.
+ * @returns {{ signal: "buy"|"fair"|"wait"|"neutral", reason: string }}
+ */
+function deriveBuySignal(points, current, lowest, highest, days) {
+  if (current <= 0 || points.length < 2) {
+    return { signal: "neutral", reason: "Not enough price history yet to judge timing." };
+  }
+  const range = highest - lowest;
+  const position = range > 0 ? (current - lowest) / range : 0;
+  const weekAgo = Date.now() - 7 * 86400000;
+  const ref = [...points].reverse().find(p => Date.parse(p.date) < weekAgo) ?? points[0];
+  const trendPct = ref.price > 0 ? ((current - ref.price) / ref.price) * 100 : 0;
+
+  if (position <= 0.1) {
+    return { signal: "buy", reason: `At its lowest price in ${days} days — a strong time to buy.` };
+  }
+  if (trendPct <= -3) {
+    return { signal: "wait", reason: `Down ${Math.abs(trendPct).toFixed(1)}% this week and still falling — it may drop further.` };
+  }
+  if (position >= 0.6) {
+    return { signal: "wait", reason: `৳${(current - lowest).toLocaleString()} above its ${days}-day low — wait for a better deal.` };
+  }
+  return { signal: "fair", reason: "Close to its recent low with stable pricing — a fair time to buy." };
+}
+
+/**
+ * Drains price_drop_events (enqueued by a DB trigger on price_history): emails price-alert
+ * subscribers, notifies wishlist owners in-app (+ email unless opted out), marks events done.
+ * Requires SUPABASE_SERVICE_ROLE_KEY — the queue and wishlists are not readable by anon.
+ * @returns {Promise<number>} Number of notifications (email + in-app) produced.
+ */
+async function processPriceDropEvents() {
+  const { data: events, error } = await supabase
+    .from("price_drop_events")
+    .select("*")
+    .is("processed_at", null)
+    .order("id", { ascending: true })
+    .limit(200);
+  if (error || !events?.length) return 0;
+
+  const listingIds = [...new Set(events.map(e => e.listing_id))];
+  const productIds = [...new Set(events.map(e => e.product_id).filter(Boolean))];
+
+  const [{ data: listings }, { data: alerts }, { data: wishes }] = await Promise.all([
+    supabase.from("listings").select("id, title").in("id", listingIds),
+    supabase.from("price_alerts").select("*").eq("status", "active").in("product_id", listingIds),
+    productIds.length
+      ? supabase.from("wishlists").select("user_id, product_id").in("product_id", productIds)
+      : Promise.resolve({ data: [] })
+  ]);
+
+  const wishUserIds = [...new Set((wishes || []).map(w => w.user_id))];
+  const { data: profiles } = wishUserIds.length
+    ? await supabase.from("profiles").select("id, email, full_name, notification_prefs").in("id", wishUserIds)
+    : { data: [] };
+
+  const titleById = new Map((listings || []).map(l => [l.id, l.title]));
+  const profileById = new Map((profiles || []).map(p => [p.id, p]));
+  const now = new Date().toISOString();
+  const notifications = [];
+  const seen = new Set();
+  let count = 0;
+
+  const email = (payload) =>
+    sendPriceDropAlertEmail(payload)
+      .then(() => { count++; })
+      .catch(err => console.error("[Price Drop Email Error]:", sanitizeLog(err.message)));
+
+  for (const ev of events) {
+    const productTitle = titleById.get(ev.listing_id) || "Tracked component";
+    const dropPct = Math.round(((ev.old_price - ev.new_price) / ev.old_price) * 100);
+    const base = { productTitle, oldPrice: ev.old_price, newPrice: ev.new_price, storeName: ev.retailer, productId: ev.listing_id };
+
+    for (const alert of (alerts || []).filter(a => a.product_id === ev.listing_id)) {
+      const hitTarget = alert.target_price != null && ev.new_price <= Number(alert.target_price);
+      if (!alert.notify_on_any_change && !hitTarget) continue;
+      await email({ ...base, rawEmail: alert.user_email, rawName: alert.user_name || "PC Builder" });
+      await supabase
+        .from("price_alerts")
+        .update({ current_price: ev.new_price, status: hitTarget ? "triggered" : "active", updated_at: now })
+        .eq("id", alert.id);
+    }
+
+    for (const wish of (wishes || []).filter(w => w.product_id === ev.product_id)) {
+      const key = `${wish.user_id}:${ev.product_id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      notifications.push({
+        user_id: wish.user_id,
+        type: "price_drop",
+        title: `Price drop: ${productTitle}`,
+        body: `${ev.retailer} lowered the price from ৳${ev.old_price.toLocaleString()} to ৳${ev.new_price.toLocaleString()} (-${dropPct}%).`,
+        link: `/product/${ev.listing_id}`
+      });
+
+      const profile = profileById.get(wish.user_id);
+      if (profile?.email && profile.notification_prefs?.emailPriceDrops !== false) {
+        await email({ ...base, rawEmail: profile.email, rawName: profile.full_name || "PC Builder" });
+      }
+    }
+  }
+
+  if (notifications.length) {
+    const { error: notifErr } = await supabase.from("notifications").insert(notifications);
+    if (notifErr) console.error("[Notifications Insert Error]:", sanitizeLog(notifErr.message));
+    else count += notifications.length;
+  }
+  await supabase.from("price_drop_events").update({ processed_at: now }).in("id", events.map(e => e.id));
+
+  if (count) console.log(`[Price Drop Events] Processed ${events.length} event(s), sent ${count} notification(s).`);
+  return count;
+}
+
+// 6. Manual / cron trigger to drain the price-drop event queue
+app.post("/api/price-alerts/process", commandLimiter, async (req, res) => {
+  try {
+    const notified = await processPriceDropEvents();
+    return res.json({ success: true, notified });
+  } catch (err) {
+    console.error("[Price Alerts Process Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to process price alerts" });
+  }
 });
 
 app.post("/api/send-welcome", authActionLimiter, async (req, res) => {

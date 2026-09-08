@@ -234,10 +234,14 @@
   color: var(--text-secondary);
 }
 
+.component-card-actions {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
 .component-card-change {
-  position: absolute;
-  bottom: 14px;
-  right: 16px;
   background: none;
   border: none;
   padding: 0;
@@ -245,6 +249,9 @@
   font-weight: 600;
   color: var(--accent);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .component-card-change:hover {
