@@ -161,7 +161,10 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
   ];
 
   const validPricedShops = shops.filter((s: ShopOffer) => {
-    const p = typeof s.price === 'number' ? s.price : parseInt(String(s.price || '').replace(/[^0-9]/g, ''), 10);
+    const p =
+      typeof s.price === 'number'
+        ? s.price
+        : parseInt(String(s.price || '').replace(/[^0-9]/g, ''), 10);
     return !isNaN(p) && p > 0 && !s.is_call_for_price && s.price_str !== 'Call for Price';
   });
 
@@ -170,7 +173,7 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
       ? Math.round(
           validPricedShops.reduce((sum: number, s: ShopOffer) => sum + (Number(s.price) || 0), 0) /
             validPricedShops.length /
-            50
+            50,
         ) * 50
       : product?.best_price && product.best_price > 0
         ? product.best_price
@@ -262,7 +265,9 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                 {title}
               </h1>
               <div className="flex items-center gap-3 flex-wrap">
-                <span className={`text-3xl lg:text-4xl font-black tracking-tight ${product?.is_call_for_price ? 'text-amber-400' : 'text-cyan-400'}`}>
+                <span
+                  className={`text-3xl lg:text-4xl font-black tracking-tight ${product?.is_call_for_price ? 'text-amber-400' : 'text-cyan-400'}`}
+                >
                   {displayPrice}
                 </span>
                 {product?.is_call_for_price && (
@@ -271,7 +276,9 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
                   </span>
                 )}
                 <span className="text-xs text-gray-400">
-                  {product?.is_call_for_price ? 'Estimated market price based on retailer & AI data' : 'Aggregated real-time price'}
+                  {product?.is_call_for_price
+                    ? 'Estimated market price based on retailer & AI data'
+                    : 'Aggregated real-time price'}
                 </span>
               </div>
             </div>

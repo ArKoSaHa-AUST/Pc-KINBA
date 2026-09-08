@@ -35,7 +35,14 @@ interface StructuredSuggestion {
   estimation_source?: string;
 }
 
-const DEFAULT_TRENDING = ['RTX 4060', 'RTX 4060 Ti', 'RTX 5060', 'Ryzen 7 7700', 'Core i5 13400', 'Samsung 990 Pro'];
+const DEFAULT_TRENDING = [
+  'RTX 4060',
+  'RTX 4060 Ti',
+  'RTX 5060',
+  'Ryzen 7 7700',
+  'Core i5 13400',
+  'Samsung 990 Pro',
+];
 
 function formatTimeAgo(isoString: string): string {
   if (!isoString) return 'Just now';
@@ -51,19 +58,62 @@ function formatTimeAgo(isoString: string): string {
 }
 
 function getRetailerBadge(retailer?: string) {
-  if (!retailer) return { text: 'BD Store', bg: 'bg-white/10 border-white/20', color: 'text-white' };
+  if (!retailer)
+    return { text: 'BD Store', bg: 'bg-white/10 border-white/20', color: 'text-white' };
   const r = retailer.toLowerCase();
-  if (r.includes('startech')) return { text: 'StarTech BD', bg: 'bg-red-500/20 border-red-500/40', color: 'text-red-400' };
-  if (r.includes('ryans')) return { text: 'Ryans', bg: 'bg-emerald-500/20 border-emerald-500/40', color: 'text-emerald-400' };
-  if (r.includes('techland')) return { text: 'Techland BD', bg: 'bg-pink-500/20 border-pink-500/40', color: 'text-pink-400' };
-  if (r.includes('skyland')) return { text: 'Skyland BD', bg: 'bg-indigo-500/20 border-indigo-500/40', color: 'text-indigo-400' };
-  if (r.includes('pcb')) return { text: 'PCB Store', bg: 'bg-purple-500/20 border-purple-500/40', color: 'text-purple-400' };
-  if (r.includes('global')) return { text: 'Global Brand', bg: 'bg-blue-500/20 border-blue-500/40', color: 'text-blue-400' };
-  if (r.includes('sell')) return { text: 'Sell Tech', bg: 'bg-orange-500/20 border-orange-500/40', color: 'text-orange-400' };
-  if (r.includes('village')) return { text: 'Computer Village', bg: 'bg-cyan-500/20 border-cyan-500/40', color: 'text-cyan-400' };
-  if (r.includes('ultra')) return { text: 'UltraTech', bg: 'bg-amber-500/20 border-amber-500/40', color: 'text-amber-400' };
-  if (r.includes('ucc')) return { text: 'UCC', bg: 'bg-lime-500/20 border-lime-500/40', color: 'text-lime-400' };
-  return { text: retailer.replace(' BD', '').replace(' Computers', ''), bg: 'bg-white/10 border-white/20', color: 'text-cyan-300' };
+  if (r.includes('startech'))
+    return { text: 'StarTech BD', bg: 'bg-red-500/20 border-red-500/40', color: 'text-red-400' };
+  if (r.includes('ryans'))
+    return {
+      text: 'Ryans',
+      bg: 'bg-emerald-500/20 border-emerald-500/40',
+      color: 'text-emerald-400',
+    };
+  if (r.includes('techland'))
+    return { text: 'Techland BD', bg: 'bg-pink-500/20 border-pink-500/40', color: 'text-pink-400' };
+  if (r.includes('skyland'))
+    return {
+      text: 'Skyland BD',
+      bg: 'bg-indigo-500/20 border-indigo-500/40',
+      color: 'text-indigo-400',
+    };
+  if (r.includes('pcb'))
+    return {
+      text: 'PCB Store',
+      bg: 'bg-purple-500/20 border-purple-500/40',
+      color: 'text-purple-400',
+    };
+  if (r.includes('global'))
+    return {
+      text: 'Global Brand',
+      bg: 'bg-blue-500/20 border-blue-500/40',
+      color: 'text-blue-400',
+    };
+  if (r.includes('sell'))
+    return {
+      text: 'Sell Tech',
+      bg: 'bg-orange-500/20 border-orange-500/40',
+      color: 'text-orange-400',
+    };
+  if (r.includes('village'))
+    return {
+      text: 'Computer Village',
+      bg: 'bg-cyan-500/20 border-cyan-500/40',
+      color: 'text-cyan-400',
+    };
+  if (r.includes('ultra'))
+    return {
+      text: 'UltraTech',
+      bg: 'bg-amber-500/20 border-amber-500/40',
+      color: 'text-amber-400',
+    };
+  if (r.includes('ucc'))
+    return { text: 'UCC', bg: 'bg-lime-500/20 border-lime-500/40', color: 'text-lime-400' };
+  return {
+    text: retailer.replace(' BD', '').replace(' Computers', ''),
+    bg: 'bg-white/10 border-white/20',
+    color: 'text-cyan-300',
+  };
 }
 
 export default function SearchPage() {
@@ -126,31 +176,36 @@ export default function SearchPage() {
   }, [debouncedQuery]);
 
   // Perform DB search
-  const executeSearch = useCallback(async (searchQuery: string, categoryFilter = 'All', retailerFilter = 'All') => {
-    if (!searchQuery.trim()) return;
-    setIsLoading(true);
-    setHasSearched(true);
-    setIsFocused(false);
-    inputRef.current?.blur();
-    setSearchParams({ q: searchQuery.trim() });
+  const executeSearch = useCallback(
+    async (searchQuery: string, categoryFilter = 'All', retailerFilter = 'All') => {
+      if (!searchQuery.trim()) return;
+      setIsLoading(true);
+      setHasSearched(true);
+      setIsFocused(false);
+      inputRef.current?.blur();
+      setSearchParams({ q: searchQuery.trim() });
 
-    try {
-      const catParam =
-        categoryFilter !== 'All' ? `&category=${encodeURIComponent(categoryFilter)}` : '';
-      const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery.trim())}${catParam}`);
-      if (res.ok) {
-        const data = await res.json();
-        setResults(data.results || []);
-        setDetectedCategory(data.detected_category || 'All');
-        setActiveFilter(retailerFilter);
-        setActiveCategory(categoryFilter);
+      try {
+        const catParam =
+          categoryFilter !== 'All' ? `&category=${encodeURIComponent(categoryFilter)}` : '';
+        const res = await fetch(
+          `/api/search?q=${encodeURIComponent(searchQuery.trim())}${catParam}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setResults(data.results || []);
+          setDetectedCategory(data.detected_category || 'All');
+          setActiveFilter(retailerFilter);
+          setActiveCategory(categoryFilter);
+        }
+      } catch (err) {
+        console.error('Error executing search:', err);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.error('Error executing search:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [setSearchParams]);
+    },
+    [setSearchParams],
+  );
 
   // Auto execute if initial URL query exists
   useEffect(() => {
@@ -202,8 +257,8 @@ export default function SearchPage() {
             Compare <span className="gradient-text">StarTech, Ryans & BD Retailers</span> Prices
           </h1>
           <p className="text-subtitle max-w-2xl mx-auto">
-            Live precision component search across top BD retailers (StarTech, Ryans, Techland, Skyland,
-            Global Brand, PCB Store, Computer Village, Sell Tech, UltraTech & UCC).
+            Live precision component search across top BD retailers (StarTech, Ryans, Techland,
+            Skyland, Global Brand, PCB Store, Computer Village, Sell Tech, UltraTech & UCC).
           </p>
         </motion.div>
 
@@ -299,7 +354,9 @@ export default function SearchPage() {
                           >
                             <div className="flex items-center gap-2.5 min-w-0 flex-1">
                               {item.retailer && (
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border shrink-0 ${badge.bg} ${badge.color}`}>
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border shrink-0 ${badge.bg} ${badge.color}`}
+                                >
                                   {badge.text}
                                 </span>
                               )}
@@ -315,7 +372,9 @@ export default function SearchPage() {
                               )}
                               {item.price_str && (
                                 <div className="flex items-center gap-1.5 shrink-0">
-                                  <span className={`text-xs font-bold ${item.is_call_for_price ? 'text-amber-300' : 'text-emerald-400'}`}>
+                                  <span
+                                    className={`text-xs font-bold ${item.is_call_for_price ? 'text-amber-300' : 'text-emerald-400'}`}
+                                  >
                                     {item.price_str}
                                   </span>
                                   {item.is_call_for_price && (
