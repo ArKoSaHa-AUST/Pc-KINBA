@@ -9,6 +9,7 @@ import { useToast } from '../components/ui';
 import { ProfileHero3D } from '../components/profile/ProfileHero3D';
 import { ProfileInfoCard } from '../components/profile/ProfileInfoCard';
 import { BuildHistoryTimeline } from '../components/profile/BuildHistoryTimeline';
+import { TrackedProductsPanel } from '../components/profile/TrackedProductsPanel';
 import { NotificationPanel } from '../components/profile/NotificationPanel';
 import { SecurityDangerZone } from '../components/profile/SecurityDangerZone';
 import type { NotificationPreferences } from '../api/auth';
@@ -251,6 +252,11 @@ export default function ProfilePage() {
         {/* Section 3: Build History Timeline */}
         <motion.div variants={sectionVariants} className="profile-scroll-section">
           <BuildHistoryTimeline />
+        </motion.div>
+
+        {/* Section 3b: Tracked Products (wishlist + price alerts) */}
+        <motion.div variants={sectionVariants} className="profile-scroll-section">
+          <TrackedProductsPanel />
         </motion.div>
 
         {/* Section 4: Notification Preferences */}

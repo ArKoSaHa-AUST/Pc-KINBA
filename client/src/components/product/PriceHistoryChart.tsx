@@ -8,13 +8,15 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Award, History, Loader2, TrendingDown, TrendingUp } from 'lucide-react';
+import { Award, History, Loader2, ShoppingBag, TrendingDown, TrendingUp } from 'lucide-react';
 
 interface PricePoint {
   date: string;
   price: number;
   retailer: string;
 }
+
+type BuySignal = 'buy' | 'fair' | 'wait' | 'neutral';
 
 interface PriceHistoryData {
   days: number;
@@ -23,8 +25,19 @@ interface PriceHistoryData {
   highest_price: number;
   is_lowest: boolean;
   change_pct: number;
+  buy_signal: { signal: BuySignal; reason: string };
   points: PricePoint[];
 }
+
+const BUY_SIGNAL_STYLE: Record<BuySignal, { label: string; className: string }> = {
+  buy: {
+    label: 'Best time to buy',
+    className: 'border-green-500 bg-green-500/10 text-green-400',
+  },
+  fair: { label: 'Fair time to buy', className: 'border-cyan-500 bg-cyan-500/10 text-cyan-300' },
+  wait: { label: 'Consider waiting', className: 'border-amber-500 bg-amber-500/10 text-amber-300' },
+  neutral: { label: 'Timing unknown', className: 'border-white/20 bg-white/5 text-gray-400' },
+};
 
 const RANGES = [
   { days: 30, label: '1M' },
@@ -98,31 +111,45 @@ export default function PriceHistoryChart({ productId }: PriceHistoryChartProps)
       </div>
 
       {data && data.current_price > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 text-xs">
-          <Stat label="Current" value={formatTaka(data.current_price)} accent="text-cyan-400" />
-          <Stat
-            label={`${days}d Low`}
-            value={formatTaka(data.lowest_price)}
-            accent="text-green-400"
-          />
-          <Stat
-            label={`${days}d High`}
-            value={formatTaka(data.highest_price)}
-            accent="text-white"
-          />
-          <div className="rounded-xl bg-white/[0.03] border border-white/5 px-4 py-3">
-            <p className="text-gray-500 font-semibold mb-1">Change</p>
-            <p
-              className={`font-extrabold text-base inline-flex items-center gap-1 ${
-                isDrop ? 'text-green-400' : data.change_pct > 0 ? 'text-red-400' : 'text-gray-300'
-              }`}
-            >
-              {isDrop ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
-              {data.change_pct > 0 ? '+' : ''}
-              {data.change_pct}%
-            </p>
+        <>
+          <div
+            className={`flex items-start gap-3 mb-5 border-l-2 px-4 py-3 rounded-r-xl ${BUY_SIGNAL_STYLE[data.buy_signal.signal].className}`}
+          >
+            <ShoppingBag className="w-4 h-4 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-wider">
+                {BUY_SIGNAL_STYLE[data.buy_signal.signal].label}
+              </p>
+              <p className="text-xs mt-0.5 opacity-90">{data.buy_signal.reason}</p>
+            </div>
           </div>
-        </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 text-xs">
+            <Stat label="Current" value={formatTaka(data.current_price)} accent="text-cyan-400" />
+            <Stat
+              label={`${days}d Low`}
+              value={formatTaka(data.lowest_price)}
+              accent="text-green-400"
+            />
+            <Stat
+              label={`${days}d High`}
+              value={formatTaka(data.highest_price)}
+              accent="text-white"
+            />
+            <div className="rounded-xl bg-white/[0.03] border border-white/5 px-4 py-3">
+              <p className="text-gray-500 font-semibold mb-1">Change</p>
+              <p
+                className={`font-extrabold text-base inline-flex items-center gap-1 ${
+                  isDrop ? 'text-green-400' : data.change_pct > 0 ? 'text-red-400' : 'text-gray-300'
+                }`}
+              >
+                {isDrop ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
+                {data.change_pct > 0 ? '+' : ''}
+                {data.change_pct}%
+              </p>
+            </div>
+          </div>
+        </>
       )}
 
       <div className="h-[220px] w-full">

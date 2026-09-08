@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react';
 import { formatTaka } from './buildConfig';
 import { COMPONENT_CATEGORIES, type ComponentCategory } from './builderCatalog';
 import { checkCompatibility, type BuildSelection } from './compatibility';
+import TrackPartButton from './TrackPartButton';
 
 interface PartsTableProps {
   build: BuildSelection;
@@ -41,6 +42,7 @@ export default function PartsTable({ build, onOpenCategory, onRemove }: PartsTab
                         {compat.message}
                       </span>
                       <span className="parts-table-actions">
+                        <TrackPartButton product={product} />
                         <button type="button" onClick={() => onOpenCategory(meta.id)}>
                           Change
                         </button>

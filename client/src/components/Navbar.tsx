@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import ThemeSwitcher from './ThemeSwitcher';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserMenu from './UserMenu';
+import NotificationBell from './NotificationBell';
 import { useAuth } from '../auth/useAuth';
 
 const NAV_ITEMS = [
@@ -104,7 +105,10 @@ export default function Navbar() {
             <LanguageSwitcher />
             <div className="h-6 w-px bg-border mx-2"></div>
             {isAuthenticated ? (
-              <UserMenu />
+              <>
+                <NotificationBell />
+                <UserMenu />
+              </>
             ) : (
               <>
                 <button

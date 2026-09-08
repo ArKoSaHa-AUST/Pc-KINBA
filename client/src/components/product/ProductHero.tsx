@@ -19,6 +19,7 @@ import {
 import { sanitizeHref } from '../../utils/image';
 import PriceAlertButton from './PriceAlertButton';
 import PriceHistoryChart from './PriceHistoryChart';
+import WishlistButton from './WishlistButton';
 
 export interface ShopOffer {
   name: string;
@@ -47,6 +48,7 @@ export interface ScanMeta {
 
 export interface ProductDetails {
   id?: string;
+  product_id?: string | null;
   title?: string;
   canonical_name?: string;
   fingerprint?: string;
@@ -358,6 +360,7 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
               </p>
             </div>
             <div className="flex items-center gap-2.5 flex-wrap">
+              <WishlistButton productId={product?.product_id} />
               <PriceAlertButton product={product} bestPriceStr={bestPriceStr} />
               {Boolean(scanMeta && scanMeta.discovered > 0) && (
                 <span className="text-xs text-purple-400 px-2.5 py-1 bg-purple-500/10 rounded-full border border-purple-500/20 flex items-center gap-1">

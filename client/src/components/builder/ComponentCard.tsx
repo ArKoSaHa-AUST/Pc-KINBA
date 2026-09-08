@@ -2,6 +2,7 @@ import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { CheckCircle2, Plus, X } from 'lucide-react';
 import { formatTaka } from './buildConfig';
 import type { BuilderProduct, CategoryMeta } from './builderCatalog';
+import TrackPartButton from './TrackPartButton';
 
 interface ComponentCardProps {
   meta: CategoryMeta;
@@ -86,9 +87,12 @@ export default function ComponentCard({ meta, selected, onOpen, onRemove }: Comp
               <span className="component-card-price">{formatTaka(selected.price)}</span>
               <span className="component-card-spec">{selected.keySpec}</span>
             </div>
-            <button type="button" className="component-card-change" onClick={onOpen}>
-              Change
-            </button>
+            <div className="component-card-actions">
+              <TrackPartButton product={selected} className="component-card-change" />
+              <button type="button" className="component-card-change" onClick={onOpen}>
+                Change
+              </button>
+            </div>
           </motion.div>
         ) : (
           <div className="component-card-empty">
