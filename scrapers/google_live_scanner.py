@@ -353,13 +353,31 @@ def scan_live_store_prices(product_title: str):
     except Exception as e:
         print(f"[Google Scanner] Direct scraper warning: {e}")
 
-    # Calculate best price
+    # Calculate best price and median price for Call for Price estimation
     best_price = min(valid_prices) if valid_prices else 0
     best_price_str = f"৳{best_price:,}" if best_price > 0 else "Price on Request"
     best_store = next((s['name'] for s in offers_by_store.values() if s['price'] == best_price), "Retailer")
 
-    # Sort shops: lowest price first
-    sorted_shops = sorted(offers_by_store.values(), key=lambda x: (x['price'] <= 0, x['price'] if x['price'] > 0 else float('inf')))
+    # KNN Median price across verified shops
+    median_price = sorted(valid_prices)[len(valid_prices) // 2] if valid_prices else 0
+    for s in offers_by_store.values():
+        if s['price'] <= 0 or s.get('price_str') == 'Call for Price':
+            s['is_call_for_price'] = True
+            s['original_price_str'] = 'Call for Price'
+            if median_price > 0:
+                s['price'] = median_price
+                s['price_str'] = f"{median_price:,}৳"
+                s['estimated_price'] = median_price
+                s['call_for_price_estimated'] = True
+                s['estimation_source'] = 'knn'
+        else:
+            s['is_call_for_price'] = False
+
+    # Sort shops: lowest price first (real in-stock first, then estimated)
+    sorted_shops = sorted(offers_by_store.values(), key=lambda x: (
+        1 if x.get('is_call_for_price') else 0,
+        x['price'] if x['price'] > 0 else float('inf')
+    ))
 
     verified_count = sum(1 for s in sorted_shops if s.get('is_verified'))
     discovered_count = len(sorted_shops) - verified_count

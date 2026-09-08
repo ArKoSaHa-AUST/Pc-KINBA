@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ArrowRight, Zap, RefreshCw, ShoppingBag, Clock } from 'lucide-react';
+import { Search, ArrowRight, Zap, RefreshCw, ShoppingBag, Clock, Store, Tag } from 'lucide-react';
 
 interface ProductListing {
   id: string;
@@ -15,9 +15,34 @@ interface ProductListing {
   last_scraped_at: string;
   base_product_name?: string;
   category?: string;
+  is_call_for_price?: boolean;
+  estimated_price?: number;
+  estimation_source?: string;
 }
 
-const DEFAULT_TRENDING = ['RTX 5060', 'RTX 5060 Ti', 'Ryzen 7', 'Intel i7', 'Samsung 990 Pro'];
+interface StructuredSuggestion {
+  id?: string;
+  title: string;
+  retailer?: string;
+  price?: number;
+  price_str?: string;
+  category?: string;
+  image_url?: string;
+  product_url?: string;
+  type?: 'retailer_listing' | 'catalog_product' | 'keyword';
+  is_call_for_price?: boolean;
+  estimated_price?: number;
+  estimation_source?: string;
+}
+
+const DEFAULT_TRENDING = [
+  'RTX 4060',
+  'RTX 4060 Ti',
+  'RTX 5060',
+  'Ryzen 7 7700',
+  'Core i5 13400',
+  'Samsung 990 Pro',
+];
 
 function formatTimeAgo(isoString: string): string {
   if (!isoString) return 'Just now';
@@ -32,11 +57,74 @@ function formatTimeAgo(isoString: string): string {
   return `${Math.floor(diffHours / 24)}d ago`;
 }
 
+function getRetailerBadge(retailer?: string) {
+  if (!retailer)
+    return { text: 'BD Store', bg: 'bg-white/10 border-white/20', color: 'text-white' };
+  const r = retailer.toLowerCase();
+  if (r.includes('startech'))
+    return { text: 'StarTech BD', bg: 'bg-red-500/20 border-red-500/40', color: 'text-red-400' };
+  if (r.includes('ryans'))
+    return {
+      text: 'Ryans',
+      bg: 'bg-emerald-500/20 border-emerald-500/40',
+      color: 'text-emerald-400',
+    };
+  if (r.includes('techland'))
+    return { text: 'Techland BD', bg: 'bg-pink-500/20 border-pink-500/40', color: 'text-pink-400' };
+  if (r.includes('skyland'))
+    return {
+      text: 'Skyland BD',
+      bg: 'bg-indigo-500/20 border-indigo-500/40',
+      color: 'text-indigo-400',
+    };
+  if (r.includes('pcb'))
+    return {
+      text: 'PCB Store',
+      bg: 'bg-purple-500/20 border-purple-500/40',
+      color: 'text-purple-400',
+    };
+  if (r.includes('global'))
+    return {
+      text: 'Global Brand',
+      bg: 'bg-blue-500/20 border-blue-500/40',
+      color: 'text-blue-400',
+    };
+  if (r.includes('sell'))
+    return {
+      text: 'Sell Tech',
+      bg: 'bg-orange-500/20 border-orange-500/40',
+      color: 'text-orange-400',
+    };
+  if (r.includes('village'))
+    return {
+      text: 'Computer Village',
+      bg: 'bg-cyan-500/20 border-cyan-500/40',
+      color: 'text-cyan-400',
+    };
+  if (r.includes('ultra'))
+    return {
+      text: 'UltraTech',
+      bg: 'bg-amber-500/20 border-amber-500/40',
+      color: 'text-amber-400',
+    };
+  if (r.includes('ucc'))
+    return { text: 'UCC', bg: 'bg-lime-500/20 border-lime-500/40', color: 'text-lime-400' };
+  return {
+    text: retailer.replace(' BD', '').replace(' Computers', ''),
+    bg: 'bg-white/10 border-white/20',
+    color: 'text-cyan-300',
+  };
+}
+
 export default function SearchPage() {
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+
+  const [query, setQuery] = useState(initialQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
+  const [structuredSuggestions, setStructuredSuggestions] = useState<StructuredSuggestion[]>([]);
+  const [retailersFound, setRetailersFound] = useState<string[]>([]);
   const [results, setResults] = useState<ProductListing[]>([]);
   const [isFocused, setIsFocused] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -47,18 +135,19 @@ export default function SearchPage() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Debounce query (~300ms)
+  // Debounce query (~250ms)
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedQuery(query);
-    }, 300);
+    }, 250);
     return () => clearTimeout(handler);
   }, [query]);
 
   // Fetch live suggestions from database on debounced query change
   useEffect(() => {
     if (!debouncedQuery.trim()) {
-      setSuggestions([]);
+      setStructuredSuggestions([]);
+      setRetailersFound([]);
       return;
     }
 
@@ -71,7 +160,8 @@ export default function SearchPage() {
         if (res.ok) {
           const data = await res.json();
           if (isMounted) {
-            setSuggestions(data.suggestions || []);
+            setStructuredSuggestions(data.structured_suggestions || []);
+            setRetailersFound(data.retailers_found || []);
           }
         }
       } catch (err) {
@@ -86,39 +176,52 @@ export default function SearchPage() {
   }, [debouncedQuery]);
 
   // Perform DB search
-  const executeSearch = useCallback(async (searchQuery: string, categoryFilter = 'All') => {
-    if (!searchQuery.trim()) return;
-    setIsLoading(true);
-    setHasSearched(true);
-    setIsFocused(false);
-    inputRef.current?.blur();
+  const executeSearch = useCallback(
+    async (searchQuery: string, categoryFilter = 'All', retailerFilter = 'All') => {
+      if (!searchQuery.trim()) return;
+      setIsLoading(true);
+      setHasSearched(true);
+      setIsFocused(false);
+      inputRef.current?.blur();
+      setSearchParams({ q: searchQuery.trim() });
 
-    try {
-      const catParam =
-        categoryFilter !== 'All' ? `&category=${encodeURIComponent(categoryFilter)}` : '';
-      const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery.trim())}${catParam}`);
-      if (res.ok) {
-        const data = await res.json();
-        setResults(data.results || []);
-        setDetectedCategory(data.detected_category || 'All');
-        setActiveFilter('All');
-        setActiveCategory(categoryFilter);
+      try {
+        const catParam =
+          categoryFilter !== 'All' ? `&category=${encodeURIComponent(categoryFilter)}` : '';
+        const res = await fetch(
+          `/api/search?q=${encodeURIComponent(searchQuery.trim())}${catParam}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setResults(data.results || []);
+          setDetectedCategory(data.detected_category || 'All');
+          setActiveFilter(retailerFilter);
+          setActiveCategory(categoryFilter);
+        }
+      } catch (err) {
+        console.error('Error executing search:', err);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.error('Error executing search:', err);
-    } finally {
-      setIsLoading(false);
+    },
+    [setSearchParams],
+  );
+
+  // Auto execute if initial URL query exists
+  useEffect(() => {
+    if (initialQuery) {
+      executeSearch(initialQuery);
     }
-  }, []);
+  }, [initialQuery, executeSearch]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     executeSearch(query);
   };
 
-  const handleSuggestionClick = (suggestionText: string) => {
+  const handleSuggestionClick = (suggestionText: string, specificRetailer = 'All') => {
     setQuery(suggestionText);
-    executeSearch(suggestionText);
+    executeSearch(suggestionText, 'All', specificRetailer);
   };
 
   const filteredResults = results.filter((item) => {
@@ -151,12 +254,11 @@ export default function SearchPage() {
           transition={{ duration: 0.6 }}
         >
           <h1 className="text-hero mb-4">
-            Compare <span className="gradient-text">StarTech & BD Retailers</span> Prices
+            Compare <span className="gradient-text">StarTech, Ryans & BD Retailers</span> Prices
           </h1>
           <p className="text-subtitle max-w-2xl mx-auto">
-            Real-time component search across top BD retailers (StarTech, Ryans, Techland, Global
-            Brand, Skyland, PCB Store, Binary Logic, Sell Tech, Computer Village, PC House,
-            UltraTech & Computer Mania).
+            Live precision component search across top BD retailers (StarTech, Ryans, Techland,
+            Skyland, Global Brand, PCB Store, Computer Village, Sell Tech, UltraTech & UCC).
           </p>
         </motion.div>
 
@@ -179,11 +281,11 @@ export default function SearchPage() {
                 ref={inputRef}
                 type="text"
                 className="w-full bg-transparent py-4 px-4 text-xl text-text-primary placeholder:text-text-muted outline-none"
-                placeholder="Search RTX 5060, Ryzen 7, i7, SSD..."
+                placeholder="Search RTX 4060, Ryzen 7, i7, SSD..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => setIsFocused(true)}
-                onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+                onBlur={() => setTimeout(() => setIsFocused(false), 250)}
               />
               <button
                 type="submit"
@@ -206,40 +308,101 @@ export default function SearchPage() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.98 }}
                 transition={{ duration: 0.2 }}
-                className="absolute top-full left-0 w-full mt-3 glass border border-border rounded-2xl shadow-2xl overflow-hidden z-40 bg-[var(--bg-elevated,rgba(15,23,42,0.95))] backdrop-blur-xl"
+                className="absolute top-full left-0 w-full mt-3 glass border border-border rounded-2xl shadow-2xl overflow-hidden z-40 bg-[var(--bg-elevated,rgba(15,23,42,0.95))] backdrop-blur-xl divide-y divide-border/40"
               >
-                {/* Database Suggestions */}
-                {suggestions.length > 0 && (
-                  <div className="p-3 border-b border-border/50">
-                    <div className="px-3 py-2 text-xs font-semibold text-cyan-400 flex items-center gap-2 uppercase tracking-wider">
-                      <Zap className="w-3.5 h-3.5" /> Live Hardware Suggestions
+                {/* Retailer Availability Quick Chips */}
+                {retailersFound.length > 0 && (
+                  <div className="p-3 bg-white/5 flex items-center gap-2 overflow-x-auto">
+                    <span className="text-[11px] font-semibold text-text-muted flex items-center gap-1 shrink-0 px-2">
+                      <Store className="w-3.5 h-3.5 text-cyan-400" /> Available in:
+                    </span>
+                    {retailersFound.map((ret) => {
+                      const badge = getRetailerBadge(ret);
+                      return (
+                        <button
+                          key={ret}
+                          onMouseDown={() => handleSuggestionClick(query, ret)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all shrink-0 hover:scale-105 ${badge.bg} ${badge.color}`}
+                        >
+                          {badge.text}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Structured Multi-Retailer Product Suggestions */}
+                {structuredSuggestions.length > 0 && (
+                  <div className="p-3">
+                    <div className="px-3 py-1.5 text-xs font-semibold text-cyan-400 flex items-center gap-2 uppercase tracking-wider">
+                      <Zap className="w-3.5 h-3.5" /> Live Store Suggestions
                     </div>
-                    {suggestions.map((suggestion, idx) => (
-                      <button
-                        key={idx}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-colors text-left group"
-                        onMouseDown={() => handleSuggestionClick(suggestion)}
-                      >
-                        <Search className="w-4 h-4 text-text-muted group-hover:text-cyan-400 transition-colors" />
-                        <span className="text-text-primary text-base font-medium">
-                          {suggestion}
-                        </span>
-                      </button>
-                    ))}
+                    <div className="space-y-1 mt-1">
+                      {structuredSuggestions.map((item, idx) => {
+                        const badge = getRetailerBadge(item.retailer);
+                        return (
+                          <button
+                            key={idx}
+                            className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 transition-colors text-left group"
+                            onMouseDown={() => {
+                              if (item.id && item.type === 'retailer_listing') {
+                                navigate(`/product/${item.id}`);
+                              } else {
+                                handleSuggestionClick(item.title);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              {item.retailer && (
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border shrink-0 ${badge.bg} ${badge.color}`}
+                                >
+                                  {badge.text}
+                                </span>
+                              )}
+                              <span className="text-text-primary text-sm font-medium truncate group-hover:text-cyan-300 transition-colors">
+                                {item.title}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {item.category && (
+                                <span className="hidden sm:inline-block text-[10px] text-text-muted bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                                  {item.category}
+                                </span>
+                              )}
+                              {item.price_str && (
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span
+                                    className={`text-xs font-bold ${item.is_call_for_price ? 'text-amber-300' : 'text-emerald-400'}`}
+                                  >
+                                    {item.price_str}
+                                  </span>
+                                  {item.is_call_for_price && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider">
+                                      Call for Price
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
                 {/* Trending Badges */}
-                <div className="p-5">
-                  <h3 className="text-xs font-semibold text-text-muted flex items-center gap-2 uppercase tracking-wider mb-3">
-                    Popular Comparisons
+                <div className="p-4">
+                  <h3 className="text-xs font-semibold text-text-muted flex items-center gap-1.5 uppercase tracking-wider mb-2.5">
+                    <Tag className="w-3 h-3 text-cyan-400" /> Popular Hardware Searches
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {DEFAULT_TRENDING.map((trend, idx) => (
                       <button
                         key={idx}
                         onMouseDown={() => handleSuggestionClick(trend)}
-                        className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-text-secondary hover:text-text-primary transition-all text-xs font-medium"
+                        className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 hover:border-cyan-500/40 border border-white/10 text-text-secondary hover:text-cyan-300 transition-all text-xs font-medium"
                       >
                         {trend}
                       </button>
@@ -432,9 +595,37 @@ export default function SearchPage() {
                           <span className="text-[10px] text-text-muted block uppercase tracking-wider font-semibold">
                             Price (BDT)
                           </span>
-                          <span className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">
-                            {product.price_str || `${product.price.toLocaleString()}৳`}
-                          </span>
+                          {(() => {
+                            const rawCardPrice =
+                              typeof product.price === 'number'
+                                ? product.price
+                                : parseInt(String(product.price || '').replace(/[^0-9]/g, ''), 10);
+                            const isCardCallForPrice =
+                              isNaN(rawCardPrice) ||
+                              rawCardPrice <= 0 ||
+                              product.price_str === 'Call for Price' ||
+                              Boolean(product.is_call_for_price);
+                            const cardPriceNum =
+                              !isNaN(rawCardPrice) && rawCardPrice > 0
+                                ? rawCardPrice
+                                : product.estimated_price && product.estimated_price > 0
+                                  ? product.estimated_price
+                                  : 25000;
+                            const cardPriceDisplay = `${cardPriceNum.toLocaleString()}৳`;
+
+                            return (
+                              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                <span className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">
+                                  {cardPriceDisplay}
+                                </span>
+                                {isCardCallForPrice && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider">
+                                    Call for Price
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                         <Link
                           to={`/product/${product.id}`}

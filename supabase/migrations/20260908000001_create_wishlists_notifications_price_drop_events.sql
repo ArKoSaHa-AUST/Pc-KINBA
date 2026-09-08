@@ -68,7 +68,7 @@ grant all on public.notifications to service_role;
 
 create table if not exists public.price_drop_events (
   id bigint generated always as identity primary key,
-  listing_id uuid not null references public.listings (id) on delete cascade,
+  listing_id text not null references public.listings (id) on delete cascade,
   product_id uuid references public.products (id) on delete set null,
   retailer text not null,
   old_price integer not null,

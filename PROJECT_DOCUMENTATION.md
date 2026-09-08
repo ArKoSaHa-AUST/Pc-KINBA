@@ -413,3 +413,42 @@ npm run dev
 The application will be accessible at:
 - **Frontend**: `http://localhost:5173`
 - **Backend API**: `http://localhost:3001`
+
+---
+
+## 9. Precision Search Relevance & Multi-Retailer Engine
+
+### 9.1 Hardware Intent & Model Gating Pipeline
+To prevent cross-category bleed-through (e.g. laptops, prebuilts, or disparate model numbers appearing in component searches):
+1. **Model Code Extraction**: Queries containing numeric or alphanumeric hardware identifiers (e.g., `RTX 4060`, `Ryzen 5 7600`, `B650`, `Samsung 990 Pro`) strictly isolate that model code and enforce mandatory substring containment.
+2. **Category Intent & Negative Exclusions**:
+   - **GPU Searches** (e.g. `rtx 4060`, `rx 7600`): Automatically exclude `laptop`, `notebook`, `gaming pc`, `desktop pc`, `casing`, `motherboard`, `processor` unless the user explicitly requested a laptop or prebuilt.
+   - **CPU Searches** (e.g. `ryzen 5 7600`, `core i5 13400`): Automatically exclude `laptop`, `motherboard`, `cooler`, `casing`.
+   - **Motherboard Searches** (e.g. `b650`, `z790`): Exclude `laptop`, `desktop pc`.
+3. **Multi-Tier Candidate Ranking**:
+   - **Tier 0**: Exact full title match.
+   - **Tier 1**: Exact model and variant match (e.g. non-Ti vs Ti).
+   - **Tier 2**: Core model series match.
+   - **Secondary Sort**: In-stock / priced items (`price > 0`) prioritized over out-of-stock / Call for Price items.
+
+### 9.2 Multi-Retailer Autosuggest Engine
+The `/api/search/suggest` endpoint fetches live suggestions from Supabase across all 12 major Bangladeshi retailers:
+- **Supported Retailers**: StarTech BD, Ryans Computers, Techland BD, Skyland BD, PCB Store, Global Brand, Computer Village, Sell Tech BD, Ultra Technology, UCC, etc.
+- **Round-Robin Diversity**: Results are balanced across multiple stores so users immediately see store availability, price indicators, and category badges directly in the autocomplete dropdown.
+
+### 9.3 Database Sync & Maintenance Commands
+To verify or refresh the database and search pipelines at any time:
+```bash
+# 1. Run Search Relevance & Suggestion Automated Test Suite
+node scripts/test_search_relevance.js
+
+# 2. Re-sync and Link Retailer Listings with Canonical Catalog & Specs
+node scripts/sync_retailer_catalog.js
+
+# 3. Reconcile and Register Product Aliases in Supabase
+scrapers/venv/bin/python scrapers/reconcile.py
+
+# 4. Trigger Live Multi-Retailer Scraper for a Specific Query
+scrapers/venv/bin/python scrapers/run_scrapers.py --query "rtx 4060"
+```
+
