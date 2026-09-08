@@ -893,6 +893,33 @@
   min-width: 0;
 }
 
+.compat-explain {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.compat-explain summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--text-secondary);
+}
+
+.compat-explain summary::-webkit-details-marker {
+  display: none;
+}
+
+.compat-explain summary:hover {
+  color: var(--accent);
+}
+
+.compat-explain p {
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+
 .check-icon-good {
   color: var(--success);
   flex-shrink: 0;

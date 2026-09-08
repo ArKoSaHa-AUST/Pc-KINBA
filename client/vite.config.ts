@@ -21,6 +21,11 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      // Short build links render OG tags server-side.
+      '^/b/[0-9a-f]{7}$': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
     },
   },
 })

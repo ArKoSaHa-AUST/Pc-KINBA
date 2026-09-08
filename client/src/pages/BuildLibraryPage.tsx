@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ArrowRight, Globe2, Info, Layers, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Globe2, Info, Layers, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { listPublicBuilds } from '../api/builds';
 import BuildDetailsModal, { type BuildDetails } from '../components/builder/BuildDetailsModal';
 import { BUILD_PURPOSES, formatTaka } from '../components/builder/buildConfig';
@@ -86,6 +86,7 @@ function BuildCard({ build, byId, onDetails, delay = 0 }: BuildCardProps) {
 }
 
 export default function BuildLibraryPage() {
+  const navigate = useNavigate();
   const [purposeFilter, setPurposeFilter] = useState<string>('All');
   const [details, setDetails] = useState<BuildDetails | null>(null);
   const catalog = useBuilderCatalog();
@@ -120,20 +121,23 @@ export default function BuildLibraryPage() {
   return (
     <div className="bg-bg-primary text-text-primary min-h-screen">
       <section className="pt-10 pb-12">
-        <div className="container">
-          <Link
-            to="/pc-builder"
-            className="text-sm text-text-muted hover:text-accent transition-colors"
+        <div className="container flex items-end justify-between gap-5 flex-wrap">
+          <div>
+            <h1 className="builder-section-title mb-2">
+              Build <span className="gradient-text">Library</span>
+            </h1>
+            <p className="builder-section-subtitle">
+              Start from a curated template or a build shared by the community, then customise every
+              part in the builder.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="button-secondary shrink-0"
+            onClick={() => navigate('/pc-builder')}
           >
-            ← Back to PC Builder
-          </Link>
-          <h1 className="builder-section-title mt-3 mb-2">
-            Build <span className="gradient-text">Library</span>
-          </h1>
-          <p className="builder-section-subtitle">
-            Start from a curated template or a build shared by the community, then customise every
-            part in the builder.
-          </p>
+            <ArrowLeft size={16} /> Back to Builder
+          </button>
         </div>
       </section>
 

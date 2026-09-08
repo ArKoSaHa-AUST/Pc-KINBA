@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Circle,
   Gauge,
+  Info,
   ShieldCheck,
   Wallet,
   XCircle,
@@ -30,6 +31,7 @@ import {
   estimatePowerDraw,
   getBuildChecks,
   getCompatibilityScore,
+  summarizeChecks,
   type BuildSelection,
 } from './compatibility';
 import MetricCard, { ProgressRing } from './MetricCard';
@@ -102,6 +104,8 @@ export default function BuildSummary({
   const headroom = psuWattage > 0 ? (psuWattage - draw) / psuWattage : 0;
   const checks = useMemo(() => getBuildChecks(build), [build]);
   const score = getCompatibilityScore(checks);
+  const counts = summarizeChecks(checks);
+  const applicable = checks.length - counts.pending;
   const withinBudget = total <= budget[1];
 
   return (
@@ -276,6 +280,19 @@ export default function BuildSummary({
               ))}
             </ul>
           </div>
+          <details className="compat-explain">
+            <summary>
+              <Info size={13} /> How is {score}% calculated?
+            </summary>
+            <p>
+              {counts.compatible} passed × 1 pt + {counts.warning} warning
+              {counts.warning === 1 ? '' : 's'} × ½ pt + {counts.incompatible} failed × 0 pt, over{' '}
+              {applicable} applicable check{applicable === 1 ? '' : 's'}
+              {counts.pending > 0 && ` (${counts.pending} not counted yet — parts missing)`}.
+              Warnings such as a needed BIOS update or a power adapter cost half a point; a hard
+              incompatibility costs the full point. Hover a check for its detail.
+            </p>
+          </details>
         </MetricCard>
       </div>
 

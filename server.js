@@ -1679,14 +1679,124 @@ async function loadBuilderCatalog() {
 
 app.get("/api/builder/catalog", apiLimiter, async (req, res) => {
   try {
-    if (!builderCatalogCache.data || Date.now() - builderCatalogCache.at > BUILDER_CATALOG_TTL_MS) {
-      builderCatalogCache = { at: Date.now(), data: await loadBuilderCatalog() };
-    }
     res.set("Cache-Control", "public, max-age=300");
-    return res.json({ success: true, generatedAt: builderCatalogCache.at, products: builderCatalogCache.data });
+    return res.json({ success: true, generatedAt: builderCatalogCache.at, products: await getBuilderCatalog() });
   } catch (err) {
     console.error("[Builder Catalog Error]:", sanitizeLog(err.message));
     return res.status(500).json({ error: "Failed to load builder catalog" });
+  }
+});
+
+async function getBuilderCatalog() {
+  if (!builderCatalogCache.data || Date.now() - builderCatalogCache.at > BUILDER_CATALOG_TTL_MS) {
+    builderCatalogCache = { at: Date.now(), data: await loadBuilderCatalog() };
+  }
+  return builderCatalogCache.data;
+}
+
+// ==============================================================================
+// Short build links: /b/:code renders OG tags for crawlers and bounces humans
+// to the builder. The image is SVG rendered to PNG (sharp), SVG if sharp is absent.
+// ==============================================================================
+
+const SHARE_CODE_RE = /^[0-9a-f]{7}$/i;
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const fmtTaka = (n) => `৳${Number(n || 0).toLocaleString("en-IN")}`;
+
+async function resolveSharedBuild(code) {
+  const { data, error } = await supabase.rpc("shared_build", { p_code: code }).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const byId = new Map((await getBuilderCatalog()).map((p) => [p.id, p]));
+  const parts = data.part_ids.map((id) => byId.get(id)).filter(Boolean);
+  return { name: data.name, partIds: data.part_ids, total: data.total_price, purpose: data.purpose, parts };
+}
+
+function ogImageSvg(build) {
+  const rows = build.parts.slice(0, 8).map((p, i) => {
+    const y = 210 + i * 46;
+    return `<text x="72" y="${y}" class="cat">${escapeHtml(p.category.toUpperCase())}</text>
+      <text x="230" y="${y}" class="part">${escapeHtml(p.name.length > 58 ? p.name.slice(0, 57) + "…" : p.name)}</text>
+      <text x="1128" y="${y}" class="price" text-anchor="end">${fmtTaka(p.price)}</text>`;
+  });
+  const hidden = build.partIds.length - Math.min(build.parts.length, 8);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#141a33"/></linearGradient>
+    <linearGradient id="a" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>
+    <style>
+      text { font-family: Inter, 'Segoe UI', Roboto, Arial, sans-serif; fill: #e5e7eb; }
+      .brand { font-size: 30px; font-weight: 800; fill: url(#a); }
+      .title { font-size: 40px; font-weight: 800; }
+      .cat { font-size: 20px; font-weight: 700; fill: #22d3ee; letter-spacing: 1px; }
+      .part { font-size: 24px; }
+      .price { font-size: 24px; font-weight: 700; fill: #f3f4f6; }
+      .total { font-size: 34px; font-weight: 800; fill: url(#a); }
+      .muted { font-size: 20px; fill: #9ca3af; }
+    </style>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <rect x="0" y="0" width="1200" height="8" fill="url(#a)"/>
+  <text x="72" y="84" class="brand">PC KINBA</text>
+  <text x="1128" y="84" class="muted" text-anchor="end">${escapeHtml(build.host)}/b/${escapeHtml(build.code)}</text>
+  <text x="72" y="146" class="title">${escapeHtml(build.name.length > 44 ? build.name.slice(0, 43) + "…" : build.name)}</text>
+  ${rows.join("\n")}
+  ${hidden > 0 ? `<text x="230" y="${210 + Math.min(build.parts.length, 8) * 46}" class="muted">+${hidden} more part${hidden > 1 ? "s" : ""}</text>` : ""}
+  <line x1="72" y1="566" x2="1128" y2="566" stroke="#374151"/>
+  <text x="72" y="606" class="muted">${build.partIds.length} parts${build.purpose ? ` · ${escapeHtml(build.purpose)}` : ""}</text>
+  <text x="1128" y="608" class="total" text-anchor="end">${fmtTaka(build.total)}</text>
+</svg>`;
+}
+
+app.get("/api/builds/:code/og.png", apiLimiter, async (req, res) => {
+  const code = req.params.code.toLowerCase();
+  if (!SHARE_CODE_RE.test(code)) return res.status(400).end();
+  try {
+    const build = await resolveSharedBuild(code);
+    if (!build) return res.status(404).end();
+    const svg = ogImageSvg({ ...build, code, host: req.get("x-forwarded-host") || req.get("host") });
+    res.set("Cache-Control", "public, max-age=86400");
+    const sharp = await import("sharp").then((m) => m.default).catch(() => null);
+    if (!sharp) return res.type("image/svg+xml").send(svg);
+    return res.type("image/png").send(await sharp(Buffer.from(svg)).png().toBuffer());
+  } catch (err) {
+    console.error("[OG Image Error]:", sanitizeLog(err.message));
+    return res.status(500).end();
+  }
+});
+
+app.get("/b/:code", apiLimiter, async (req, res) => {
+  const code = req.params.code.toLowerCase();
+  const origin = `${req.get("x-forwarded-proto") || req.protocol}://${req.get("x-forwarded-host") || req.get("host")}`;
+  if (!SHARE_CODE_RE.test(code)) return res.redirect(302, `${origin}/pc-builder`);
+  try {
+    const build = await resolveSharedBuild(code);
+    if (!build) return res.redirect(302, `${origin}/pc-builder`);
+    const target = `${origin}/pc-builder?parts=${encodeURIComponent(build.partIds.join(","))}`;
+    const title = `${build.name} — ${fmtTaka(build.total)} | PC KINBA`;
+    const description = build.parts.length
+      ? build.parts.map((p) => p.name).join(" · ")
+      : `${build.partIds.length}-part PC build on PC KINBA`;
+    res.set("Cache-Control", "public, max-age=300");
+    return res.type("html").send(`<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>${escapeHtml(title)}</title>
+<meta name="description" content="${escapeHtml(description)}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PC KINBA">
+<meta property="og:title" content="${escapeHtml(title)}">
+<meta property="og:description" content="${escapeHtml(description)}">
+<meta property="og:url" content="${escapeHtml(`${origin}/b/${code}`)}">
+<meta property="og:image" content="${escapeHtml(`${origin}/api/builds/${code}/og.png`)}">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="${escapeHtml(target)}">
+<meta http-equiv="refresh" content="0;url=${escapeHtml(target)}">
+</head><body><p>Opening <a href="${escapeHtml(target)}">${escapeHtml(build.name)}</a>…</p></body></html>`);
+  } catch (err) {
+    console.error("[Share Link Error]:", sanitizeLog(err.message));
+    return res.redirect(302, `${origin}/pc-builder`);
   }
 });
 

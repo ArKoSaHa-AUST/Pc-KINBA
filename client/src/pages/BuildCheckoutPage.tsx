@@ -28,7 +28,7 @@ import {
   type BuildCheckStatus,
   type BuildSelection,
 } from '../components/builder/compatibility';
-import { useToast } from '../components/ui/useToast';
+import { useShareLink } from '../components/builder/useShareLink';
 import { useBuilderCatalog } from '../hooks/useBuilderCatalog';
 import { sanitizeHref } from '../utils/image';
 import './BuildCheckoutPage.css';
@@ -72,9 +72,9 @@ function storePlans(parts: BuilderProduct[]): StorePlan[] {
 export default function BuildCheckoutPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const catalog = useBuilderCatalog();
   const [build, setBuild] = useState<BuildSelection | null>(null);
+  const handleShare = useShareLink(build ?? {});
 
   useEffect(() => {
     if (!catalog.isLoading && !build) {
@@ -108,15 +108,6 @@ export default function BuildCheckoutPage() {
     setSearchParams({ parts: partIdsOf(next).join(',') }, { replace: true });
   };
 
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}/pc-builder?parts=${partIds}`);
-      toast({ message: 'Share link copied to clipboard!', variant: 'success' });
-    } catch {
-      toast({ message: 'Could not copy the link — clipboard unavailable.', variant: 'danger' });
-    }
-  };
-
   return (
     <div className="pc-builder-page build-checkout-page">
       <section className="section builder-summary-section">
@@ -140,8 +131,12 @@ export default function BuildCheckoutPage() {
               <button type="button" className="button-secondary" onClick={handleShare}>
                 <Share2 size={16} /> Copy Share Link
               </button>
-              <button type="button" className="button-primary" onClick={() => window.print()}>
-                <Printer size={16} /> Print Summary
+              <button
+                type="button"
+                className="button-primary"
+                onClick={() => navigate(`/pc-builder/quote?parts=${partIds}`)}
+              >
+                <Printer size={16} /> Quote Sheet
               </button>
             </div>
           </div>

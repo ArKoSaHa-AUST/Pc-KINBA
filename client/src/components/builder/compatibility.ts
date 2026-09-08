@@ -570,9 +570,25 @@ export function getBuildChecks(build: BuildSelection): BuildCheck[] {
 export function getCompatibilityScore(checks: BuildCheck[]): number {
   const applicable = checks.filter((c) => c.status !== 'pending');
   if (applicable.length === 0) return 100;
-  const points = applicable.reduce(
-    (sum, c) => sum + (c.status === 'compatible' ? 1 : c.status === 'warning' ? 0.5 : 0),
-    0,
-  );
+  const points = applicable.reduce((sum, c) => sum + SCORE_WEIGHT[c.status], 0);
   return Math.round((points / applicable.length) * 100);
+}
+
+/** Points each check contributes; pending checks are excluded from the denominator. */
+export const SCORE_WEIGHT: Record<BuildCheckStatus, number> = {
+  compatible: 1,
+  warning: 0.5,
+  incompatible: 0,
+  pending: 0,
+};
+
+export function summarizeChecks(checks: BuildCheck[]): Record<BuildCheckStatus, number> {
+  const counts: Record<BuildCheckStatus, number> = {
+    compatible: 0,
+    warning: 0,
+    incompatible: 0,
+    pending: 0,
+  };
+  for (const c of checks) counts[c.status] += 1;
+  return counts;
 }

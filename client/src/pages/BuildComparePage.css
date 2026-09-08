@@ -1,0 +1,70 @@
+/* Build-vs-build compare — reuses PCBuilderPage.css / BuildCheckoutPage.css shared styles */
+
+.compare-table th:first-child {
+  width: 180px;
+}
+
+.compare-table .compare-delta-col {
+  width: 120px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.compare-select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--fill-subtle);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.compare-metric-row td {
+  background: var(--fill-subtle);
+}
+
+.compare-metric-row:last-of-type td {
+  border-bottom: 2px solid var(--border);
+}
+
+.compare-diff .parts-table-name {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.compare-part-price {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-delta {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.compare-delta.is-good {
+  color: var(--success);
+}
+
+.compare-delta.is-bad {
+  color: var(--danger);
+}
+
+.compare-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.compare-actions button {
+  gap: 8px;
+}

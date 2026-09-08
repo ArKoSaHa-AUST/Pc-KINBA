@@ -282,7 +282,12 @@ export default function PCBuilderPage() {
             catalog={catalog.products}
             onApply={handleSelectProduct}
           />
-          <ExportActions build={build} onSave={handleSaveBuild} onCheckout={handleCheckout} />
+          <ExportActions
+            build={build}
+            purpose={purpose}
+            onSave={handleSaveBuild}
+            onCheckout={handleCheckout}
+          />
         </div>
       </section>
 
