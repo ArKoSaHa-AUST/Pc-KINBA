@@ -1402,12 +1402,13 @@ app.get("/api/user/price-alerts", apiLimiter, async (req, res) => {
 // ==============================================================================
 
 const PRICE_HISTORY_WINDOWS = new Set([30, 90, 180, 365]);
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// listings.id is text: scraper-issued numeric ids and UUIDs coexist.
+const LISTING_ID_RE = /^[\w-]{1,64}$/;
 
 // 5. Price trend for a listing (or its canonical product across all retailers)
 app.get("/api/product/:id/price-history", apiLimiter, async (req, res) => {
   const id = (req.params.id || "").trim();
-  if (!UUID_RE.test(id)) {
+  if (!LISTING_ID_RE.test(id)) {
     return res.status(400).json({ error: "Valid product ID format required" });
   }
   const days = PRICE_HISTORY_WINDOWS.has(Number(req.query.days)) ? Number(req.query.days) : 30;

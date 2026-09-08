@@ -102,6 +102,7 @@ export interface BuilderProduct {
   formFactor?: FormFactor; // motherboard; for cases = largest supported
   wattage?: number; // psu output
   tdp?: number; // cpu/gpu power draw
+  vramGb?: number; // gpu
   /** cpu, motherboard � 'YYYY-MM'. A CPU newer than its board usually needs a BIOS update. */
   released?: string;
   // Physical clearance

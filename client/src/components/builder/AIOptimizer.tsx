@@ -1,142 +1,68 @@
+import { useQueries } from '@tanstack/react-query';
 import {
   AlertTriangle,
+  BadgeCheck,
   Coins,
+  ExternalLink,
+  Hourglass,
   Sparkles,
   TrendingDown,
   TrendingUp,
-  Zap,
   type LucideIcon,
 } from 'lucide-react';
 import { useState } from 'react';
-import { suggestDowngrades } from './autoBuild';
-import { formatTaka } from './buildConfig';
+import { fetchBuySignal } from '../../api/priceHistory';
+import type { BuildPurpose } from './buildConfig';
 import type { BuilderProduct, ComponentCategory } from './builderCatalog';
-import { estimatePowerDraw, totalPriceOf, type BuildSelection } from './compatibility';
+import type { BuildSelection } from './compatibility';
+import { getSuggestions, type SuggestionKind } from './optimizerRules';
 
-interface Suggestion {
-  id: string;
-  icon: LucideIcon;
-  message: string;
-  slot: ComponentCategory;
-  apply: BuilderProduct;
-}
+const ICONS: Record<SuggestionKind, LucideIcon> = {
+  downgrade: TrendingDown,
+  bottleneck: TrendingUp,
+  missing: AlertTriangle,
+  value: Coins,
+  buy: BadgeCheck,
+  wait: Hourglass,
+};
 
-function cheapest(products: BuilderProduct[]): BuilderProduct | undefined {
-  return [...products].sort((a, b) => a.price - b.price)[0];
-}
-
-function getSuggestions(
-  build: BuildSelection,
-  budget: number,
-  catalog: BuilderProduct[],
-): Suggestion[] {
-  const { cpu, gpu, ram, psu, cooling, motherboard } = build;
-  const suggestions: Suggestion[] = [];
-
-  // Over budget: cheapest-loss swaps first
-  const over = totalPriceOf(build) - budget;
-  for (const d of suggestDowngrades(build, budget, catalog)) {
-    suggestions.push({
-      id: `downgrade-${d.to.id}`,
-      icon: TrendingDown,
-      slot: d.slot,
-      message: `You're ${formatTaka(over)} over budget. Swapping ${d.from.name} for ${d.to.name} saves ${formatTaka(d.saves)}.`,
-      apply: d.to,
-    });
-  }
-
-  // Bottleneck detection: GPU far ahead of CPU
-  if (cpu && gpu && gpu.performanceScore - cpu.performanceScore >= 20) {
-    const upgrade = cheapest(
-      catalog.filter(
-        (p) =>
-          p.category === 'cpu' &&
-          p.id !== cpu.id &&
-          p.performanceScore >= gpu.performanceScore - 10 &&
-          (!motherboard || p.socket === motherboard.socket),
-      ),
-    );
-    if (upgrade) {
-      suggestions.push({
-        id: `bottleneck-${upgrade.id}`,
-        icon: TrendingUp,
-        slot: 'cpu',
-        message: `Your ${cpu.name} may bottleneck the ${gpu.name}. Consider upgrading to the ${upgrade.name}.`,
-        apply: upgrade,
-      });
-    }
-  }
-
-  // Value optimization: cheaper RAM with near-identical performance
-  if (ram) {
-    const alt = cheapest(
-      catalog.filter(
-        (p) =>
-          p.category === 'ram' &&
-          p.ramType === ram.ramType &&
-          p.price < ram.price &&
-          p.performanceScore >= ram.performanceScore - 10,
-      ),
-    );
-    if (alt) {
-      suggestions.push({
-        id: `value-${alt.id}`,
-        icon: Coins,
-        slot: 'ram',
-        message: `Switching to ${alt.name} saves ${formatTaka(ram.price - alt.price)} with minimal performance difference.`,
-        apply: alt,
-      });
-    }
-  }
-
-  // Missing component: high-TDP CPU without a cooler
-  if (cpu && (cpu.tdp ?? 0) > 105 && !cooling) {
-    const cooler = cheapest(
-      catalog.filter(
-        (p) => p.category === 'cooling' && p.performanceScore >= ((cpu.tdp ?? 0) > 200 ? 75 : 50),
-      ),
-    );
-    if (cooler) {
-      suggestions.push({
-        id: `cooler-${cooler.id}`,
-        icon: AlertTriangle,
-        slot: 'cooling',
-        message: `Add a CPU cooler � the ${cpu.name} runs at ${cpu.tdp}W. The ${cooler.name} is a solid fit.`,
-        apply: cooler,
-      });
-    }
-  }
-
-  // Missing component: no PSU for a power-hungry build
-  if ((cpu || gpu) && !psu) {
-    const draw = estimatePowerDraw(build);
-    const unit = cheapest(
-      catalog.filter((p) => p.category === 'psu' && (p.wattage ?? 0) >= draw * 1.3),
-    );
-    if (unit) {
-      suggestions.push({
-        id: `psu-${unit.id}`,
-        icon: Zap,
-        slot: 'psu',
-        message: `Your build draws ~${draw}W but has no PSU yet. The ${unit.name} gives comfortable headroom.`,
-        apply: unit,
-      });
-    }
-  }
-
-  return suggestions.slice(0, 3);
-}
+/** Price history is only fetched for the priciest live parts — that's where timing matters. */
+const SIGNAL_PARTS = 3;
 
 interface AIOptimizerProps {
   build: BuildSelection;
   budget: number;
+  purpose: BuildPurpose;
   catalog: BuilderProduct[];
   onApply: (slot: ComponentCategory, product: BuilderProduct) => void;
 }
 
-export default function AIOptimizer({ build, budget, catalog, onApply }: AIOptimizerProps) {
+export default function AIOptimizer({
+  build,
+  budget,
+  purpose,
+  catalog,
+  onApply,
+}: AIOptimizerProps) {
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
-  const suggestions = getSuggestions(build, budget, catalog).filter((s) => !dismissed.has(s.id));
+
+  const liveParts = Object.values(build)
+    .filter((p): p is BuilderProduct => !!p?.listings?.[0])
+    .sort((a, b) => b.price - a.price)
+    .slice(0, SIGNAL_PARTS);
+  const signalQueries = useQueries({
+    queries: liveParts.map((p) => ({
+      queryKey: ['buy-signal', p.listings![0].id],
+      queryFn: () => fetchBuySignal(p.listings![0].id),
+      staleTime: 5 * 60_000,
+      retry: false,
+    })),
+  });
+  const signals = Object.fromEntries(liveParts.map((p, i) => [p.id, signalQueries[i].data]));
+
+  const suggestions = getSuggestions({ build, budget, purpose, catalog, signals }).filter(
+    (s) => !dismissed.has(s.id),
+  );
 
   return (
     <div className="glass-card ai-optimizer">
@@ -148,19 +74,31 @@ export default function AIOptimizer({ build, budget, catalog, onApply }: AIOptim
       {suggestions.length > 0 ? (
         <div className="ai-suggestions">
           {suggestions.map((suggestion) => {
-            const Icon = suggestion.icon;
+            const Icon = ICONS[suggestion.kind];
             return (
-              <div key={suggestion.id} className="ai-suggestion">
+              <div key={suggestion.id} className={`ai-suggestion is-${suggestion.kind}`}>
                 <Icon size={18} className="ai-suggestion-icon" />
                 <p className="ai-suggestion-message">{suggestion.message}</p>
                 <div className="ai-suggestion-actions">
-                  <button
-                    type="button"
-                    className="button-primary ai-suggestion-apply"
-                    onClick={() => onApply(suggestion.slot, suggestion.apply)}
-                  >
-                    Apply
-                  </button>
+                  {suggestion.apply && (
+                    <button
+                      type="button"
+                      className="button-primary ai-suggestion-apply"
+                      onClick={() => onApply(suggestion.apply!.slot, suggestion.apply!.product)}
+                    >
+                      Apply
+                    </button>
+                  )}
+                  {suggestion.href && (
+                    <a
+                      className="button-primary ai-suggestion-apply"
+                      href={suggestion.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Buy now <ExternalLink size={13} />
+                    </a>
+                  )}
                   <button
                     type="button"
                     className="ai-suggestion-dismiss"
@@ -176,8 +114,8 @@ export default function AIOptimizer({ build, budget, catalog, onApply }: AIOptim
       ) : (
         <p className="ai-optimizer-empty">
           {Object.keys(build).length === 0
-            ? 'Start picking parts and I�"ll suggest optimizations in real time.'
-            : 'Your build looks well balanced � no optimizations needed right now.'}
+            ? 'Start picking parts and I’ll suggest optimizations in real time.'
+            : 'Your build looks well balanced — no optimizations needed right now.'}
         </p>
       )}
     </div>

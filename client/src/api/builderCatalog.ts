@@ -124,6 +124,9 @@ function formFactorOf(p: LiveProduct): FormFactor | undefined {
 export function enrichProduct(p: BuilderProduct): BuilderProduct {
   const n = `${p.name} ${p.keySpec}`;
   const out: BuilderProduct = { ...p };
+  if (p.category === 'gpu') {
+    out.vramGb ??= Number(match(n, /(\d{1,2})\s*gb/i)) || undefined;
+  }
   if (p.category === 'ram') {
     const kit = /(\d)\s*[x×]\s*(\d+)\s*gb/i.exec(n);
     out.moduleCount ??= kit ? Number(kit[1]) : 1;

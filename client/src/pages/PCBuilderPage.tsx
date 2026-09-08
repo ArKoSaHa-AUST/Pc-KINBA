@@ -259,6 +259,7 @@ export default function PCBuilderPage() {
           <BuildSummary
             build={build}
             budget={budget}
+            purpose={purpose}
             onOpenCategory={setActiveSlot}
             onRemove={handleRemove}
           />
@@ -277,6 +278,7 @@ export default function PCBuilderPage() {
           <AIOptimizer
             build={build}
             budget={budget[1]}
+            purpose={purpose}
             catalog={catalog.products}
             onApply={handleSelectProduct}
           />
