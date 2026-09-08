@@ -4,22 +4,39 @@ import {
   Cpu,
   Fan,
   HardDrive,
+  Keyboard,
   MemoryStick,
+  Monitor,
   MonitorPlay,
+  Mouse,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
 
 export type ComponentCategory =
-  'cpu' | 'gpu' | 'motherboard' | 'ram' | 'storage' | 'psu' | 'case' | 'cooling';
+  | 'cpu'
+  | 'gpu'
+  | 'motherboard'
+  | 'ram'
+  | 'storage'
+  | 'psu'
+  | 'case'
+  | 'cooling'
+  | 'storage2'
+  | 'monitor'
+  | 'keyboard'
+  | 'mouse';
 
 export interface CategoryMeta {
   id: ComponentCategory;
   label: string;
   icon: LucideIcon;
   description: string;
+  /** Product category to list for this slot when it differs from the slot id (e.g. 2nd drive). */
+  source?: ComponentCategory;
 }
 
+/** Core build slots � drive compatibility, power and the 3D viewport. */
 export const COMPONENT_CATEGORIES: CategoryMeta[] = [
   { id: 'cpu', label: 'CPU', icon: Cpu, description: 'Processor (Intel / AMD)' },
   { id: 'gpu', label: 'GPU', icon: MonitorPlay, description: 'Graphics Card' },
@@ -36,23 +53,88 @@ export const COMPONENT_CATEGORIES: CategoryMeta[] = [
   { id: 'cooling', label: 'Cooling', icon: Fan, description: 'CPU Cooler / AIO' },
 ];
 
+/** Optional slots � counted in the total, not required for a complete build. */
+export const ADDON_CATEGORIES: CategoryMeta[] = [
+  {
+    id: 'storage2',
+    label: '2nd Storage',
+    icon: HardDrive,
+    description: 'Extra SSD / HDD',
+    source: 'storage',
+  },
+  { id: 'monitor', label: 'Monitor', icon: Monitor, description: 'Display' },
+  { id: 'keyboard', label: 'Keyboard', icon: Keyboard, description: 'Mechanical / Membrane' },
+  { id: 'mouse', label: 'Mouse', icon: Mouse, description: 'Gaming / Office' },
+];
+
+export const ALL_CATEGORIES: CategoryMeta[] = [...COMPONENT_CATEGORIES, ...ADDON_CATEGORIES];
+
+export function slotSource(slot: ComponentCategory): ComponentCategory {
+  return ALL_CATEGORIES.find((c) => c.id === slot)?.source ?? slot;
+}
+
 export type RamType = 'DDR4' | 'DDR5';
 export type FormFactor = 'ITX' | 'mATX' | 'ATX';
+export type StorageInterface = 'nvme' | 'sata';
+export type PsuFormFactor = 'ATX' | 'SFX';
+
+export interface BuilderListing {
+  id: string;
+  retailer: string;
+  price: number;
+  url: string;
+}
 
 export interface BuilderProduct {
   id: string;
   category: ComponentCategory;
   name: string;
   brand: string;
-  price: number; // BDT
+  price: number; // BDT � lowest live offer for catalog products
   keySpec: string;
-  popularity: number; // 0–100
-  performanceScore: number; // 0–100
+  popularity: number; // 0�100
+  performanceScore: number; // 0�100
+  image?: string;
+  /** Live retailer offers, cheapest first. Absent on curated fallback parts. */
+  listings?: BuilderListing[];
   socket?: string; // cpu, motherboard
   ramType?: RamType; // ram, motherboard
   formFactor?: FormFactor; // motherboard; for cases = largest supported
   wattage?: number; // psu output
   tdp?: number; // cpu/gpu power draw
+  /** cpu, motherboard � 'YYYY-MM'. A CPU newer than its board usually needs a BIOS update. */
+  released?: string;
+  // Physical clearance
+  lengthMm?: number; // gpu
+  heightMm?: number; // air cooler
+  radiatorMm?: 120 | 240 | 280 | 360; // AIO cooler
+  maxGpuLengthMm?: number; // case
+  maxCoolerHeightMm?: number; // case
+  radiatorSupportMm?: number[]; // case
+  // Power connectors
+  gpuPower?: { type: '8pin' | '12vhpwr'; pcie8pin: number }; // gpu: 8-pins needed (via adapter for 12VHPWR)
+  pcie8pin?: number; // psu: PCIe 8-pin (6+2) connectors
+  has12vhpwr?: boolean; // psu: native 12VHPWR / 12V-2x6
+  sataPower?: number; // psu: SATA power connectors
+  psuFormFactor?: PsuFormFactor; // psu
+  psuSupport?: PsuFormFactor[]; // case
+  // Storage & ports
+  storageInterface?: StorageInterface; // storage
+  pcieGen?: 3 | 4 | 5; // storage (drive) / motherboard (M.2 slot)
+  m2Slots?: number; // motherboard
+  sataPorts?: number; // motherboard
+  m2SataShared?: string; // motherboard � e.g. 'M2_2 disables SATA 5/6'
+  m2SharesGpuLanes?: string; // motherboard � e.g. 'M.2_2 drops the GPU slot to x8'
+  // Memory
+  ramSlots?: number; // motherboard
+  maxRamGb?: number; // motherboard
+  moduleCount?: number; // ram kit
+  capacityGb?: number; // ram kit total
+  speedMhz?: number; // ram
+  // Cooler / case extras
+  coolerSockets?: string[]; // cooler bracket support
+  frontUsbC?: boolean; // case
+  usbCHeader?: boolean; // motherboard front-panel USB-C header
 }
 
 export const BUILDER_CATALOG: BuilderProduct[] = [
@@ -64,6 +146,7 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'AMD',
     price: 25500,
     keySpec: '6 Cores / 12 Threads · 5.1 GHz',
+    released: '2023-01',
     popularity: 88,
     performanceScore: 72,
     socket: 'AM5',
@@ -76,6 +159,7 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'AMD',
     price: 52000,
     keySpec: '8 Cores / 16 Threads · 3D V-Cache',
+    released: '2023-04',
     popularity: 96,
     performanceScore: 90,
     socket: 'AM5',
@@ -88,6 +172,7 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Intel',
     price: 42500,
     keySpec: '14 Cores / 20 Threads · 5.3 GHz',
+    released: '2023-10',
     popularity: 84,
     performanceScore: 80,
     socket: 'LGA1700',
@@ -100,6 +185,7 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Intel',
     price: 58000,
     keySpec: '20 Cores / 28 Threads · 5.6 GHz',
+    released: '2023-10',
     popularity: 79,
     performanceScore: 88,
     socket: 'LGA1700',
@@ -112,6 +198,7 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'AMD',
     price: 16500,
     keySpec: '6 Cores / 12 Threads · 4.4 GHz',
+    released: '2022-04',
     popularity: 90,
     performanceScore: 58,
     socket: 'AM4',
@@ -125,6 +212,8 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'MSI',
     price: 42000,
     keySpec: '8GB GDDR6 · DLSS 3',
+    lengthMm: 199,
+    gpuPower: { type: '8pin', pcie8pin: 1 },
     popularity: 92,
     performanceScore: 62,
     tdp: 115,
@@ -136,6 +225,8 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Sapphire',
     price: 68000,
     keySpec: '16GB GDDR6 · RDNA 3',
+    lengthMm: 313,
+    gpuPower: { type: '8pin', pcie8pin: 2 },
     popularity: 85,
     performanceScore: 78,
     tdp: 263,
@@ -147,6 +238,8 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'ZOTAC',
     price: 108000,
     keySpec: '12GB GDDR6X · DLSS 3',
+    lengthMm: 307,
+    gpuPower: { type: '12vhpwr', pcie8pin: 2 },
     popularity: 81,
     performanceScore: 86,
     tdp: 285,
@@ -158,6 +251,8 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'ASUS',
     price: 245000,
     keySpec: '24GB GDDR6X · Flagship',
+    lengthMm: 358,
+    gpuPower: { type: '12vhpwr', pcie8pin: 4 },
     popularity: 74,
     performanceScore: 100,
     tdp: 450,
@@ -170,6 +265,13 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'MSI',
     price: 23500,
     keySpec: 'AM5 · DDR5 · mATX',
+    released: '2022-10',
+    m2Slots: 2,
+    sataPorts: 4,
+    ramSlots: 4,
+    maxRamGb: 192,
+    pcieGen: 4,
+    usbCHeader: true,
     popularity: 87,
     performanceScore: 70,
     socket: 'AM5',
@@ -183,6 +285,13 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'ASUS',
     price: 62000,
     keySpec: 'AM5 · DDR5 · ATX',
+    released: '2022-10',
+    m2Slots: 4,
+    sataPorts: 4,
+    ramSlots: 4,
+    maxRamGb: 192,
+    pcieGen: 5,
+    usbCHeader: true,
     popularity: 76,
     performanceScore: 92,
     socket: 'AM5',
@@ -196,6 +305,13 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Gigabyte',
     price: 17800,
     keySpec: 'LGA1700 · DDR4 · mATX',
+    released: '2023-01',
+    m2Slots: 2,
+    sataPorts: 4,
+    ramSlots: 4,
+    maxRamGb: 128,
+    pcieGen: 4,
+    usbCHeader: false,
     popularity: 89,
     performanceScore: 62,
     socket: 'LGA1700',
@@ -209,6 +325,14 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'ASUS',
     price: 41000,
     keySpec: 'LGA1700 · DDR5 · ATX',
+    released: '2022-10',
+    m2Slots: 4,
+    sataPorts: 4,
+    m2SataShared: 'M.2_4 shares bandwidth with SATA6G_5/6',
+    ramSlots: 4,
+    maxRamGb: 192,
+    pcieGen: 4,
+    usbCHeader: true,
     popularity: 82,
     performanceScore: 84,
     socket: 'LGA1700',
@@ -222,6 +346,15 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'MSI',
     price: 13500,
     keySpec: 'AM4 · DDR4 · mATX',
+    released: '2020-06',
+    m2Slots: 2,
+    sataPorts: 4,
+    m2SataShared: 'M2_2 disables SATA 5/6',
+    m2SharesGpuLanes: 'M2_2 runs from the chipset (Gen3)',
+    ramSlots: 4,
+    maxRamGb: 128,
+    pcieGen: 4,
+    usbCHeader: false,
     popularity: 91,
     performanceScore: 55,
     socket: 'AM4',
@@ -235,7 +368,7 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     name: 'Corsair Vengeance 16GB DDR5-5600',
     brand: 'Corsair',
     price: 8500,
-    keySpec: '2×8GB · CL36',
+    keySpec: '2�8GB · CL36',
     popularity: 90,
     performanceScore: 72,
     ramType: 'DDR5',
@@ -246,7 +379,7 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     name: 'G.Skill Trident Z5 RGB 32GB DDR5-6000',
     brand: 'G.Skill',
     price: 17500,
-    keySpec: '2×16GB · CL30',
+    keySpec: '2�16GB · CL30',
     popularity: 86,
     performanceScore: 90,
     ramType: 'DDR5',
@@ -257,7 +390,7 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     name: 'Kingston Fury Beast 16GB DDR4-3200',
     brand: 'Kingston',
     price: 5200,
-    keySpec: '2×8GB · CL16',
+    keySpec: '2�8GB · CL16',
     popularity: 93,
     performanceScore: 58,
     ramType: 'DDR4',
@@ -268,7 +401,7 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     name: 'TeamGroup T-Force Delta RGB 32GB DDR4-3600',
     brand: 'TeamGroup',
     price: 10800,
-    keySpec: '2×16GB · CL18',
+    keySpec: '2�16GB · CL18',
     popularity: 78,
     performanceScore: 66,
     ramType: 'DDR4',
@@ -281,6 +414,8 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Samsung',
     price: 13500,
     keySpec: '7,000 MB/s Read',
+    storageInterface: 'nvme',
+    pcieGen: 4,
     popularity: 94,
     performanceScore: 88,
   },
@@ -291,6 +426,8 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'WD',
     price: 9800,
     keySpec: '5,150 MB/s Read',
+    storageInterface: 'nvme',
+    pcieGen: 4,
     popularity: 89,
     performanceScore: 76,
   },
@@ -301,6 +438,7 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Crucial',
     price: 16500,
     keySpec: '5,000 MB/s · 2TB',
+    storageInterface: 'nvme',
     popularity: 80,
     performanceScore: 72,
   },
@@ -311,6 +449,7 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Seagate',
     price: 6200,
     keySpec: '7200 RPM · SATA',
+    storageInterface: 'sata',
     popularity: 71,
     performanceScore: 30,
   },
@@ -322,6 +461,9 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Corsair',
     price: 7200,
     keySpec: '650W · Bronze',
+    pcie8pin: 2,
+    sataPower: 6,
+    psuFormFactor: 'ATX',
     popularity: 90,
     performanceScore: 55,
     wattage: 650,
@@ -333,6 +475,9 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Cooler Master',
     price: 11500,
     keySpec: '750W · Gold · Modular',
+    pcie8pin: 4,
+    sataPower: 8,
+    psuFormFactor: 'ATX',
     popularity: 85,
     performanceScore: 70,
     wattage: 750,
@@ -344,6 +489,9 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Corsair',
     price: 16800,
     keySpec: '850W · Gold · Modular',
+    pcie8pin: 4,
+    sataPower: 10,
+    psuFormFactor: 'ATX',
     popularity: 92,
     performanceScore: 84,
     wattage: 850,
@@ -355,6 +503,10 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Seasonic',
     price: 32000,
     keySpec: '1200W · Platinum · ATX 3.0',
+    pcie8pin: 4,
+    has12vhpwr: true,
+    sataPower: 12,
+    psuFormFactor: 'ATX',
     popularity: 68,
     performanceScore: 96,
     wattage: 1200,
@@ -370,6 +522,11 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     popularity: 88,
     performanceScore: 74,
     formFactor: 'ATX',
+    maxGpuLengthMm: 365,
+    maxCoolerHeightMm: 165,
+    radiatorSupportMm: [240, 280, 360],
+    psuSupport: ['ATX'],
+    frontUsbC: true,
   },
   {
     id: 'case-lancool216',
@@ -381,6 +538,11 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     popularity: 91,
     performanceScore: 86,
     formFactor: 'ATX',
+    maxGpuLengthMm: 392,
+    maxCoolerHeightMm: 180,
+    radiatorSupportMm: [240, 280, 360],
+    psuSupport: ['ATX'],
+    frontUsbC: true,
   },
   {
     id: 'case-nr200p',
@@ -392,6 +554,11 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     popularity: 75,
     performanceScore: 70,
     formFactor: 'ITX',
+    maxGpuLengthMm: 330,
+    maxCoolerHeightMm: 155,
+    radiatorSupportMm: [240, 280],
+    psuSupport: ['SFX'],
+    frontUsbC: false,
   },
   {
     id: 'case-4000d',
@@ -403,6 +570,11 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     popularity: 93,
     performanceScore: 80,
     formFactor: 'ATX',
+    maxGpuLengthMm: 360,
+    maxCoolerHeightMm: 170,
+    radiatorSupportMm: [240, 280, 360],
+    psuSupport: ['ATX'],
+    frontUsbC: true,
   },
   // Cooling
   {
@@ -412,6 +584,8 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Deepcool',
     price: 2800,
     keySpec: '220W TDP · 4 Heatpipes',
+    heightMm: 150,
+    coolerSockets: ['AM5', 'AM4', 'LGA1700', 'LGA1851', 'LGA1200'],
     popularity: 87,
     performanceScore: 52,
   },
@@ -422,6 +596,8 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Cooler Master',
     price: 3800,
     keySpec: '180W TDP · Air',
+    heightMm: 152,
+    coolerSockets: ['AM5', 'AM4', 'LGA1700', 'LGA1200'],
     popularity: 90,
     performanceScore: 50,
     // classic budget pick
@@ -433,6 +609,8 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'Deepcool',
     price: 10500,
     keySpec: '240mm Liquid · ARGB',
+    radiatorMm: 240,
+    coolerSockets: ['AM5', 'AM4', 'LGA1700', 'LGA1851', 'LGA1200'],
     popularity: 83,
     performanceScore: 76,
   },
@@ -443,6 +621,8 @@ export const BUILDER_CATALOG: BuilderProduct[] = [
     brand: 'NZXT',
     price: 21500,
     keySpec: '360mm Liquid · LCD',
+    radiatorMm: 360,
+    coolerSockets: ['AM5', 'AM4', 'LGA1700', 'LGA1851'],
     popularity: 77,
     performanceScore: 92,
   },

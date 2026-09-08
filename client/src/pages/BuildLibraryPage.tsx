@@ -1,24 +1,28 @@
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { ArrowRight, Globe2, Info, Layers, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { listPublicBuilds } from '../api/builds';
 import BuildDetailsModal, { type BuildDetails } from '../components/builder/BuildDetailsModal';
 import { BUILD_PURPOSES, formatTaka } from '../components/builder/buildConfig';
-import { BUILD_PRESETS, presetTotal, resolveParts } from '../components/builder/buildPresets';
+import { BUILD_PRESETS, resolvePreset } from '../components/builder/buildPresets';
+import type { BuilderProduct } from '../components/builder/builderCatalog';
+import { partIdsOf, totalPriceOf } from '../components/builder/compatibility';
 import { Badge } from '../components/ui/Badge';
+import { useBuilderCatalog } from '../hooks/useBuilderCatalog';
 
 interface BuildCardProps {
   build: BuildDetails;
+  byId: Map<string, BuilderProduct>;
   onDetails: (build: BuildDetails) => void;
   delay?: number;
 }
 
-function BuildCard({ build, onDetails, delay = 0 }: BuildCardProps) {
+function BuildCard({ build, byId, onDetails, delay = 0 }: BuildCardProps) {
   const navigate = useNavigate();
   const { name, purpose, total, partIds, meta } = build;
-  const parts = resolveParts(partIds);
+  const parts = partIds.map((id) => byId.get(id)).filter((p): p is BuilderProduct => !!p);
 
   return (
     <motion.div
@@ -84,11 +88,31 @@ function BuildCard({ build, onDetails, delay = 0 }: BuildCardProps) {
 export default function BuildLibraryPage() {
   const [purposeFilter, setPurposeFilter] = useState<string>('All');
   const [details, setDetails] = useState<BuildDetails | null>(null);
+  const catalog = useBuilderCatalog();
   const { data: community = [], isLoading } = useQuery({
     queryKey: ['public-builds'],
     queryFn: () => listPublicBuilds(),
     staleTime: 60_000,
   });
+
+  // Templates resolve to the cheapest live matches, so their totals track the market.
+  const presets = useMemo(
+    () =>
+      BUILD_PRESETS.map((preset) => {
+        const selection = resolvePreset(preset, catalog.products, catalog.byId);
+        return {
+          id: preset.id,
+          details: {
+            name: preset.name,
+            purpose: preset.purpose,
+            total: totalPriceOf(selection),
+            partIds: partIdsOf(selection),
+            meta: preset.tagline,
+          } satisfies BuildDetails,
+        };
+      }),
+    [catalog],
+  );
 
   const filtered =
     purposeFilter === 'All' ? community : community.filter((b) => b.purpose === purposeFilter);
@@ -119,16 +143,11 @@ export default function BuildLibraryPage() {
             <Sparkles className="w-5 h-5 text-accent" /> Starter Templates
           </h2>
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {BUILD_PRESETS.map((preset, i) => (
+            {presets.map((preset, i) => (
               <BuildCard
                 key={preset.id}
-                build={{
-                  name: preset.name,
-                  purpose: preset.purpose,
-                  total: presetTotal(preset),
-                  partIds: preset.partIds,
-                  meta: preset.tagline,
-                }}
+                build={preset.details}
+                byId={catalog.byId}
                 onDetails={setDetails}
                 delay={i * 0.05}
               />
@@ -183,6 +202,7 @@ export default function BuildLibraryPage() {
                     partIds: b.partIds,
                     meta: `${b.authorName || 'PC Kinba builder'} · ${new Date(b.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`,
                   }}
+                  byId={catalog.byId}
                   onDetails={setDetails}
                   delay={Math.min(i, 8) * 0.04}
                 />

@@ -1,6 +1,10 @@
 /* Checkout / finalize page — reuses PCBuilderPage.css for shared builder styles */
 
 .build-checkout-page {
+  padding-top: 0;
+}
+
+.build-checkout-page .section {
   padding-top: 40px;
 }
 
@@ -79,6 +83,81 @@
 /* Retailer handoff */
 .checkout-retailers {
   margin-top: 24px;
+}
+
+.checkout-loading {
+  padding: 120px 32px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.checkout-retailer-part small {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.checkout-retailer-links a.is-cheapest {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+/* Store strategy */
+.checkout-strategy {
+  margin-top: 24px;
+}
+
+.checkout-strategy h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.checkout-strategy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.checkout-strategy-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--fill-subtle);
+}
+
+.checkout-strategy-option.is-best {
+  border-color: var(--accent);
+  background: rgba(0, 229, 255, 0.06);
+}
+
+.checkout-strategy-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.checkout-strategy-total {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.checkout-strategy-total small {
+  font-size: 13px;
+  color: var(--warning);
+  margin-left: 6px;
+}
+
+.checkout-strategy-note {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .checkout-retailers h2 {

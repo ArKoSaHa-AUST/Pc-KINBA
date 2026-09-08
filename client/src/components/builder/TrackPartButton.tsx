@@ -51,10 +51,27 @@ function TrackPartModal({ product, open, onClose }: TrackPartModalProps) {
 
   useEffect(() => {
     if (!open) return;
+    setSelected(0);
+    // Live catalog parts already carry their retailer listings — no search round-trip needed.
+    if (product.listings?.length) {
+      setMatches(
+        product.listings.slice(0, 3).map((l) => ({
+          id: l.id,
+          product_id: product.id,
+          title: product.name,
+          brand: product.brand,
+          price: l.price,
+          price_str: `${l.price.toLocaleString()}৳`,
+          retailer: l.retailer,
+          product_url: l.url,
+          image_url: product.image,
+        })),
+      );
+      return;
+    }
     const controller = new AbortController();
     setLoading(true);
     setMatches([]);
-    setSelected(0);
     fetch(`/api/search?q=${encodeURIComponent(product.name)}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : { results: [] }))
       .then((data: { results?: ProductDetails[] }) => setMatches((data.results ?? []).slice(0, 3)))
@@ -63,7 +80,7 @@ function TrackPartModal({ product, open, onClose }: TrackPartModalProps) {
       })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, [open, product.name]);
+  }, [open, product]);
 
   const match = matches[selected];
 

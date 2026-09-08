@@ -13,6 +13,11 @@ export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const isProductPage = location.pathname.startsWith('/product/');
 
+  // New route → start at the top (query-string changes such as filters don't reset scroll).
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [location.pathname]);
+
   useEffect(() => {
     // Smooth scrolling setup with Lenis
     const lenis = new Lenis({

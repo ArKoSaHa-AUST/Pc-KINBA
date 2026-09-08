@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { COMPONENT_CATEGORIES, type ComponentCategory } from './builderCatalog';
+import { ADDON_CATEGORIES, COMPONENT_CATEGORIES, type ComponentCategory } from './builderCatalog';
 import type { BuildSelection } from './compatibility';
 import ComponentCard from './ComponentCard';
 
@@ -25,23 +25,40 @@ const cardVariants = {
 
 export default function ComponentGrid({ build, onOpenCategory, onRemove }: ComponentGridProps) {
   return (
-    <motion.div
-      className="component-grid"
-      variants={gridVariants}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: '-80px' }}
-    >
-      {COMPONENT_CATEGORIES.map((meta) => (
-        <motion.div key={meta.id} variants={cardVariants}>
+    <>
+      <motion.div
+        className="component-grid"
+        variants={gridVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-80px' }}
+      >
+        {COMPONENT_CATEGORIES.map((meta) => (
+          <motion.div key={meta.id} variants={cardVariants}>
+            <ComponentCard
+              meta={meta}
+              selected={build[meta.id] ?? null}
+              onOpen={() => onOpenCategory(meta.id)}
+              onRemove={() => onRemove(meta.id)}
+            />
+          </motion.div>
+        ))}
+      </motion.div>
+
+      <h3 className="component-grid-addons-title">
+        Add-ons <span>optional · extra drive, monitor &amp; peripherals</span>
+      </h3>
+      <div className="component-grid component-grid-addons">
+        {ADDON_CATEGORIES.map((meta) => (
           <ComponentCard
+            key={meta.id}
             meta={meta}
             selected={build[meta.id] ?? null}
             onOpen={() => onOpenCategory(meta.id)}
             onRemove={() => onRemove(meta.id)}
           />
-        </motion.div>
-      ))}
-    </motion.div>
+        ))}
+      </div>
+    </>
   );
 }
