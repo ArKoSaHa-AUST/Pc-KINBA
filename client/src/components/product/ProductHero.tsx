@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { sanitizeHref } from '../../utils/image';
 import PriceAlertButton from './PriceAlertButton';
+import PriceHistoryChart from './PriceHistoryChart';
 
 export interface ShopOffer {
   name: string;
@@ -476,6 +477,8 @@ export default function ProductHero({ product, loading }: ProductHeroProps) {
               </div>
             )}
           </div>
+
+          <PriceHistoryChart productId={product?.id} />
         </div>
       </div>
     </section>
