@@ -1,15 +1,29 @@
 import { ArrowRight, Library } from 'lucide-react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { BuilderCatalog } from '../../hooks/useBuilderCatalog';
 import { formatTaka } from './buildConfig';
-import { BUILD_PRESETS, presetTotal, type BuildPreset } from './buildPresets';
+import { BUILD_PRESETS, resolvePreset, type BuildPreset } from './buildPresets';
+import { totalPriceOf } from './compatibility';
 
 interface BuildLibraryTeaserProps {
+  catalog: BuilderCatalog;
   onApplyPreset: (preset: BuildPreset) => void;
 }
 
 /** Quick-start templates plus the entry point to the full Build Library. */
-export default function BuildLibraryTeaser({ onApplyPreset }: BuildLibraryTeaserProps) {
+export default function BuildLibraryTeaser({ catalog, onApplyPreset }: BuildLibraryTeaserProps) {
   const navigate = useNavigate();
+  const totals = useMemo(
+    () =>
+      new Map(
+        BUILD_PRESETS.map((p) => [
+          p.id,
+          totalPriceOf(resolvePreset(p, catalog.products, catalog.byId)),
+        ]),
+      ),
+    [catalog],
+  );
 
   return (
     <div className="glass-card p-6 md:p-8 mt-10 flex flex-col gap-6">
@@ -43,7 +57,9 @@ export default function BuildLibraryTeaser({ onApplyPreset }: BuildLibraryTeaser
             <span className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors">
               {preset.name}
             </span>
-            <span className="text-xs font-bold text-accent">{formatTaka(presetTotal(preset))}</span>
+            <span className="text-xs font-bold text-accent">
+              {formatTaka(totals.get(preset.id) ?? 0)}
+            </span>
           </button>
         ))}
       </div>

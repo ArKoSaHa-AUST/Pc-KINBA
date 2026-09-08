@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react';
 import { formatTaka } from './buildConfig';
-import { COMPONENT_CATEGORIES, type ComponentCategory } from './builderCatalog';
-import { checkCompatibility, type BuildSelection } from './compatibility';
+import { ADDON_CATEGORIES, COMPONENT_CATEGORIES, type ComponentCategory } from './builderCatalog';
+import { checkCompatibility, totalPriceOf, type BuildSelection } from './compatibility';
 import TrackPartButton from './TrackPartButton';
 
 interface PartsTableProps {
@@ -11,7 +11,9 @@ interface PartsTableProps {
 }
 
 export default function PartsTable({ build, onOpenCategory, onRemove }: PartsTableProps) {
-  const total = Object.values(build).reduce((sum, p) => sum + (p?.price ?? 0), 0);
+  const total = totalPriceOf(build);
+  // Core slots always listed; add-on slots only once something is in them.
+  const rows = [...COMPONENT_CATEGORIES, ...ADDON_CATEGORIES.filter((m) => build[m.id])];
 
   return (
     <div className="glass-card parts-table-card">
@@ -26,9 +28,9 @@ export default function PartsTable({ build, onOpenCategory, onRemove }: PartsTab
           </tr>
         </thead>
         <tbody>
-          {COMPONENT_CATEGORIES.map((meta) => {
+          {rows.map((meta) => {
             const product = build[meta.id];
-            const compat = product ? checkCompatibility(product, build) : null;
+            const compat = product ? checkCompatibility(product, build, meta.id) : null;
             return (
               <tr key={meta.id}>
                 <td className="parts-table-category">{meta.label}</td>

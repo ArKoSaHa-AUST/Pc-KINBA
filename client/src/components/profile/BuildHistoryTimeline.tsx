@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { deleteBuild, listBuilds, setBuildVisibility, type SavedBuild } from '../../api/builds';
 import { useAuth } from '../../auth/useAuth';
-import { BUILDER_CATALOG } from '../builder/builderCatalog';
+import { useBuilderCatalog } from '../../hooks/useBuilderCatalog';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -32,10 +32,8 @@ interface SavedBuildItem {
   isPublic?: boolean;
 }
 
-function toItem(build: SavedBuild): SavedBuildItem {
-  const names = build.partIds
-    .map((id) => BUILDER_CATALOG.find((p) => p.id === id)?.name)
-    .filter((n): n is string => !!n);
+function toItem(build: SavedBuild, nameOf: (id: string) => string | undefined): SavedBuildItem {
+  const names = build.partIds.map(nameOf).filter((n): n is string => !!n);
   return {
     id: build.id,
     name: build.name,
@@ -53,16 +51,18 @@ export function BuildHistoryTimeline() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { byId, isLoading: catalogLoading } = useBuilderCatalog();
   const [builds, setBuilds] = useState<SavedBuildItem[]>([]);
 
   useEffect(() => {
+    if (catalogLoading) return;
     let mounted = true;
     (async () => {
       // Prefer Supabase-backed builds; fall back to local/demo data
       try {
         const remote = await listBuilds();
         if (mounted && remote.length > 0) {
-          setBuilds(remote.map(toItem));
+          setBuilds(remote.map((b) => toItem(b, (id) => byId.get(id)?.name)));
           return;
         }
       } catch {
@@ -73,7 +73,7 @@ export function BuildHistoryTimeline() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [catalogLoading, byId]);
 
   const handleLoad = (item: SavedBuildItem) => {
     if (item.partIds) navigate(`/pc-builder?parts=${item.partIds.join(',')}`);

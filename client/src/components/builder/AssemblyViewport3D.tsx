@@ -22,8 +22,8 @@ interface PartLayout {
   ez: number;
 }
 
-// Scene is a 500×500 plane; z = height above the board, e* = exploded-view offsets
-const PART_LAYOUT: Record<ComponentCategory, PartLayout> = {
+// Scene is a 500×500 plane; z = height above the board, e* = exploded-view offsets (core slots only)
+const PART_LAYOUT: Partial<Record<ComponentCategory, PartLayout>> = {
   case: { x: 4, y: 4, w: 492, h: 492, z: 0, ex: 0, ey: 0, ez: 150 },
   motherboard: { x: 90, y: 55, w: 320, h: 320, z: 12, ex: 0, ey: 0, ez: 0 },
   cpu: { x: 205, y: 130, w: 90, h: 90, z: 34, ex: -20, ey: -60, ez: 80 },
@@ -36,7 +36,7 @@ const PART_LAYOUT: Record<ComponentCategory, PartLayout> = {
 
 // Leader pins lean outward (azimuth in board plane) so labels fan apart instead of stacking
 const PIN_LEAN = 58; // deg from board plane; smaller = more diagonal
-const PIN_CONFIG: Record<ComponentCategory, { az: number; len: number } | null> = {
+const PIN_CONFIG: Partial<Record<ComponentCategory, { az: number; len: number } | null>> = {
   case: null,
   motherboard: { az: -45, len: 85 },
   cpu: { az: -135, len: 160 },
@@ -255,6 +255,7 @@ export default function AssemblyViewport3D({ build, onOpenCategory }: AssemblyVi
             {COMPONENT_CATEGORIES.map((meta) => {
               const layout = PART_LAYOUT[meta.id];
               const product = build[meta.id];
+              if (!layout) return null;
               return (
                 <div
                   key={meta.id}

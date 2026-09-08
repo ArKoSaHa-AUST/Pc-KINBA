@@ -1599,6 +1599,96 @@ app.post("/api/price-alerts/process", commandLimiter, async (req, res) => {
   }
 });
 
+// ==============================================================================
+// PC Builder live catalog: builder-category products that have ≥1 priced listing,
+// with every retailer offer attached. Heavy join done once and cached in memory.
+// ==============================================================================
+
+const BUILDER_CATEGORY_BY_SLUG = {
+  cpu: "cpu", gpu: "gpu", motherboard: "motherboard", ram: "ram", storage: "storage",
+  psu: "psu", case: "case", cooler: "cooling", monitor: "monitor", keyboard: "keyboard", mouse: "mouse"
+};
+const BUILDER_CATALOG_TTL_MS = 5 * 60 * 1000;
+let builderCatalogCache = { at: 0, data: null };
+
+async function fetchAllRows(buildQuery, pageSize = 1000) {
+  const rows = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) return rows;
+  }
+}
+
+async function loadBuilderCatalog() {
+  const { data: cats, error: catErr } = await supabase.from("categories").select("id, slug, parent_id");
+  if (catErr) throw catErr;
+  const catById = new Map(cats.map(c => [c.id, c]));
+  const builderCategoryOf = (id) => {
+    const cat = catById.get(id);
+    if (!cat) return null;
+    const rootSlug = cat.parent_id ? catById.get(cat.parent_id)?.slug : cat.slug;
+    return BUILDER_CATEGORY_BY_SLUG[rootSlug] || null;
+  };
+  const categoryIds = cats.filter(c => builderCategoryOf(c.id)).map(c => c.id);
+
+  const [products, listings] = await Promise.all([
+    fetchAllRows(() =>
+      supabase
+        .from("products")
+        .select("id, name, category_id, brands:brand_id ( name ), product_specs ( spec_key, spec_value ), product_images ( image_url, is_primary )")
+        .in("category_id", categoryIds)
+    ),
+    fetchAllRows(() =>
+      supabase
+        .from("listings")
+        .select("id, product_id, retailer, price, product_url, last_scraped_at")
+        .not("product_id", "is", null)
+        .gt("price", 0)
+        .order("id")
+    )
+  ]);
+
+  const listingsByProduct = new Map();
+  for (const l of listings) {
+    if (!listingsByProduct.has(l.product_id)) listingsByProduct.set(l.product_id, []);
+    listingsByProduct.get(l.product_id).push(l);
+  }
+
+  return products
+    .filter(p => listingsByProduct.has(p.id))
+    .map(p => {
+      const offers = listingsByProduct.get(p.id).sort((a, b) => a.price - b.price);
+      const images = p.product_images || [];
+      return {
+        id: p.id,
+        name: p.name,
+        brand: p.brands?.name || "",
+        category: builderCategoryOf(p.category_id),
+        price: offers[0].price,
+        image: (images.find(i => i.is_primary) || images[0])?.image_url || null,
+        specs: Object.fromEntries((p.product_specs || []).map(s => [s.spec_key, s.spec_value])),
+        listings: offers.map(l => ({
+          id: l.id, retailer: l.retailer, price: l.price, url: l.product_url, scrapedAt: l.last_scraped_at
+        }))
+      };
+    });
+}
+
+app.get("/api/builder/catalog", apiLimiter, async (req, res) => {
+  try {
+    if (!builderCatalogCache.data || Date.now() - builderCatalogCache.at > BUILDER_CATALOG_TTL_MS) {
+      builderCatalogCache = { at: Date.now(), data: await loadBuilderCatalog() };
+    }
+    res.set("Cache-Control", "public, max-age=300");
+    return res.json({ success: true, generatedAt: builderCatalogCache.at, products: builderCatalogCache.data });
+  } catch (err) {
+    console.error("[Builder Catalog Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to load builder catalog" });
+  }
+});
+
 app.post("/api/send-welcome", authActionLimiter, async (req, res) => {
   const { email, name } = req.body;
   if (!email || typeof email !== "string") {

@@ -1,13 +1,23 @@
-import { AlertTriangle, Coins, Sparkles, TrendingUp, Zap, type LucideIcon } from 'lucide-react';
+import {
+  AlertTriangle,
+  Coins,
+  Sparkles,
+  TrendingDown,
+  TrendingUp,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react';
 import { useState } from 'react';
+import { suggestDowngrades } from './autoBuild';
 import { formatTaka } from './buildConfig';
-import { BUILDER_CATALOG, type BuilderProduct } from './builderCatalog';
-import { estimatePowerDraw, type BuildSelection } from './compatibility';
+import type { BuilderProduct, ComponentCategory } from './builderCatalog';
+import { estimatePowerDraw, totalPriceOf, type BuildSelection } from './compatibility';
 
 interface Suggestion {
   id: string;
   icon: LucideIcon;
   message: string;
+  slot: ComponentCategory;
   apply: BuilderProduct;
 }
 
@@ -15,14 +25,30 @@ function cheapest(products: BuilderProduct[]): BuilderProduct | undefined {
   return [...products].sort((a, b) => a.price - b.price)[0];
 }
 
-function getSuggestions(build: BuildSelection): Suggestion[] {
+function getSuggestions(
+  build: BuildSelection,
+  budget: number,
+  catalog: BuilderProduct[],
+): Suggestion[] {
   const { cpu, gpu, ram, psu, cooling, motherboard } = build;
   const suggestions: Suggestion[] = [];
+
+  // Over budget: cheapest-loss swaps first
+  const over = totalPriceOf(build) - budget;
+  for (const d of suggestDowngrades(build, budget, catalog)) {
+    suggestions.push({
+      id: `downgrade-${d.to.id}`,
+      icon: TrendingDown,
+      slot: d.slot,
+      message: `You're ${formatTaka(over)} over budget. Swapping ${d.from.name} for ${d.to.name} saves ${formatTaka(d.saves)}.`,
+      apply: d.to,
+    });
+  }
 
   // Bottleneck detection: GPU far ahead of CPU
   if (cpu && gpu && gpu.performanceScore - cpu.performanceScore >= 20) {
     const upgrade = cheapest(
-      BUILDER_CATALOG.filter(
+      catalog.filter(
         (p) =>
           p.category === 'cpu' &&
           p.id !== cpu.id &&
@@ -34,6 +60,7 @@ function getSuggestions(build: BuildSelection): Suggestion[] {
       suggestions.push({
         id: `bottleneck-${upgrade.id}`,
         icon: TrendingUp,
+        slot: 'cpu',
         message: `Your ${cpu.name} may bottleneck the ${gpu.name}. Consider upgrading to the ${upgrade.name}.`,
         apply: upgrade,
       });
@@ -43,7 +70,7 @@ function getSuggestions(build: BuildSelection): Suggestion[] {
   // Value optimization: cheaper RAM with near-identical performance
   if (ram) {
     const alt = cheapest(
-      BUILDER_CATALOG.filter(
+      catalog.filter(
         (p) =>
           p.category === 'ram' &&
           p.ramType === ram.ramType &&
@@ -55,6 +82,7 @@ function getSuggestions(build: BuildSelection): Suggestion[] {
       suggestions.push({
         id: `value-${alt.id}`,
         icon: Coins,
+        slot: 'ram',
         message: `Switching to ${alt.name} saves ${formatTaka(ram.price - alt.price)} with minimal performance difference.`,
         apply: alt,
       });
@@ -64,7 +92,7 @@ function getSuggestions(build: BuildSelection): Suggestion[] {
   // Missing component: high-TDP CPU without a cooler
   if (cpu && (cpu.tdp ?? 0) > 105 && !cooling) {
     const cooler = cheapest(
-      BUILDER_CATALOG.filter(
+      catalog.filter(
         (p) => p.category === 'cooling' && p.performanceScore >= ((cpu.tdp ?? 0) > 200 ? 75 : 50),
       ),
     );
@@ -72,7 +100,8 @@ function getSuggestions(build: BuildSelection): Suggestion[] {
       suggestions.push({
         id: `cooler-${cooler.id}`,
         icon: AlertTriangle,
-        message: `Add a CPU cooler — the ${cpu.name} runs at ${cpu.tdp}W. The ${cooler.name} is a solid fit.`,
+        slot: 'cooling',
+        message: `Add a CPU cooler � the ${cpu.name} runs at ${cpu.tdp}W. The ${cooler.name} is a solid fit.`,
         apply: cooler,
       });
     }
@@ -82,12 +111,13 @@ function getSuggestions(build: BuildSelection): Suggestion[] {
   if ((cpu || gpu) && !psu) {
     const draw = estimatePowerDraw(build);
     const unit = cheapest(
-      BUILDER_CATALOG.filter((p) => p.category === 'psu' && (p.wattage ?? 0) >= draw * 1.3),
+      catalog.filter((p) => p.category === 'psu' && (p.wattage ?? 0) >= draw * 1.3),
     );
     if (unit) {
       suggestions.push({
         id: `psu-${unit.id}`,
         icon: Zap,
+        slot: 'psu',
         message: `Your build draws ~${draw}W but has no PSU yet. The ${unit.name} gives comfortable headroom.`,
         apply: unit,
       });
@@ -99,12 +129,14 @@ function getSuggestions(build: BuildSelection): Suggestion[] {
 
 interface AIOptimizerProps {
   build: BuildSelection;
-  onApply: (product: BuilderProduct) => void;
+  budget: number;
+  catalog: BuilderProduct[];
+  onApply: (slot: ComponentCategory, product: BuilderProduct) => void;
 }
 
-export default function AIOptimizer({ build, onApply }: AIOptimizerProps) {
+export default function AIOptimizer({ build, budget, catalog, onApply }: AIOptimizerProps) {
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
-  const suggestions = getSuggestions(build).filter((s) => !dismissed.has(s.id));
+  const suggestions = getSuggestions(build, budget, catalog).filter((s) => !dismissed.has(s.id));
 
   return (
     <div className="glass-card ai-optimizer">
@@ -125,7 +157,7 @@ export default function AIOptimizer({ build, onApply }: AIOptimizerProps) {
                   <button
                     type="button"
                     className="button-primary ai-suggestion-apply"
-                    onClick={() => onApply(suggestion.apply)}
+                    onClick={() => onApply(suggestion.slot, suggestion.apply)}
                   >
                     Apply
                   </button>
@@ -144,8 +176,8 @@ export default function AIOptimizer({ build, onApply }: AIOptimizerProps) {
       ) : (
         <p className="ai-optimizer-empty">
           {Object.keys(build).length === 0
-            ? 'Start picking parts and I’ll suggest optimizations in real time.'
-            : 'Your build looks well balanced — no optimizations needed right now.'}
+            ? 'Start picking parts and I�"ll suggest optimizations in real time.'
+            : 'Your build looks well balanced � no optimizations needed right now.'}
         </p>
       )}
     </div>

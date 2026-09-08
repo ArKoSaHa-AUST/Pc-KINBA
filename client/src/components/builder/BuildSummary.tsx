@@ -132,7 +132,7 @@ export default function BuildSummary({
           )}
         </MetricCard>
 
-        <MetricCard icon={Gauge} title="Estimated FPS">
+        <MetricCard icon={Gauge} title="Estimated FPS" className="metric-card-fps">
           <div className="fps-res-toggle">
             {RESOLUTIONS.map((res) => (
               <button
@@ -168,7 +168,7 @@ export default function BuildSummary({
           )}
         </MetricCard>
 
-        <MetricCard icon={ShieldCheck} title="Compatibility Score">
+        <MetricCard icon={ShieldCheck} title="Compatibility Score" className="metric-card-compat">
           <div className="compat-score-row">
             <ProgressRing
               value={score / 100}

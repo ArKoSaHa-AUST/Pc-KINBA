@@ -1,19 +1,20 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Search, X, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Search, Store, X, XCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { sanitizeImageUrl } from '../../utils/image';
 import { formatTaka } from './buildConfig';
 import {
-  COMPONENT_CATEGORIES,
-  productsByCategory,
+  ALL_CATEGORIES,
   type BuilderProduct,
   type ComponentCategory,
   type FormFactor,
 } from './builderCatalog';
 import { checkCompatibility, type BuildSelection, type CompatResult } from './compatibility';
 
-type SortKey = 'price-asc' | 'price-desc' | 'popularity' | 'performance';
+type SortKey = 'recommended' | 'price-asc' | 'price-desc' | 'popularity' | 'performance';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'recommended', label: 'Recommended' },
   { key: 'price-asc', label: 'Price ↑' },
   { key: 'price-desc', label: 'Price ↓' },
   { key: 'popularity', label: 'Popularity' },
@@ -30,10 +31,20 @@ const PRICE_BUCKETS = [
 type PriceBucketKey = (typeof PRICE_BUCKETS)[number]['key'];
 
 interface ComponentSelectModalProps {
-  category: ComponentCategory | null;
+  slot: ComponentCategory | null;
   build: BuildSelection;
+  products: BuilderProduct[];
+  /** Budget left for this slot (max budget − other parts). */
+  remainingBudget: number;
   onClose: () => void;
-  onSelect: (product: BuilderProduct) => void;
+  onSelect: (slot: ComponentCategory, product: BuilderProduct) => void;
+}
+
+/** Value-for-money within budget first; compatible parts before incompatible ones. */
+function recommendedScore(p: BuilderProduct, compat: CompatResult, fits: boolean): number {
+  const compatWeight =
+    compat.status === 'incompatible' ? -1000 : compat.status === 'warning' ? -50 : 0;
+  return (fits ? 100 : 0) + compatWeight + p.performanceScore * 0.6 + p.popularity * 0.4;
 }
 
 function CompatBadge({ result }: { result: CompatResult }) {
@@ -53,8 +64,10 @@ function CompatBadge({ result }: { result: CompatResult }) {
 }
 
 export default function ComponentSelectModal({
-  category,
+  slot,
   build,
+  products,
+  remainingBudget,
   onClose,
   onSelect,
 }: ComponentSelectModalProps) {
@@ -64,7 +77,9 @@ export default function ComponentSelectModal({
   const [priceBucket, setPriceBucket] = useState<PriceBucketKey | null>(null);
   const [socket, setSocket] = useState<string | null>(null);
   const [formFactor, setFormFactor] = useState<FormFactor | null>(null);
-  const [sort, setSort] = useState<SortKey>('popularity');
+  const [sort, setSort] = useState<SortKey>('recommended');
+  const [fitsBudgetOnly, setFitsBudgetOnly] = useState(false);
+  const category = slot;
 
   // Debounced real-time search (300ms)
   useEffect(() => {
@@ -80,7 +95,8 @@ export default function ComponentSelectModal({
     setPriceBucket(null);
     setSocket(null);
     setFormFactor(null);
-    setSort('popularity');
+    setSort('recommended');
+    setFitsBudgetOnly(false);
     if (!category) return;
     document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
@@ -93,9 +109,11 @@ export default function ComponentSelectModal({
     };
   }, [category, onClose]);
 
-  const meta = COMPONENT_CATEGORIES.find((c) => c.id === category);
-  const products = useMemo(() => (category ? productsByCategory(category) : []), [category]);
-  const brands = useMemo(() => [...new Set(products.map((p) => p.brand))], [products]);
+  const meta = ALL_CATEGORIES.find((c) => c.id === category);
+  const brands = useMemo(
+    () => [...new Set(products.map((p) => p.brand).filter(Boolean))].sort(),
+    [products],
+  );
   // Socket / form factor pills only appear for categories whose products carry those attributes
   const sockets = useMemo(
     () => [...new Set(products.map((p) => p.socket).filter((s): s is string => !!s))],
@@ -111,36 +129,58 @@ export default function ComponentSelectModal({
   );
 
   const results = useMemo(() => {
+    if (!slot) return [];
     const q = debouncedQuery.trim().toLowerCase();
     const bucket = PRICE_BUCKETS.find((b) => b.key === priceBucket);
-    const filtered = products.filter(
-      (p) =>
-        (!brand || p.brand === brand) &&
-        (!bucket || (p.price >= bucket.min && p.price < bucket.max)) &&
-        (!socket || p.socket === socket) &&
-        (!formFactor || p.formFactor === formFactor) &&
-        (!q || p.name.toLowerCase().includes(q) || p.keySpec.toLowerCase().includes(q)),
-    );
-    const sorted = [...filtered];
+    const rows = products
+      .filter(
+        (p) =>
+          (!brand || p.brand === brand) &&
+          (!bucket || (p.price >= bucket.min && p.price < bucket.max)) &&
+          (!socket || p.socket === socket) &&
+          (!formFactor || p.formFactor === formFactor) &&
+          (!fitsBudgetOnly || p.price <= remainingBudget) &&
+          (!q || p.name.toLowerCase().includes(q) || p.keySpec.toLowerCase().includes(q)),
+      )
+      .map((product) => {
+        const compat = checkCompatibility(product, build, slot);
+        const fits = product.price <= remainingBudget;
+        return { product, compat, fits, score: recommendedScore(product, compat, fits) };
+      });
     switch (sort) {
       case 'price-asc':
-        sorted.sort((a, b) => a.price - b.price);
+        rows.sort((a, b) => a.product.price - b.product.price);
         break;
       case 'price-desc':
-        sorted.sort((a, b) => b.price - a.price);
+        rows.sort((a, b) => b.product.price - a.product.price);
         break;
       case 'performance':
-        sorted.sort((a, b) => b.performanceScore - a.performanceScore);
+        rows.sort((a, b) => b.product.performanceScore - a.product.performanceScore);
+        break;
+      case 'popularity':
+        rows.sort((a, b) => b.product.popularity - a.product.popularity);
         break;
       default:
-        sorted.sort((a, b) => b.popularity - a.popularity);
+        rows.sort((a, b) => b.score - a.score);
     }
-    return sorted;
-  }, [products, debouncedQuery, brand, priceBucket, socket, formFactor, sort]);
+    return rows;
+  }, [
+    slot,
+    products,
+    build,
+    debouncedQuery,
+    brand,
+    priceBucket,
+    socket,
+    formFactor,
+    sort,
+    fitsBudgetOnly,
+    remainingBudget,
+  ]);
 
   return (
     <AnimatePresence>
-      {category && meta && (
+      {slot && meta && (
         <motion.div
           className="builder-modal-backdrop"
           data-lenis-prevent
@@ -189,6 +229,15 @@ export default function ComponentSelectModal({
                 />
               </div>
               <div className="builder-modal-pills">
+                <button
+                  type="button"
+                  className={`builder-pill builder-pill-budget${fitsBudgetOnly ? ' is-active' : ''}`}
+                  onClick={() => setFitsBudgetOnly((v) => !v)}
+                  title="Only show parts that fit the budget left for this slot"
+                >
+                  Fits budget · {formatTaka(Math.max(0, remainingBudget))}
+                </button>
+                <span className="builder-pill-divider" />
                 {SORT_OPTIONS.map((opt) => (
                   <button
                     key={opt.key}
@@ -247,27 +296,40 @@ export default function ComponentSelectModal({
             </div>
 
             <div className="builder-modal-list">
-              {results.map((product) => {
+              {results.map(({ product, compat, fits }) => {
                 const Icon = meta.icon;
-                const compat = checkCompatibility(product, build);
+                const stores = product.listings?.length ?? 0;
+                const img = sanitizeImageUrl(product.image);
                 return (
-                  <div key={product.id} className="builder-product-card">
+                  <div
+                    key={product.id}
+                    className={`builder-product-card${fits ? '' : ' is-over-budget'}`}
+                  >
                     <div className="builder-product-thumb">
-                      <Icon size={24} />
+                      {img ? <img src={img} alt="" loading="lazy" /> : <Icon size={24} />}
                     </div>
                     <div className="builder-product-info">
                       <span className="builder-product-name">{product.name}</span>
                       <span className="builder-product-meta">
-                        {product.brand} · {product.keySpec}
+                        {[product.brand, product.keySpec].filter(Boolean).join(' · ')}
+                        {stores > 0 && (
+                          <>
+                            {' · '}
+                            <Store size={11} /> {stores} store{stores > 1 ? 's' : ''}
+                          </>
+                        )}
                       </span>
                       <CompatBadge result={compat} />
                     </div>
                     <div className="builder-product-action">
-                      <span className="builder-product-price">{formatTaka(product.price)}</span>
+                      <span className="builder-product-price">
+                        {formatTaka(product.price)}
+                        {!fits && <small>over budget</small>}
+                      </span>
                       <button
                         type="button"
                         className="button-primary builder-product-select"
-                        onClick={() => onSelect(product)}
+                        onClick={() => onSelect(slot, product)}
                       >
                         Select
                       </button>
@@ -276,7 +338,21 @@ export default function ComponentSelectModal({
                 );
               })}
               {results.length === 0 && (
-                <p className="builder-modal-empty">No products match your filters.</p>
+                <p className="builder-modal-empty">
+                  No products match your filters.
+                  {fitsBudgetOnly && (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        className="builder-modal-empty-action"
+                        onClick={() => setFitsBudgetOnly(false)}
+                      >
+                        Show parts over budget
+                      </button>
+                    </>
+                  )}
+                </p>
               )}
             </div>
           </motion.div>

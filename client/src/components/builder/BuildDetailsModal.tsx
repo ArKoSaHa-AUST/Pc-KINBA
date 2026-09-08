@@ -1,9 +1,10 @@
 import { AlertTriangle, ArrowRight, CheckCircle2, Circle, XCircle, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useBuilderCatalog } from '../../hooks/useBuilderCatalog';
 import { Badge } from '../ui/Badge';
 import { Modal } from '../ui/Modal';
 import { formatTaka } from './buildConfig';
-import { COMPONENT_CATEGORIES } from './builderCatalog';
+import { ADDON_CATEGORIES, COMPONENT_CATEGORIES } from './builderCatalog';
 import {
   estimatePowerDraw,
   getBuildChecks,
@@ -36,10 +37,12 @@ const CHECK_ICON: Record<BuildCheckStatus, React.ReactNode> = {
 /** Full breakdown of a library build: every part, compatibility checks and power estimate. */
 export default function BuildDetailsModal({ build, onClose }: BuildDetailsModalProps) {
   const navigate = useNavigate();
-  const selection = build ? selectionFromPartIds(build.partIds.join(',')) : {};
+  const { byId } = useBuilderCatalog();
+  const selection = build ? selectionFromPartIds(build.partIds.join(','), byId) : {};
   const checks = getBuildChecks(selection);
   const score = getCompatibilityScore(checks);
   const draw = estimatePowerDraw(selection);
+  const rows = [...COMPONENT_CATEGORIES, ...ADDON_CATEGORIES.filter((m) => selection[m.id])];
 
   return (
     <Modal
@@ -83,7 +86,7 @@ export default function BuildDetailsModal({ build, onClose }: BuildDetailsModalP
 
           <table className="w-full text-sm">
             <tbody className="divide-y divide-border">
-              {COMPONENT_CATEGORIES.map((meta) => {
+              {rows.map((meta) => {
                 const part = selection[meta.id];
                 return (
                   <tr key={meta.id}>

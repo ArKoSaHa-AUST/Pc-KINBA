@@ -5,11 +5,12 @@ interface MetricCardProps {
   icon: LucideIcon;
   title: string;
   children: ReactNode;
+  className?: string;
 }
 
-export default function MetricCard({ icon: Icon, title, children }: MetricCardProps) {
+export default function MetricCard({ icon: Icon, title, children, className }: MetricCardProps) {
   return (
-    <div className="glass-card metric-card">
+    <div className={`glass-card metric-card${className ? ` ${className}` : ''}`}>
       <div className="metric-card-header">
         <Icon size={16} />
         <span>{title}</span>
