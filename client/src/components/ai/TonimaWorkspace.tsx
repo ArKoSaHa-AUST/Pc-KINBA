@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ChatWorkspace from './ChatWorkspace';
+import type { BuildUpdatePayload } from './ChatWorkspace';
 import BuildPreviewHUD from './BuildPreviewHUD';
 import type { BuildComponentItem } from './BuildPreviewHUD';
 import './TonimaWorkspace.css';
@@ -17,6 +18,7 @@ const INITIAL_BUILD: BuildComponentItem[] = [
     priceBDT: 46500,
     retailer: 'Star Tech',
     inStock: true,
+    buySignal: 'buy',
   },
   {
     category: 'GPU',
@@ -24,6 +26,7 @@ const INITIAL_BUILD: BuildComponentItem[] = [
     priceBDT: 68500,
     retailer: 'Tech Land',
     inStock: true,
+    buySignal: 'buy',
   },
   {
     category: 'Motherboard',
@@ -31,6 +34,7 @@ const INITIAL_BUILD: BuildComponentItem[] = [
     priceBDT: 24500,
     retailer: 'Ryans Computers',
     inStock: true,
+    buySignal: 'fair',
   },
   {
     category: 'RAM',
@@ -38,6 +42,7 @@ const INITIAL_BUILD: BuildComponentItem[] = [
     priceBDT: 13500,
     retailer: 'Star Tech',
     inStock: true,
+    buySignal: 'fair',
   },
   {
     category: 'Storage',
@@ -45,6 +50,7 @@ const INITIAL_BUILD: BuildComponentItem[] = [
     priceBDT: 12800,
     retailer: 'PC House',
     inStock: true,
+    buySignal: 'fair',
   },
   {
     category: 'Cooler',
@@ -52,6 +58,7 @@ const INITIAL_BUILD: BuildComponentItem[] = [
     priceBDT: 11500,
     retailer: 'Custom Mac BD',
     inStock: true,
+    buySignal: 'fair',
   },
   {
     category: 'Power Supply',
@@ -59,6 +66,7 @@ const INITIAL_BUILD: BuildComponentItem[] = [
     priceBDT: 11200,
     retailer: 'Star Tech',
     inStock: true,
+    buySignal: 'fair',
   },
   {
     category: 'Case',
@@ -66,6 +74,7 @@ const INITIAL_BUILD: BuildComponentItem[] = [
     priceBDT: 16500,
     retailer: 'Tech Land',
     inStock: true,
+    buySignal: 'fair',
   },
 ];
 
@@ -76,97 +85,31 @@ export default function TonimaWorkspace({
   const [components, setComponents] = useState<BuildComponentItem[]>(INITIAL_BUILD);
   const [compatibilityScore, setCompatibilityScore] = useState<number>(98);
   const [estimatedWattage, setEstimatedWattage] = useState<number>(435);
-  const [psuWattage] = useState<number>(750);
+  const [psuWattage, setPsuWattage] = useState<number>(750);
   const [priceDiff, setPriceDiff] = useState<number | undefined>(undefined);
 
-  // Stage 4 Refinement Handler
-  const handleRefineBuild = (
-    action:
-      | 'downgrade_ram'
-      | 'swap_gpu_4060'
-      | 'swap_gpu_4080'
-      | 'upgrade_ram_64'
-      | 'swap_cooler_aio'
-      | 'custom',
-  ) => {
-    setComponents((prev) => {
-      const updated = [...prev];
-
-      if (action === 'downgrade_ram') {
-        const ramIdx = updated.findIndex((c) => c.category === 'RAM');
-        if (ramIdx !== -1) {
-          updated[ramIdx] = {
-            category: 'RAM',
-            name: 'Corsair Vengeance 16GB (2x8GB) DDR5 5200MHz',
-            priceBDT: 8500,
-            retailer: 'Star Tech',
-            inStock: true,
-          };
-          setPriceDiff(-5000);
-          setEstimatedWattage(425);
-        }
-      } else if (action === 'swap_gpu_4060') {
-        const gpuIdx = updated.findIndex((c) => c.category === 'GPU');
-        if (gpuIdx !== -1) {
-          updated[gpuIdx] = {
-            category: 'GPU',
-            name: 'MSI RTX 4060 Ventus 2X Black 8GB OC',
-            priceBDT: 40000,
-            retailer: 'Tech Land',
-            inStock: true,
-          };
-          setPriceDiff(-28500);
-          setEstimatedWattage(340);
-        }
-      } else if (action === 'swap_gpu_4080') {
-        const gpuIdx = updated.findIndex((c) => c.category === 'GPU');
-        if (gpuIdx !== -1) {
-          updated[gpuIdx] = {
-            category: 'GPU',
-            name: 'ZOTAC Gaming RTX 4080 Super Trinity OC 16GB',
-            priceBDT: 113500,
-            retailer: 'Star Tech',
-            inStock: true,
-          };
-          setPriceDiff(45000);
-          setEstimatedWattage(580);
-          setCompatibilityScore(99);
-        }
-      } else if (action === 'upgrade_ram_64') {
-        const ramIdx = updated.findIndex((c) => c.category === 'RAM');
-        if (ramIdx !== -1) {
-          updated[ramIdx] = {
-            category: 'RAM',
-            name: 'G.Skill Trident Z5 RGB 64GB (2x32GB) DDR5 6000MHz',
-            priceBDT: 26000,
-            retailer: 'Ryans Computers',
-            inStock: true,
-          };
-          setPriceDiff(12500);
-          setEstimatedWattage(445);
-        }
-      } else if (action === 'swap_cooler_aio') {
-        const coolerIdx = updated.findIndex((c) => c.category === 'Cooler');
-        if (coolerIdx !== -1) {
-          updated[coolerIdx] = {
-            category: 'Cooler',
-            name: 'DeepCool LT720 360mm High-Performance Liquid Cooler',
-            priceBDT: 11500,
-            retailer: 'Custom Mac BD',
-            inStock: true,
-          };
-          setPriceDiff(0);
-        }
-      }
-
-      return updated;
-    });
+  // Updates from live backend SSE stream
+  const handleBuildUpdated = (payload: BuildUpdatePayload) => {
+    if (payload.parts && payload.parts.length > 0) {
+      setComponents(payload.parts);
+    }
+    if (payload.validation) {
+      setCompatibilityScore(payload.validation.score || 100);
+      setEstimatedWattage(payload.validation.wattage || 420);
+      setPsuWattage(payload.validation.psuWattage || 750);
+    }
+    if (payload.diff && typeof payload.diff.priceDelta === 'number') {
+      setPriceDiff(payload.diff.priceDelta);
+    } else {
+      setPriceDiff(undefined);
+    }
   };
 
   const handleResetSession = () => {
     setComponents(INITIAL_BUILD);
     setCompatibilityScore(98);
     setEstimatedWattage(435);
+    setPsuWattage(750);
     setPriceDiff(undefined);
   };
 
@@ -176,7 +119,7 @@ export default function TonimaWorkspace({
         {/* Left Column: 60% Chat Workspace */}
         <ChatWorkspace
           initialPrompt={initialPrompt}
-          onRefineBuild={handleRefineBuild}
+          onBuildUpdated={handleBuildUpdated}
           onResetSession={handleResetSession}
           className="tonima-workspace-chat"
         />
