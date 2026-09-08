@@ -1,17 +1,21 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import ProtectedRoute from './auth/ProtectedRoute';
 import Layout from './components/Layout';
-import Home from './pages/Home';
-import SearchPage from './pages/SearchPage';
-import ProductDetailsPage from './pages/ProductDetailsPage';
+import AIAssistantPage from './pages/AIAssistantPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
-import VerifyPage from './pages/auth/VerifyPage';
-import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
-import ProfilePage from './pages/ProfilePage';
-import AIAssistantPage from './pages/AIAssistantPage';
+import VerifyPage from './pages/auth/VerifyPage';
+import BuildCheckoutPage from './pages/BuildCheckoutPage';
+import BuildLibraryPage from './pages/BuildLibraryPage';
 import ComparePage from './pages/ComparePage';
-import ProtectedRoute from './auth/ProtectedRoute';
+import ComponentsPage from './pages/ComponentsPage';
+import Home from './pages/Home';
+import PCBuilderPage from './pages/PCBuilderPage';
+import ProductDetailsPage from './pages/ProductDetailsPage';
+import ProfilePage from './pages/ProfilePage';
+import SearchPage from './pages/SearchPage';
 
 function App() {
   return (
@@ -19,9 +23,13 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/components" element={<ComponentsPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
           <Route path="/compare" element={<ComparePage />} />
+          <Route path="/pc-builder" element={<PCBuilderPage />} />
+          <Route path="/pc-builder/checkout" element={<BuildCheckoutPage />} />
+          <Route path="/pc-builder/library" element={<BuildLibraryPage />} />
           <Route path="/ai-assistant" element={<AIAssistantPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />

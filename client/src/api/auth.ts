@@ -15,6 +15,7 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   avatarUrl: string | null;
+  purpose?: string;
   emailVerified: boolean;
   createdAt: string;
   notificationPreferences: NotificationPreferences;
@@ -40,6 +41,7 @@ export interface RegisterPayload {
 export interface UpdateProfilePayload {
   name?: string;
   avatarUrl?: string | null;
+  purpose?: string;
   notificationPreferences?: NotificationPreferences;
 }
 

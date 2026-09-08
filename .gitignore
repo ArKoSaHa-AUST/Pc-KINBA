@@ -18,6 +18,9 @@ coverage/
 # Environment files
 .env
 .env.local
+.env.development
+.env.production
+.env.example
 .env.*.local
 *.env
 !.env.example
@@ -60,7 +63,12 @@ Desktop.ini
 
 # Database files
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3*
 
 # Docker and Local Containers Data
 docker-data/
@@ -88,3 +96,18 @@ signin1.md
 signin2.md
 signin3.md
 signin4.md
+
+
+# Python
+venv/
+.scrapers_venv/
+scrapers/venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Python build
+dist/
+build/
+*.egg-info/

@@ -34,7 +34,7 @@ export function use3DTilt({
   const scale = useSpring(isHovered ? scaleOnHover : 1, { stiffness, damping });
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
+    if (!cardRef.current || (typeof window !== 'undefined' && window.innerWidth <= 768)) return;
     const rect = cardRef.current.getBoundingClientRect();
     const width = rect.width;
     const height = rect.height;
@@ -54,6 +54,7 @@ export function use3DTilt({
   };
 
   const handleMouseEnter = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) return;
     setIsHovered(true);
   };
 

@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { UpdateProfilePayload, UserProfile, UserRole } from '../api/auth';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import type {
+  NotificationPreferences,
+  UpdateProfilePayload,
+  UserProfile,
+  UserRole,
+} from '../api/auth';
 import { createClient } from '../utils/supabase/client';
 import {
   AUTH_STORAGE_KEY,
@@ -21,7 +27,9 @@ function mapToUserProfile(
   email: string,
   role: UserRole = 'Customer',
   avatarUrl: string | null = null,
+  purpose = 'gaming',
   emailVerified = true,
+  notificationPrefs: Partial<NotificationPreferences> = {},
 ): UserProfile {
   return {
     id,
@@ -29,6 +37,7 @@ function mapToUserProfile(
     email,
     role,
     avatarUrl,
+    purpose,
     emailVerified,
     createdAt: new Date().toISOString(),
     notificationPreferences: {
@@ -36,6 +45,7 @@ function mapToUserProfile(
       emailNewsletter: false,
       emailProductUpdates: true,
       pushEnabled: false,
+      ...notificationPrefs,
     },
   };
 }
@@ -64,7 +74,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
             profile.email || email,
             (profile.role as UserRole) || 'Customer',
             profile.avatar_url || null,
+            profile.purpose || 'gaming',
             true,
+            (profile.notification_prefs as Partial<NotificationPreferences>) || {},
           );
         }
       } catch (e) {
@@ -73,7 +85,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const fallbackName =
         (metadata?.full_name as string) || (metadata?.name as string) || email.split('@')[0];
-      return mapToUserProfile(userId, fallbackName, email);
+      const fallbackPurpose = (metadata?.purpose as string) || 'gaming';
+      return mapToUserProfile(userId, fallbackName, email, 'Customer', null, fallbackPurpose);
     },
     [],
   );
@@ -122,26 +135,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const profile = await fetchProfile(
-          session.user.id,
-          session.user.email || '',
-          session.user.user_metadata,
-        );
-        setUser(profile);
-        setStatus('authenticated');
-      } else {
-        const storedUser = localStorage.getItem(DEMO_USER_KEY);
-        if (storedUser) {
-          setUser(JSON.parse(storedUser) as UserProfile);
+    } = supabase.auth.onAuthStateChange(
+      async (_event: AuthChangeEvent, session: Session | null) => {
+        if (session?.user) {
+          const profile = await fetchProfile(
+            session.user.id,
+            session.user.email || '',
+            session.user.user_metadata,
+          );
+          setUser(profile);
           setStatus('authenticated');
         } else {
-          setUser(null);
-          setStatus('unauthenticated');
+          const storedUser = localStorage.getItem(DEMO_USER_KEY);
+          if (storedUser) {
+            setUser(JSON.parse(storedUser) as UserProfile);
+            setStatus('authenticated');
+          } else {
+            setUser(null);
+            setStatus('unauthenticated');
+          }
         }
-      }
-    });
+      },
+    );
 
     return () => {
       mounted = false;
@@ -309,6 +324,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error('Not authenticated');
       }
 
+      const notificationPreferences = payload.notificationPreferences
+        ? { ...user.notificationPreferences, ...payload.notificationPreferences }
+        : user.notificationPreferences;
+
       if (user.id && !user.id.startsWith('user_')) {
         try {
           await supabase
@@ -316,6 +335,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             .update({
               full_name: payload.name !== undefined ? payload.name : user.name,
               avatar_url: payload.avatarUrl !== undefined ? payload.avatarUrl : user.avatarUrl,
+              purpose: payload.purpose !== undefined ? payload.purpose : user.purpose,
+              notification_prefs: notificationPreferences,
               updated_at: new Date().toISOString(),
             })
             .eq('id', user.id);
@@ -328,9 +349,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         ...user,
         name: payload.name !== undefined ? payload.name : user.name,
         avatarUrl: payload.avatarUrl !== undefined ? payload.avatarUrl : user.avatarUrl,
-        notificationPreferences: payload.notificationPreferences
-          ? { ...user.notificationPreferences, ...payload.notificationPreferences }
-          : user.notificationPreferences,
+        purpose: payload.purpose !== undefined ? payload.purpose : user.purpose,
+        notificationPreferences,
       };
       saveDemoSession(updated);
       return updated;

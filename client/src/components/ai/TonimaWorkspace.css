@@ -6,6 +6,7 @@
   perspective: 1200px;
   position: relative;
   overflow: visible;
+  overflow-x: clip;
   padding-top: 40px;
   padding-bottom: 120px;
 }
@@ -30,8 +31,9 @@
   padding-left: 32px;
   padding-right: 32px;
   width: 100%;
+  box-sizing: border-box;
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
   gap: 2.5rem;
   align-items: start;
 }

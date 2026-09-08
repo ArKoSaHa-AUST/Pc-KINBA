@@ -7,6 +7,7 @@
   top: 100px;
   width: 100%;
   max-width: 420px;
+  min-width: 0;
   perspective: 1200px;
   transform-style: preserve-3d;
   z-index: 20;

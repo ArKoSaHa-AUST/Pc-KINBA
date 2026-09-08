@@ -23,15 +23,6 @@ export default function Hero() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <motion.div
-            className="badge glass"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <span className="gradient-text-alt">{t('hero.badge')}</span> {t('hero.badgeSuffix')}
-          </motion.div>
-
           <h1 className="hero-title">
             {t('hero.titleLine1')} <br />
             <span className="gradient-text">{t('hero.titleHighlight')}</span> <br />

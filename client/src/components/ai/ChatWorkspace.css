@@ -6,6 +6,7 @@
   perspective: 1200px;
   transform-style: preserve-3d;
   width: 100%;
+  min-width: 0;
 }
 
 .tonima-chat-card {

@@ -18,7 +18,7 @@ export default defineConfig({
     proxy: {
       // Forward API calls to the backend during local `vite` dev.
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:3001',
         changeOrigin: true,
       },
     },

@@ -183,7 +183,7 @@ export const PerformanceRadarChart: React.FC<PerformanceRadarChartProps> = ({ sl
   }
 
   return (
-    <div className="w-full rounded-3xl bg-slate-900/70 border border-white/10 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl overflow-hidden relative">
+    <div className="w-full rounded-3xl bg-glass border border-border backdrop-blur-2xl p-6 sm:p-8 shadow-2xl overflow-hidden relative">
       {/* Background ambient lighting */}
       <div className="absolute -top-10 -right-10 w-72 h-72 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-purple/10 rounded-full blur-3xl pointer-events-none" />
@@ -195,7 +195,7 @@ export const PerformanceRadarChart: React.FC<PerformanceRadarChartProps> = ({ sl
             <Radar className="w-3.5 h-3.5" />
             <span>Interactive 3D Performance Radar</span>
           </div>
-          <h3 className="text-xl sm:text-2xl font-extrabold text-white">
+          <h3 className="text-xl sm:text-2xl font-extrabold text-text-primary">
             6-Axis Hardware Battleground Index
           </h3>
           <p className="text-xs sm:text-sm text-text-muted mt-1">
@@ -211,7 +211,7 @@ export const PerformanceRadarChart: React.FC<PerformanceRadarChartProps> = ({ sl
             return (
               <div
                 key={product.id}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-white"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-fill-subtle border border-border text-xs font-semibold text-text-primary"
               >
                 <div
                   className="w-3 h-3 rounded-full border-2"
@@ -244,9 +244,10 @@ export const PerformanceRadarChart: React.FC<PerformanceRadarChartProps> = ({ sl
                     key={ringPercent}
                     points={ringPoints}
                     fill="none"
-                    stroke="rgba(255, 255, 255, 0.08)"
+                    stroke="var(--border)"
                     strokeWidth="1.2"
                     strokeDasharray={ringPercent === 100 ? 'none' : '4 4'}
+                    opacity="0.85"
                   />
                 );
               })}
@@ -271,7 +272,7 @@ export const PerformanceRadarChart: React.FC<PerformanceRadarChartProps> = ({ sl
                       y1={centerPt.y}
                       x2={outerPt.x}
                       y2={outerPt.y}
-                      stroke={isHovered ? '#00e5ff' : 'rgba(255, 255, 255, 0.15)'}
+                      stroke={isHovered ? 'var(--accent)' : 'var(--border)'}
                       strokeWidth={isHovered ? 2 : 1}
                       className="transition-colors"
                     />
@@ -281,7 +282,7 @@ export const PerformanceRadarChart: React.FC<PerformanceRadarChartProps> = ({ sl
                       cx={outerPt.x}
                       cy={outerPt.y}
                       r={isHovered ? 5 : 3.5}
-                      fill={isHovered ? '#00e5ff' : 'rgba(255, 255, 255, 0.4)'}
+                      fill={isHovered ? 'var(--accent)' : 'var(--text-muted)'}
                       className="transition-all"
                     />
 
@@ -292,7 +293,7 @@ export const PerformanceRadarChart: React.FC<PerformanceRadarChartProps> = ({ sl
                       textAnchor="middle"
                       dominantBaseline="central"
                       className={`text-[11px] font-bold tracking-wide transition-all ${
-                        isHovered ? 'fill-accent scale-110' : 'fill-slate-300'
+                        isHovered ? 'fill-accent scale-110 font-extrabold' : 'fill-text-secondary'
                       }`}
                     >
                       {isBn ? axis.nameBn || axis.name : axis.name}
@@ -351,7 +352,7 @@ export const PerformanceRadarChart: React.FC<PerformanceRadarChartProps> = ({ sl
 
         {/* Detailed Metrics Score Breakdown & Axis Inspector (Right Panel) */}
         <div className="lg:col-span-4 flex flex-col gap-4">
-          <div className="p-5 rounded-2xl bg-slate-950/70 border border-white/10">
+          <div className="p-5 rounded-2xl bg-fill-subtle border border-border">
             <h4 className="text-xs font-bold uppercase tracking-wider text-accent mb-2 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-accent" />
               <span>{hoveredAxis ? hoveredAxis.name : 'Hover an Axis Spoke'}</span>
@@ -364,7 +365,7 @@ export const PerformanceRadarChart: React.FC<PerformanceRadarChartProps> = ({ sl
           </div>
 
           {/* Scores Table */}
-          <div className="p-5 rounded-2xl bg-slate-950/70 border border-white/10 space-y-3">
+          <div className="p-5 rounded-2xl bg-fill-subtle border border-border space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-text-primary mb-1">
               Normalized Index Table (0–100)
             </h4>
@@ -376,8 +377,8 @@ export const PerformanceRadarChart: React.FC<PerformanceRadarChartProps> = ({ sl
                   onMouseLeave={() => setHoveredAxis(null)}
                   className={`flex items-center justify-between p-2 rounded-xl text-xs transition-colors cursor-pointer ${
                     hoveredAxis?.id === axis.id
-                      ? 'bg-accent/10 border border-accent/30 text-white'
-                      : 'bg-white/[0.02] hover:bg-white/[0.05] text-text-secondary'
+                      ? 'bg-accent/15 border border-accent/40 text-text-primary font-bold'
+                      : 'bg-fill-muted/40 hover:bg-fill-muted border border-border/50 text-text-secondary'
                   }`}
                 >
                   <span className="font-semibold truncate max-w-[170px]">{axis.name}</span>
