@@ -143,6 +143,7 @@ export default function ComponentSelectModal({
       {category && meta && (
         <motion.div
           className="builder-modal-backdrop"
+          data-lenis-prevent
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
