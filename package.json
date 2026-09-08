@@ -5,6 +5,8 @@
   "type": "module",
   "description": "Root package for PCBuilder CI/CD and release automation tools",
   "scripts": {
+    "dev": "npm run dev --prefix client",
+    "server": "node server.js",
     "release": "semantic-release"
   },
   "devDependencies": {
