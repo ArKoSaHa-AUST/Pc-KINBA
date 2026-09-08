@@ -1,11 +1,10 @@
 import Lenis from 'lenis';
 import { Trash2, Wand2 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { defaultBuildName, saveBuild } from '../api/builds';
 import { useAuth } from '../auth/useAuth';
 import AIOptimizer from '../components/builder/AIOptimizer';
-import AssemblyViewport3D from '../components/builder/AssemblyViewport3D';
 import BuildSummary from '../components/builder/BuildSummary';
 import BuilderHero from '../components/builder/BuilderHero';
 import BuildLibraryTeaser from '../components/builder/BuildLibraryTeaser';
@@ -34,6 +33,9 @@ import { useBuilderCatalog } from '../hooks/useBuilderCatalog';
 import './PCBuilderPage.css';
 
 const DRAFT_KEY = 'pc-kinba.builder-draft';
+
+// three.js is ~1 MB — keep it out of the main bundle
+const AssemblyViewport3D = lazy(() => import('../components/builder/AssemblyViewport3D'));
 
 interface Draft {
   partIds: string[];
@@ -253,7 +255,9 @@ export default function PCBuilderPage() {
             Watch your rig come together — drag to orbit, explode the view, click any part to
             configure it.
           </p>
-          <AssemblyViewport3D build={build} onOpenCategory={setActiveSlot} />
+          <Suspense fallback={<div className="assembly-viewport-placeholder" />}>
+            <AssemblyViewport3D build={build} onOpenCategory={setActiveSlot} />
+          </Suspense>
         </div>
       </section>
 

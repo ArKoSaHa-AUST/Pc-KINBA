@@ -630,6 +630,27 @@
   }
 }
 
+/* ---- Section 3: 3D viewport placeholder while the three.js chunk loads ---- */
+.assembly-viewport-placeholder {
+  height: 600px;
+  margin-top: 48px;
+  border-radius: 24px;
+  border: 1px solid var(--glass-border);
+  background: #06080f;
+}
+
+@media (max-width: 1024px) {
+  .assembly-viewport-placeholder {
+    height: 420px;
+  }
+}
+
+@media (max-width: 640px) {
+  .assembly-viewport-placeholder {
+    height: 320px;
+  }
+}
+
 /* ---- Section 4: Build Summary & Analytics ---- */
 /* Bento: price + power tiles with FPS beside them, compatibility as a full-width strip below */
 .metric-grid {
