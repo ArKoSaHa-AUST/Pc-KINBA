@@ -110,7 +110,9 @@ export default function ChatWorkspace({
   className = '',
 }: ChatWorkspaceProps) {
   const { i18n } = useTranslation();
-  const [sessionId, setSessionId] = useState<string>(() => propSessionId || `session-${Date.now()}`);
+  const [sessionId, setSessionId] = useState<string>(
+    () => propSessionId || `session-${Date.now()}`,
+  );
   const [messages, setMessages] = useState<ChatMessage[]>(DEFAULT_MESSAGES);
   const [inputVal, setInputVal] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -138,161 +140,177 @@ export default function ChatWorkspace({
     scrollToBottom();
   }, [messages, isProcessing, thinkingStatus]);
 
-  const handleUserSubmit = useCallback(async (userQuery: string) => {
-    if (!userQuery.trim() || isProcessing) return;
+  const handleUserSubmit = useCallback(
+    async (userQuery: string) => {
+      if (!userQuery.trim() || isProcessing) return;
 
-    const queryText = userQuery.trim();
-    const userMsgId = `usr-${Date.now()}`;
-    const botMsgId = `bot-${Date.now()}`;
+      const queryText = userQuery.trim();
+      const userMsgId = `usr-${Date.now()}`;
+      const botMsgId = `bot-${Date.now()}`;
 
-    const userMsg: ChatMessage = {
-      id: userMsgId,
-      sender: 'user',
-      text: queryText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    // Insert user message and prepare empty streaming bot message
-    setMessages((prev) => [
-      ...prev,
-      userMsg,
-      {
-        id: botMsgId,
-        sender: 'bot',
-        text: '',
+      const userMsg: ChatMessage = {
+        id: userMsgId,
+        sender: 'user',
+        text: queryText,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      },
-    ]);
+      };
 
-    setInputVal('');
-    setIsProcessing(true);
-    setThinkingStatus('Tonima is analyzing hardware specifications...');
-
-    // Determine endpoint: use /api/ai/refine if we already have an active build, otherwise /api/ai/build
-    const isRefine = hasActiveBuild && !/build\s+(me|a)\s+new|start\s+over|reset/i.test(queryText);
-    const endpoint = isRefine ? '/api/ai/refine' : '/api/ai/build';
-    const bodyPayload = isRefine
-      ? { sessionId, message: queryText, language: i18n.language === 'bn' ? 'bn' : 'en' }
-      : { message: queryText, sessionId, language: i18n.language === 'bn' ? 'bn' : 'en' };
-
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // Insert user message and prepare empty streaming bot message
+      setMessages((prev) => [
+        ...prev,
+        userMsg,
+        {
+          id: botMsgId,
+          sender: 'bot',
+          text: '',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
-        body: JSON.stringify(bodyPayload),
-      });
+      ]);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
-      }
+      setInputVal('');
+      setIsProcessing(true);
+      setThinkingStatus('Tonima is analyzing hardware specifications...');
 
-      if (!response.body) {
-        throw new Error('Readable stream not supported');
-      }
+      // Determine endpoint: use /api/ai/refine if we already have an active build, otherwise /api/ai/build
+      const isRefine =
+        hasActiveBuild && !/build\s+(me|a)\s+new|start\s+over|reset/i.test(queryText);
+      const endpoint = isRefine ? '/api/ai/refine' : '/api/ai/build';
+      const bodyPayload = isRefine
+        ? { sessionId, message: queryText, language: i18n.language === 'bn' ? 'bn' : 'en' }
+        : { message: queryText, sessionId, language: i18n.language === 'bn' ? 'bn' : 'en' };
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let accumulatedText = '';
-      let currentAlternatives: Array<{ category: string; id: string; delta_bdt: number; label: string }> = [];
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(bodyPayload),
+        });
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        if (!response.body) {
+          throw new Error('Readable stream not supported');
+        }
 
-        let currentEvent = '';
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let accumulatedText = '';
+        let currentAlternatives: Array<{
+          category: string;
+          id: string;
+          delta_bdt: number;
+          label: string;
+        }> = [];
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed.startsWith(':')) continue;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-          if (trimmed.startsWith('event: ')) {
-            currentEvent = trimmed.slice(7).trim();
-            continue;
-          }
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
-          if (trimmed.startsWith('data: ')) {
-            const rawData = trimmed.slice(6).trim();
-            try {
-              const data = JSON.parse(rawData);
+          let currentEvent = '';
 
-              if (currentEvent === 'thinking') {
-                setThinkingStatus(data.message || 'Processing hardware constraints...');
-              } else if (currentEvent === 'build') {
-                setHasActiveBuild(true);
-                if (data.sessionId) setSessionId(data.sessionId);
-                if (data.alternatives) currentAlternatives = data.alternatives;
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith(':')) continue;
 
-                // Propagate build payload to update HUD immediately
-                if (onBuildUpdated && data.parts) {
-                  onBuildUpdated({
-                    parts: data.parts,
-                    totalBDT: data.totalBDT || 0,
-                    validation: data.validation || { score: 100, wattage: 420, psuWattage: 750, ok: true, violations: [] },
-                    alternatives: data.alternatives,
-                    diff: data.diff,
-                  });
+            if (trimmed.startsWith('event: ')) {
+              currentEvent = trimmed.slice(7).trim();
+              continue;
+            }
+
+            if (trimmed.startsWith('data: ')) {
+              const rawData = trimmed.slice(6).trim();
+              try {
+                const data = JSON.parse(rawData);
+
+                if (currentEvent === 'thinking') {
+                  setThinkingStatus(data.message || 'Processing hardware constraints...');
+                } else if (currentEvent === 'build') {
+                  setHasActiveBuild(true);
+                  if (data.sessionId) setSessionId(data.sessionId);
+                  if (data.alternatives) currentAlternatives = data.alternatives;
+
+                  // Propagate build payload to update HUD immediately
+                  if (onBuildUpdated && data.parts) {
+                    onBuildUpdated({
+                      parts: data.parts,
+                      totalBDT: data.totalBDT || 0,
+                      validation: data.validation || {
+                        score: 100,
+                        wattage: 420,
+                        psuWattage: 750,
+                        ok: true,
+                        violations: [],
+                      },
+                      alternatives: data.alternatives,
+                      diff: data.diff,
+                    });
+                  }
+                } else if (currentEvent === 'token') {
+                  accumulatedText += data.token || '';
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === botMsgId ? { ...msg, text: accumulatedText } : msg,
+                    ),
+                  );
+                } else if (currentEvent === 'done') {
+                  if (data.sessionId) setSessionId(data.sessionId);
+                } else if (currentEvent === 'error') {
+                  throw new Error(data.message || 'Error from AI server');
                 }
-              } else if (currentEvent === 'token') {
-                accumulatedText += data.token || '';
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === botMsgId ? { ...msg, text: accumulatedText } : msg
-                  )
-                );
-              } else if (currentEvent === 'done') {
-                if (data.sessionId) setSessionId(data.sessionId);
-              } else if (currentEvent === 'error') {
-                throw new Error(data.message || 'Error from AI server');
+              } catch (jsonErr) {
+                console.warn('[SSE Parse Warning]:', jsonErr);
               }
-            } catch (jsonErr) {
-              console.warn('[SSE Parse Warning]:', jsonErr);
             }
           }
         }
+
+        // Finalize bot message with dynamic chips from alternatives
+        const dynamicChips = currentAlternatives.map((alt) => ({
+          label: alt.label,
+          actionQuery: alt.label.replace(/^[^\w]+/, '').trim(),
+        }));
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === botMsgId
+              ? {
+                  ...msg,
+                  text: accumulatedText || 'Here is your configured PC architecture blueprint.',
+                  highlightChips: dynamicChips.length > 0 ? dynamicChips : undefined,
+                }
+              : msg,
+          ),
+        );
+      } catch (err: unknown) {
+        console.error('[Tonima Chat Error]:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Network error';
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === botMsgId
+              ? {
+                  ...msg,
+                  text: `⚠️ **Connection Note**: Could not reach Tonima AI service (${errorMessage}). Please try again or refine your query.`,
+                  isError: true,
+                }
+              : msg,
+          ),
+        );
+      } finally {
+        setIsProcessing(false);
+        setThinkingStatus('');
       }
-
-      // Finalize bot message with dynamic chips from alternatives
-      const dynamicChips = currentAlternatives.map((alt) => ({
-        label: alt.label,
-        actionQuery: alt.label.replace(/^[^\w]+/, '').trim(),
-      }));
-
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === botMsgId
-            ? {
-                ...msg,
-                text: accumulatedText || 'Here is your configured PC architecture blueprint.',
-                highlightChips: dynamicChips.length > 0 ? dynamicChips : undefined,
-              }
-            : msg
-        )
-      );
-    } catch (err: any) {
-      console.error('[Tonima Chat Error]:', err);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === botMsgId
-            ? {
-                ...msg,
-                text: `⚠️ **Connection Note**: Could not reach Tonima AI service (${err.message || 'Network error'}). Please try again or refine your query.`,
-                isError: true,
-              }
-            : msg
-        )
-      );
-    } finally {
-      setIsProcessing(false);
-      setThinkingStatus('');
-    }
-  }, [hasActiveBuild, i18n.language, isProcessing, onBuildUpdated, sessionId]);
+    },
+    [hasActiveBuild, i18n.language, isProcessing, onBuildUpdated, sessionId],
+  );
 
   // Handle incoming initial prompt from Hero
   useEffect(() => {
@@ -436,7 +454,8 @@ export default function ChatWorkspace({
             >
               <Sparkles className="w-4 h-4 animate-spin text-accent" />
               <span className="text-xs font-medium">
-                {thinkingStatus || 'Tonima is calculating hardware matrices & lowest store prices...'}
+                {thinkingStatus ||
+                  'Tonima is calculating hardware matrices & lowest store prices...'}
               </span>
               <div className="flex gap-1 ml-1">
                 <span

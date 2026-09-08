@@ -195,11 +195,16 @@ export default function BuildPreviewHUD({
     setShowQuotationModal(true);
   };
 
-  const gpuPart = components.find((c) => c.category === 'GPU' || c.category === 'Graphics Card')?.name || 'MSI RTX 4070 Ti Super';
-  const casePart = components.find((c) => c.category === 'Case' || c.category === 'Casings')?.name || 'Lian Li O11 Dynamic EVO';
+  const gpuPart =
+    components.find((c) => c.category === 'GPU' || c.category === 'Graphics Card')?.name ||
+    'MSI RTX 4070 Ti Super';
+  const casePart =
+    components.find((c) => c.category === 'Case' || c.category === 'Casings')?.name ||
+    'Lian Li O11 Dynamic EVO';
 
   // Dynamic Thermals & Bottleneck Estimation
-  const cpuPart = components.find((c) => c.category === 'CPU' || c.category === 'Processor')?.name || 'Processor';
+  const cpuPart =
+    components.find((c) => c.category === 'CPU' || c.category === 'Processor')?.name || 'Processor';
   const isHighEnd = /i[79]|ryzen\s*[79]|4080|4090|5080|5090/i.test(gpuPart + ' ' + cpuPart);
   const cpuTemp = isHighEnd ? '~68°C' : '~58°C';
   const gpuTemp = isHighEnd ? '~65°C' : '~59°C';
@@ -307,7 +312,10 @@ export default function BuildPreviewHUD({
                           </span>
                         )}
                       </div>
-                      <span className="text-xs font-medium text-text-primary truncate mt-0.5" title={part.name}>
+                      <span
+                        className="text-xs font-medium text-text-primary truncate mt-0.5"
+                        title={part.name}
+                      >
                         {part.name}
                       </span>
                       <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-text-muted">
@@ -348,7 +356,8 @@ export default function BuildPreviewHUD({
                     <div className="bg-green h-full w-[8%]" />
                   </div>
                   <p className="text-[11px] text-text-muted mt-2">
-                    CPU and GPU pairing is exceptionally balanced for heavy multithreading and gaming workloads.
+                    CPU and GPU pairing is exceptionally balanced for heavy multithreading and
+                    gaming workloads.
                   </p>
                 </div>
 
@@ -448,7 +457,8 @@ export default function BuildPreviewHUD({
                 Custom PC Hardware Quotation
               </h4>
               <p className="text-xs text-text-muted mb-4">
-                Verified on {new Date().toLocaleDateString('en-GB')} • Lowest Market Pricing across BD Stores (৳ BDT)
+                Verified on {new Date().toLocaleDateString('en-GB')} • Lowest Market Pricing across
+                BD Stores (৳ BDT)
               </p>
 
               <div className="max-h-60 overflow-y-auto space-y-1.5 pr-2 mb-4 text-xs">
