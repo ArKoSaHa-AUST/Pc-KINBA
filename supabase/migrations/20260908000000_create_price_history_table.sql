@@ -8,7 +8,7 @@
 
 create table if not exists public.price_history (
   id bigint generated always as identity primary key,
-  listing_id uuid not null references public.listings (id) on delete cascade,
+  listing_id text not null references public.listings (id) on delete cascade,
   product_id uuid references public.products (id) on delete set null,
   retailer text not null,
   price integer not null check (price > 0),
@@ -32,6 +32,8 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  prod_uuid uuid;
 begin
   if new.price is null or new.price <= 0 then
     return new;
@@ -41,8 +43,18 @@ begin
     return new;
   end if;
 
+  begin
+    if new.product_id is not null and new.product_id <> '' then
+      prod_uuid := new.product_id::uuid;
+    else
+      prod_uuid := null;
+    end if;
+  exception when others then
+    prod_uuid := null;
+  end;
+
   insert into public.price_history (listing_id, product_id, retailer, price, scraped_at)
-  values (new.id, new.product_id, new.retailer, new.price, coalesce(new.last_scraped_at, now()));
+  values (new.id, prod_uuid, new.retailer, new.price, coalesce(new.last_scraped_at, now()));
 
   return new;
 end;
@@ -54,8 +66,8 @@ create trigger trg_listings_record_price
   for each row execute function public.record_listing_price();
 
 -- Seed history with the current price of every existing listing.
-insert into public.price_history (listing_id, product_id, retailer, price, scraped_at)
-select id, product_id, retailer, price, last_scraped_at
+insert into public.price_history (listing_id, retailer, price, scraped_at)
+select id, retailer, price, coalesce(last_scraped_at, now())
 from public.listings
 where price > 0
   and not exists (select 1 from public.price_history ph where ph.listing_id = listings.id);

@@ -60,8 +60,10 @@ def get_or_create_product_supabase(title: str, brand: str) -> Optional[str]:
     base_model = extract_base_model(title, brand)
     try:
         res = supabase_client.table("products").select("id").ilike("name", f"%{base_model}%").limit(1).execute()
-        if res.data and len(res.data) > 0:
-            return res.data[0]["id"]
+        if isinstance(res.data, list) and len(res.data) > 0:
+            first = res.data[0]
+            if isinstance(first, dict):
+                return str(first.get("id") or "")
     except Exception as e:
         print(f"[Supabase Product Lookup Warning]: {e}")
     return None

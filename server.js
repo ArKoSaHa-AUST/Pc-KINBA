@@ -89,53 +89,120 @@ function getQueryVariations(rawQuery) {
 }
 
 /**
- * Detects user search intent to prioritize true components and reject accessories.
+ * Detects user search intent to prioritize true components, extract exact model codes,
+ * and prevent cross-category bleed-through (e.g. laptops/prebuilts showing up for standalone GPU searches).
  */
 function detectSearchIntent(query) {
-  const q = (query || "").toLowerCase();
+  const q = (query || "").toLowerCase().trim();
   
-  if (q.includes("rtx") || q.includes("gtx") || q.includes("rx ") || q.includes("graphics card") || q.includes("gpu") || q.includes("radeon") || q.includes("geforce")) {
-    return { category: "Graphics Card", type: "gpu", excludes: ["laptop", "notebook", "desktop pc", "gaming pc", "combo offer"] };
+  // 1. Check if user explicitly requested a laptop or prebuilt system
+  const isLaptopQuery = q.includes("laptop") || q.includes("notebook") || q.includes("macbook") || q.includes("zenbook") || q.includes("ideapad");
+  const isPcQuery = q.includes("desktop pc") || q.includes("gaming pc") || q.includes("prebuilt") || q.includes("budget pc") || q.includes("pc build") || q.includes("all-in-one") || q.includes("aio pc");
+
+  if (isLaptopQuery) {
+    return { category: "Laptop", type: "laptop", modelCode: null, isExplicitSystem: true, excludes: [] };
   }
-  if (q.includes("ryzen") || q.includes("core i") || q.includes("processor") || q.includes("cpu") || q.includes("threadripper")) {
-    return { category: "Processor", type: "cpu", excludes: ["laptop", "notebook", "desktop pc", "gaming pc", "budget pc", "pc build", "combo offer", "motherboard", "cooler"] };
+  if (isPcQuery) {
+    return { category: "Desktop PC", type: "pc", modelCode: null, isExplicitSystem: true, excludes: [] };
   }
-  if (q.includes("motherboard") || q.includes("mainboard") || q.includes("b650") || q.includes("b760") || q.includes("z790") || q.includes("x670") || q.includes("b550") || q.includes("a620")) {
-    return { category: "Motherboard", type: "motherboard", excludes: ["laptop", "desktop pc", "gaming pc", "combo offer"] };
+
+  // 2. Extract GPU Model Code (e.g. 4060, 4060 Ti, 4070, 4080, 4090, 5060, 3060, 7600, 7800, 6600)
+  const gpuModelMatch = q.match(/\b(rtx\s*)?(\d{4}(?:\s*ti|\s*super)?)\b/i) || q.match(/\b(rx\s*)(\d{4}(?:\s*xt)?)\b/i) || q.match(/\b(gtx\s*)(\d{4}(?:\s*ti)?)\b/i);
+  let gpuModelCode = null;
+  if (gpuModelMatch) {
+    gpuModelCode = (gpuModelMatch[2] || gpuModelMatch[0]).replace(/\s+/g, " ").trim();
   }
+
+  // 3. GPU Intent
+  if (q.includes("rtx") || q.includes("gtx") || q.includes("rx ") || q.includes("graphics card") || q.includes("gpu") || q.includes("radeon") || q.includes("geforce") || gpuModelMatch) {
+    return {
+      category: "Graphics Card",
+      type: "gpu",
+      modelCode: gpuModelCode,
+      isExplicitSystem: false,
+      excludes: ["laptop", "notebook", "desktop pc", "gaming pc", "combo offer", "budget pc", "casing", "chassis", "motherboard", "processor"]
+    };
+  }
+
+  // 4. CPU Intent (e.g. Ryzen 7 7700, Core i5 13400, 7800X3D, 14700K)
+  const cpuModelMatch = q.match(/\b(\d{4,5}[xX3dDkKfF]*)\b/i) || q.match(/\b(i[3579]-?\d{4,5}[kKfF]*)\b/i) || q.match(/\b(ryzen\s*[3579]\s*\d{4}[xX3dD]*)\b/i);
+  let cpuModelCode = cpuModelMatch ? cpuModelMatch[0].trim() : null;
+
+  if (q.includes("ryzen") || q.includes("core i") || q.includes("processor") || q.includes("cpu") || q.includes("threadripper") || cpuModelMatch) {
+    return {
+      category: "Processor",
+      type: "cpu",
+      modelCode: cpuModelCode,
+      isExplicitSystem: false,
+      excludes: ["laptop", "notebook", "desktop pc", "gaming pc", "budget pc", "pc build", "combo offer", "motherboard", "cooler", "casing"]
+    };
+  }
+
+  // 5. Motherboard Intent
+  if (q.includes("motherboard") || q.includes("mainboard") || q.includes("b650") || q.includes("b760") || q.includes("z790") || q.includes("x670") || q.includes("b550") || q.includes("a620") || q.includes("z890") || q.includes("x870")) {
+    const mbMatch = q.match(/\b([abxzABXZ]\d{3}[mMeE]?)\b/);
+    return {
+      category: "Motherboard",
+      type: "motherboard",
+      modelCode: mbMatch ? mbMatch[0].trim() : null,
+      isExplicitSystem: false,
+      excludes: ["laptop", "desktop pc", "gaming pc", "combo offer"]
+    };
+  }
+
+  // 6. UPS & Power
   if (q.includes("ups") || q.includes("ips") || q.includes("voltage") || q.includes("offline ups") || q.includes("online ups")) {
-    return { category: "UPS & Power", type: "ups", excludes: ["mouse", "keyboard", "headphone"] };
+    return { category: "UPS & Power", type: "ups", modelCode: null, isExplicitSystem: false, excludes: ["mouse", "keyboard", "headphone"] };
   }
+
+  // 7. Pendrive / Flash Storage
   if (q.includes("pendrive") || q.includes("pen drive") || q.includes("flash drive") || q.includes("thumb drive") || q.includes("usb drive")) {
-    return { category: "Pendrive / Storage", type: "pendrive", excludes: ["mouse", "keyboard", "cable", "laptop"] };
+    return { category: "Pendrive / Storage", type: "pendrive", modelCode: null, isExplicitSystem: false, excludes: ["mouse", "keyboard", "cable", "laptop"] };
   }
-  if (q.includes("laptop") || q.includes("notebook") || q.includes("macbook") || q.includes("zenbook") || q.includes("ideapad")) {
-    return { category: "Laptop", type: "laptop", excludes: [] };
-  }
+
+  // 8. Monitor Intent
   if (q.includes("monitor") || q.includes("display")) {
-    return { category: "Monitor", type: "monitor", excludes: ["laptop", "notebook"] };
+    return { category: "Monitor", type: "monitor", modelCode: null, isExplicitSystem: false, excludes: ["laptop", "notebook"] };
   }
-  if (q.includes("ssd") || q.includes("nvme") || q.includes("m.2")) {
-    return { category: "SSD Storage", type: "ssd", excludes: ["laptop"] };
+
+  // 9. SSD Storage Intent
+  if (q.includes("ssd") || q.includes("nvme") || q.includes("m.2") || q.includes("990 pro") || q.includes("980 pro") || q.includes("sn850x") || q.includes("sn770")) {
+    const ssdMatch = q.match(/\b(990\s*pro|980\s*pro|sn850x|sn770|p3\s*plus|kc3000|nv2)\b/i);
+    return {
+      category: "SSD Storage",
+      type: "ssd",
+      modelCode: ssdMatch ? ssdMatch[0].trim() : null,
+      isExplicitSystem: false,
+      excludes: ["laptop", "desktop pc"]
+    };
   }
+
+  // 10. RAM Memory Intent
   if (q.includes("ram") || q.includes("ddr4") || q.includes("ddr5") || q.includes("desktop memory")) {
-    return { category: "RAM Memory", type: "ram", excludes: ["desktop pc", "gaming pc", "motherboard"] };
+    return { category: "RAM Memory", type: "ram", modelCode: null, isExplicitSystem: false, excludes: ["desktop pc", "gaming pc", "motherboard"] };
   }
-  if (q.includes("power supply") || q.includes("psu")) {
-    return { category: "Power Supply", type: "psu", excludes: ["laptop"] };
+
+  // 11. Power Supply Intent
+  if (q.includes("power supply") || q.includes("psu") || q.includes("80 plus") || q.includes("80+")) {
+    return { category: "Power Supply", type: "psu", modelCode: null, isExplicitSystem: false, excludes: ["laptop", "desktop pc"] };
   }
-  if (q.includes("cooler") || q.includes("liquid cooler") || q.includes("fan")) {
-    return { category: "Cooler", type: "cooler", excludes: ["laptop"] };
+
+  // 12. Cooler Intent
+  if (q.includes("cooler") || q.includes("liquid cooler") || q.includes("cpu cooler") || q.includes("aio cooler")) {
+    return { category: "Cooler", type: "cooler", modelCode: null, isExplicitSystem: false, excludes: ["laptop", "desktop pc"] };
   }
+
+  // 13. Casing Intent
   if (q.includes("casing") || q.includes("chassis")) {
-    return { category: "Casing", type: "casing", excludes: ["laptop"] };
+    return { category: "Casing", type: "casing", modelCode: null, isExplicitSystem: false, excludes: ["laptop", "desktop pc"] };
   }
   
-  return { category: "All", type: "general", excludes: [] };
+  return { category: "All", type: "general", modelCode: null, isExplicitSystem: false, excludes: [] };
 }
 
 /**
- * Searches listings directly from Supabase with smart ranking, token matching, and category filtering.
+ * Searches listings directly from Supabase with precision model gating, category enforcement,
+ * and smart multi-tier ranking.
  */
 async function searchSupabaseListings(query, requestedCategory = null) {
   if (!query) return [];
@@ -144,94 +211,169 @@ async function searchSupabaseListings(query, requestedCategory = null) {
 
   const safeCleanQ = cleanQ.replace(/[^a-zA-Z0-9\s]/g, " ").trim();
   const safeNormQ = normQ.replace(/[^a-zA-Z0-9\s]/g, " ").trim();
+  const qLower = query.toLowerCase().trim();
 
   try {
     let baseQuery = supabase
       .from("listings")
-      .select("id, title, brand, price, price_str, retailer, product_url, image_url, last_scraped_at, product_id")
-      .gt("price", 0);
+      .select("id, title, brand, price, price_str, retailer, product_url, image_url, last_scraped_at, product_id");
 
-    const orConditions = [
-      `title.ilike.%${safeCleanQ}%`,
-      `brand.ilike.%${safeCleanQ}%`
-    ];
+    // Build targeted query conditions based on intent and model codes
+    const orConditions = [];
+
+    // 1. Full clean query match
+    if (safeCleanQ) {
+      orConditions.push(`title.ilike.%${safeCleanQ}%`);
+    }
     if (safeNormQ && safeNormQ !== safeCleanQ) {
       orConditions.push(`title.ilike.%${safeNormQ}%`);
     }
-    for (const t of tokens.slice(0, 4)) {
-      if (t.length >= 2) {
+
+    // 2. Exact Model Code match (e.g. "4060", "7600", "b650", "990 pro")
+    if (intent.modelCode) {
+      const cleanModel = intent.modelCode.replace(/[^a-zA-Z0-9\s]/g, "").trim();
+      if (cleanModel) {
+        orConditions.push(`title.ilike.%${cleanModel}%`);
+      }
+    }
+
+    // 3. Significant tokens (length >= 3)
+    for (const t of tokens.slice(0, 3)) {
+      if (t.length >= 3 && !["rtx", "gtx", "amd", "intel", "asus", "msi"].includes(t)) {
         orConditions.push(`title.ilike.%${t}%`);
       }
     }
 
-    baseQuery = baseQuery.or(orConditions.join(","));
+    // If no specific conditions, fallback to general tokens
+    if (orConditions.length === 0) {
+      for (const t of tokens.slice(0, 3)) {
+        if (t.length >= 2) {
+          orConditions.push(`title.ilike.%${t}%`);
+        }
+      }
+    }
 
-    const { data, error } = await baseQuery.order("price", { ascending: true }).limit(100);
+    if (orConditions.length > 0) {
+      baseQuery = baseQuery.or(orConditions.join(","));
+    }
+
+    // Fetch up to 250 candidate records from Supabase
+    const { data, error } = await baseQuery.limit(250);
 
     if (error || !data || data.length === 0) {
       return [];
     }
 
-    // Apply token matching & category exclusion filtering
+    // Precision Filtering
     const filtered = data.filter(item => {
-      const titleLower = (item.title || "").toLowerCase();
+      const title = item.title || "";
+      const titleLower = title.toLowerCase();
 
-      // Negative exclusions
+      // 1. Strict Negative Category Exclusions (e.g. exclude laptops/prebuilt PCs for GPU searches)
       if (intent.excludes && intent.excludes.length > 0) {
         if (intent.excludes.some(exc => titleLower.includes(exc.toLowerCase()))) {
           return false;
         }
       }
 
-      // Category filters
-      if (requestedCategory && requestedCategory !== "All") {
-        if (requestedCategory === "Graphics Card") {
-          if (titleLower.includes("laptop") || titleLower.includes("desktop pc") || titleLower.includes("combo")) return false;
-        } else if (requestedCategory === "Processor") {
-          if (titleLower.includes("laptop") || titleLower.includes("desktop pc") || titleLower.includes("motherboard") || titleLower.includes("cooler")) return false;
-        } else if (requestedCategory === "Motherboard") {
-          if (titleLower.includes("laptop") || titleLower.includes("desktop pc")) return false;
-        } else if (requestedCategory === "Laptop") {
-          if (!titleLower.includes("laptop") && !titleLower.includes("notebook") && !titleLower.includes("macbook")) return false;
-        } else if (requestedCategory === "RAM Memory") {
-          if (!titleLower.includes("ram") && !titleLower.includes("ddr")) return false;
-        } else if (requestedCategory === "SSD Storage") {
-          if (!titleLower.includes("ssd") && !titleLower.includes("nvme") && !titleLower.includes("m.2")) return false;
+      // 2. Strict Model Code Precision:
+      // If user searched for a specific model (e.g. "4060"), reject completely different models (e.g. "3060", "4070", "4080", "4090", "3050")
+      if (intent.modelCode) {
+        const modelClean = intent.modelCode.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const titleNormalized = titleLower.replace(/[^a-z0-9]/g, "");
+        
+        // Ensure the title contains the model number
+        if (!titleNormalized.includes(modelClean)) {
+          return false;
         }
+
+        // Specifically for GPU series: prevent "4070" matching when "4060" requested
+        if (intent.type === "gpu") {
+          const requestedNumMatch = intent.modelCode.match(/\d{4}/);
+          if (requestedNumMatch) {
+            const reqNum = requestedNumMatch[0];
+            const titleGpuMatches = titleLower.match(/\b(rtx|gtx|rx)?\s*(\d{4})\b/i);
+            if (titleGpuMatches && titleGpuMatches[2] && titleGpuMatches[2] !== reqNum) {
+              return false;
+            }
+          }
+        }
+      }
+
+      // 3. Category Validation via deriveCategory
+      const derived = deriveCategory(title);
+      if (intent.category && intent.category !== "All") {
+        if (intent.category === "Graphics Card" && derived !== "Graphics Card") {
+          return false;
+        }
+        if (intent.category === "Processor" && derived !== "Processor") {
+          return false;
+        }
+        if (intent.category === "Motherboard" && derived !== "Motherboard") {
+          return false;
+        }
+        if (intent.category === "Laptop" && derived !== "Laptop") {
+          return false;
+        }
+      }
+
+      // 4. Requested Category Filter Override (from UI category pills)
+      if (requestedCategory && requestedCategory !== "All") {
+        if (requestedCategory === "Graphics Card" && derived !== "Graphics Card") return false;
+        if (requestedCategory === "Processor" && derived !== "Processor") return false;
+        if (requestedCategory === "Motherboard" && derived !== "Motherboard") return false;
+        if (requestedCategory === "Laptop" && derived !== "Laptop") return false;
+        if (requestedCategory === "RAM Memory" && derived !== "RAM Memory") return false;
+        if (requestedCategory === "SSD Storage" && derived !== "SSD Storage") return false;
       }
 
       return true;
     });
 
-    // Score & rank candidates
+    // Score & Rank Candidates
     const scored = filtered.map(r => {
       const titleLower = (r.title || "").toLowerCase();
-      let matchRank = 3;
-      if (titleLower === safeCleanQ.toLowerCase()) matchRank = 0;
-      else if (titleLower.startsWith(safeCleanQ.toLowerCase())) matchRank = 1;
-      else if (titleLower.includes(safeCleanQ.toLowerCase())) matchRank = 2;
+      let matchRank = 5;
 
-      let categoryPriority = 2;
-      if (intent.type === "gpu" && (titleLower.includes("graphics") || titleLower.includes("gddr") || titleLower.includes("edition"))) categoryPriority = 0;
-      if (intent.type === "cpu" && (titleLower.includes("processor") || titleLower.includes("cpu") || titleLower.includes("am5") || titleLower.includes("am4"))) categoryPriority = 0;
-      if (intent.type === "motherboard" && (titleLower.includes("motherboard") || titleLower.includes("mainboard"))) categoryPriority = 0;
+      const isExactSearch = titleLower.includes(safeCleanQ.toLowerCase());
+      const isTiVariant = qLower.includes("ti") ? titleLower.includes("ti") : !titleLower.includes("ti");
+
+      if (titleLower === safeCleanQ.toLowerCase()) {
+        matchRank = 0; // Exact full title
+      } else if (isExactSearch && isTiVariant) {
+        matchRank = 1; // Exact match on core model and Ti specification
+      } else if (isExactSearch) {
+        matchRank = 2; // Exact match on core model (e.g. RTX 4060 Ti when 4060 searched)
+      } else if (intent.modelCode && titleLower.includes(intent.modelCode.toLowerCase())) {
+        matchRank = 3; // Model code match
+      } else {
+        matchRank = 4;
+      }
+
+      // Prioritize in-stock / valid price items (> 0) over "Call for Price" (0)
+      const stockPriority = (r.price && r.price > 0) ? 0 : 1;
 
       return {
         ...r,
         base_product_name: r.brand || "Hardware",
         category: deriveCategory(r.title),
         matchRank,
-        categoryPriority
+        stockPriority
       };
     });
 
+    // Multi-tier sorting:
+    // 1. Match rank (Exact > Variant > Model > General)
+    // 2. Stock priority (in-stock price > 0 first)
+    // 3. Price ascending
     scored.sort((a, b) => {
       if (a.matchRank !== b.matchRank) return a.matchRank - b.matchRank;
-      if (a.categoryPriority !== b.categoryPriority) return a.categoryPriority - b.categoryPriority;
-      return a.price - b.price;
+      if (a.stockPriority !== b.stockPriority) return a.stockPriority - b.stockPriority;
+      if (a.price > 0 && b.price > 0) return a.price - b.price;
+      return 0;
     });
 
-    console.log(`[Supabase Search] Found ${scored.length} listings for "${sanitizeLog(query)}" (Intent: ${intent.category})`);
+    console.log(`[Supabase Precision Search] Found ${scored.length} verified listings for "${sanitizeLog(query)}" (Intent: ${intent.category}, Model: ${intent.modelCode || 'None'})`);
     return scored;
   } catch (err) {
     console.warn("[Supabase Search Warning]:", sanitizeLog(err.message));
@@ -272,60 +414,145 @@ const authActionLimiter = rateLimit({
 // Apply default API limiter to all API endpoints
 app.use("/api/", apiLimiter);
 
-// Feature 1: Search Autosuggest Endpoint (Powered by Supabase DB & Groq AI Key-Rotation)
+// Feature 1: Multi-Retailer Search Autosuggest Endpoint (StarTech, Ryans, Techland, Skyland, etc.)
 app.get("/api/search/suggest", apiLimiter, async (req, res) => {
   const query = (req.query.q || "").toString().trim();
   if (!query || query.length < 1) {
-    return res.json({ suggestions: [] });
+    return res.json({ suggestions: [], structured_suggestions: [], retailers_found: [] });
   }
 
   const { cleanQ } = getQueryVariations(query);
-  const set = new Set();
+  const intent = detectSearchIntent(query);
+  const uniqueTitles = new Set();
+  const structuredSuggestions = [];
+  const retailersFoundSet = new Set();
 
-  // 1. Fetch DB product & listing titles from Supabase
   try {
-    const { data: listings } = await supabase
+    // 1. Fetch relevant listings from Supabase with retailer attribution
+    let listingQuery = supabase
       .from("listings")
-      .select("title")
+      .select("id, title, brand, price, price_str, retailer, image_url, product_url")
       .ilike("title", `%${cleanQ}%`)
-      .limit(6);
+      .limit(30);
 
-    if (listings) {
-      listings.forEach(r => {
-        if (set.size < 6 && r.title) set.add(r.title);
-      });
+    const { data: listings } = await listingQuery;
+
+    if (listings && listings.length > 0) {
+      // Group & pick best items across diverse retailers (StarTech, Ryans, Techland, Skyland, etc.)
+      const retailerMap = new Map();
+
+      for (const item of listings) {
+        const titleLower = (item.title || "").toLowerCase();
+
+        // Enforce basic intent exclusions
+        if (intent.excludes && intent.excludes.length > 0) {
+          if (intent.excludes.some(exc => titleLower.includes(exc.toLowerCase()))) {
+            continue;
+          }
+        }
+
+        const retailer = item.retailer || "BD Retailer";
+        retailersFoundSet.add(retailer);
+
+        if (!retailerMap.has(retailer)) {
+          retailerMap.set(retailer, []);
+        }
+        retailerMap.get(retailer).push(item);
+      }
+
+      // Round-robin selection to ensure diversity across StarTech, Ryans, Techland, etc.
+      const retailerKeys = Array.from(retailerMap.keys());
+      let added = 0;
+      let round = 0;
+
+      while (added < 10 && round < 5) {
+        let anyAddedInRound = false;
+        for (const ret of retailerKeys) {
+          const items = retailerMap.get(ret);
+          if (items && items[round]) {
+            const item = items[round];
+            if (!uniqueTitles.has(item.title)) {
+              uniqueTitles.add(item.title);
+              structuredSuggestions.push({
+                id: item.id,
+                title: item.title,
+                retailer: item.retailer,
+                price: item.price,
+                price_str: item.price_str || (item.price > 0 ? `${item.price.toLocaleString()}৳` : 'Call for Price'),
+                category: deriveCategory(item.title),
+                image_url: item.image_url,
+                product_url: item.product_url,
+                type: 'retailer_listing'
+              });
+              added++;
+              anyAddedInRound = true;
+            }
+          }
+        }
+        if (!anyAddedInRound) break;
+        round++;
+      }
     }
 
-    const { data: prods } = await supabase
-      .from("products")
-      .select("name")
-      .ilike("name", `%${cleanQ}%`)
-      .limit(4);
+    // 2. Fetch canonical catalog products
+    if (structuredSuggestions.length < 10) {
+      const { data: prods } = await supabase
+        .from("products")
+        .select("id, name, price")
+        .ilike("name", `%${cleanQ}%`)
+        .limit(4);
 
-    if (prods) {
-      prods.forEach(r => {
-        if (set.size < 8 && r.name) set.add(r.name);
-      });
+      if (prods) {
+        for (const prod of prods) {
+          if (!uniqueTitles.has(prod.name)) {
+            uniqueTitles.add(prod.name);
+            structuredSuggestions.push({
+              id: prod.id,
+              title: prod.name,
+              retailer: "Catalog",
+              price: prod.price ? Number(prod.price) : 0,
+              price_str: prod.price ? `${Number(prod.price).toLocaleString()}৳` : '',
+              category: deriveCategory(prod.name),
+              type: 'catalog_product'
+            });
+          }
+        }
+      }
     }
   } catch (err) {
     console.error("[Autosuggest Supabase Error]:", sanitizeLog(err.message));
   }
 
-  // 2. Complement with Groq AI suggestions (fast sub-second LLM inference with 17-key pool)
-  try {
-    const groqSuggestions = await getGroqSuggestions(query);
-    if (Array.isArray(groqSuggestions)) {
-      groqSuggestions.forEach(s => {
-        if (set.size < 10) set.add(s);
-      });
+  // 3. Fallback to Groq AI query completions if database has very few items
+  if (structuredSuggestions.length < 3) {
+    try {
+      const groqSuggestions = await getGroqSuggestions(query);
+      if (Array.isArray(groqSuggestions)) {
+        for (const s of groqSuggestions) {
+          if (!uniqueTitles.has(s) && uniqueTitles.size < 10) {
+            uniqueTitles.add(s);
+            structuredSuggestions.push({
+              title: s,
+              retailer: "Suggested Search",
+              category: deriveCategory(s),
+              type: 'keyword'
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[Autosuggest Groq Warning]:", sanitizeLog(err.message));
     }
-  } catch (err) {
-    console.warn("[Autosuggest Groq Warning]:", sanitizeLog(err.message));
   }
+
+  // Quick query terms array (clean strings for keyboard navigation / fast chips)
+  const suggestionsArray = Array.from(uniqueTitles).slice(0, 10);
 
   return res.json({
     query,
-    suggestions: Array.from(set).slice(0, 8)
+    suggestions: suggestionsArray,
+    structured_suggestions: structuredSuggestions.slice(0, 10),
+    retailers_found: Array.from(retailersFoundSet)
   });
 });
 
@@ -338,7 +565,7 @@ app.get("/api/search", apiLimiter, async (req, res) => {
   }
 
   const intent = detectSearchIntent(query);
-  console.log(`[API Search] Executing search for query: "${sanitizeLog(query)}" (Intent: ${intent.category}, Filter: ${category ? sanitizeLog(category) : 'Auto'})`);
+  console.log(`[API Search] Executing precision search for query: "${sanitizeLog(query)}" (Intent: ${intent.category}, Model: ${intent.modelCode || 'None'}, Filter: ${category ? sanitizeLog(category) : 'Auto'})`);
 
   let results = await searchSupabaseListings(query, category);
 
@@ -366,6 +593,7 @@ app.get("/api/search", apiLimiter, async (req, res) => {
   return res.json({
     query,
     detected_category: intent.category,
+    detected_model: intent.modelCode || null,
     count: results.length,
     results
   });
