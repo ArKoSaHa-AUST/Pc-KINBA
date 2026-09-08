@@ -8,6 +8,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import VerifyPage from './pages/auth/VerifyPage';
 import BuildCheckoutPage from './pages/BuildCheckoutPage';
+import BuildLibraryPage from './pages/BuildLibraryPage';
 import ComparePage from './pages/ComparePage';
 import ComponentsPage from './pages/ComponentsPage';
 import Home from './pages/Home';
@@ -28,6 +29,7 @@ function App() {
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/pc-builder" element={<PCBuilderPage />} />
           <Route path="/pc-builder/checkout" element={<BuildCheckoutPage />} />
+          <Route path="/pc-builder/library" element={<BuildLibraryPage />} />
           <Route path="/ai-assistant" element={<AIAssistantPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
