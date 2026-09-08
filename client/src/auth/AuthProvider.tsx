@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
-import type { UpdateProfilePayload, UserProfile, UserRole } from '../api/auth';
+import type {
+  NotificationPreferences,
+  UpdateProfilePayload,
+  UserProfile,
+  UserRole,
+} from '../api/auth';
 import { createClient } from '../utils/supabase/client';
 import {
   AUTH_STORAGE_KEY,
@@ -24,6 +29,7 @@ function mapToUserProfile(
   avatarUrl: string | null = null,
   purpose = 'gaming',
   emailVerified = true,
+  notificationPrefs: Partial<NotificationPreferences> = {},
 ): UserProfile {
   return {
     id,
@@ -39,6 +45,7 @@ function mapToUserProfile(
       emailNewsletter: false,
       emailProductUpdates: true,
       pushEnabled: false,
+      ...notificationPrefs,
     },
   };
 }
@@ -69,6 +76,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             profile.avatar_url || null,
             profile.purpose || 'gaming',
             true,
+            (profile.notification_prefs as Partial<NotificationPreferences>) || {},
           );
         }
       } catch (e) {
@@ -316,6 +324,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error('Not authenticated');
       }
 
+      const notificationPreferences = payload.notificationPreferences
+        ? { ...user.notificationPreferences, ...payload.notificationPreferences }
+        : user.notificationPreferences;
+
       if (user.id && !user.id.startsWith('user_')) {
         try {
           await supabase
@@ -324,6 +336,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               full_name: payload.name !== undefined ? payload.name : user.name,
               avatar_url: payload.avatarUrl !== undefined ? payload.avatarUrl : user.avatarUrl,
               purpose: payload.purpose !== undefined ? payload.purpose : user.purpose,
+              notification_prefs: notificationPreferences,
               updated_at: new Date().toISOString(),
             })
             .eq('id', user.id);
@@ -337,9 +350,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         name: payload.name !== undefined ? payload.name : user.name,
         avatarUrl: payload.avatarUrl !== undefined ? payload.avatarUrl : user.avatarUrl,
         purpose: payload.purpose !== undefined ? payload.purpose : user.purpose,
-        notificationPreferences: payload.notificationPreferences
-          ? { ...user.notificationPreferences, ...payload.notificationPreferences }
-          : user.notificationPreferences,
+        notificationPreferences,
       };
       saveDemoSession(updated);
       return updated;
