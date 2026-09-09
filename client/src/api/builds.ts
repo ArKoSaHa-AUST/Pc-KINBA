@@ -41,22 +41,23 @@ function toSavedBuild(row: SavedBuildRow): SavedBuild {
   };
 }
 
-/** Persist the current build for the signed-in user. */
-export async function saveBuild(build: BuildSelection, purpose?: string): Promise<SavedBuild> {
+/** Persist the current build for the signed-in user. Falls back to an auto-generated name. */
+export async function saveBuild(
+  build: BuildSelection,
+  purpose?: string,
+  name?: string,
+): Promise<SavedBuild> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error('You must be signed in to save a build.');
 
   const parts = Object.values(build).filter((p) => p !== undefined);
-  const flagship = build.gpu ?? build.cpu;
-  const name = flagship ? `${flagship.name} Build` : `Custom Build (${parts.length} parts)`;
-
   const { data, error } = await supabase
     .from('saved_builds')
     .insert({
       user_id: user.id,
-      name,
+      name: name?.trim().slice(0, 80) || defaultBuildName(build),
       part_ids: parts.map((p) => p.id),
       total_price: parts.reduce((sum, p) => sum + p.price, 0),
       purpose: purpose ?? null,
@@ -66,6 +67,12 @@ export async function saveBuild(build: BuildSelection, purpose?: string): Promis
 
   if (error) throw new Error(error.message);
   return toSavedBuild(data as SavedBuildRow);
+}
+
+export function defaultBuildName(build: BuildSelection): string {
+  const flagship = build.gpu ?? build.cpu;
+  const count = Object.values(build).filter((p) => p !== undefined).length;
+  return flagship ? `${flagship.name} Build` : `Custom Build (${count} parts)`;
 }
 
 /** Newest-first list of the signed-in user's saved builds. */
@@ -114,4 +121,42 @@ export async function setBuildVisibility(
 export async function deleteBuild(id: string): Promise<void> {
   const { error } = await supabase.from('saved_builds').delete().eq('id', id);
   if (error) throw new Error(error.message);
+}
+
+/** Short share code for this exact part list (guests included). Same parts → same code. */
+export async function shareBuild(build: BuildSelection, purpose?: string): Promise<string> {
+  const parts = Object.values(build).filter((p) => p !== undefined);
+  const { data, error } = await supabase.rpc('share_build', {
+    p_part_ids: parts.map((p) => p.id),
+    p_total_price: parts.reduce((sum, p) => sum + p.price, 0),
+    p_purpose: purpose ?? null,
+    p_name: defaultBuildName(build),
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
+export interface SharedBuild {
+  name: string;
+  partIds: string[];
+  totalPrice: number;
+  purpose: string | null;
+}
+
+export async function getSharedBuild(code: string): Promise<SharedBuild | null> {
+  const { data, error } = await supabase.rpc('shared_build', { p_code: code }).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  const row = data as {
+    name: string;
+    part_ids: string[];
+    total_price: number;
+    purpose: string | null;
+  };
+  return {
+    name: row.name,
+    partIds: row.part_ids,
+    totalPrice: row.total_price,
+    purpose: row.purpose,
+  };
 }

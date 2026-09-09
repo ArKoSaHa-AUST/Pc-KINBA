@@ -4,7 +4,8 @@
   padding-top: 0;
 }
 
-.build-checkout-page .section {
+/* Same specificity as `.pc-builder-page .section` isn't enough — order-independent override */
+.pc-builder-page.build-checkout-page .section {
   padding-top: 40px;
 }
 

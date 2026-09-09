@@ -1,0 +1,182 @@
+/* Quotation sheet — paper-first: light on screen and in print, dark chrome hidden when printing */
+
+.quote-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+}
+
+.quote-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.quote-toolbar button {
+  gap: 8px;
+}
+
+/* The sheet is laid out at A4 size on screen too, so what you see is exactly the printed page.
+   --quote-zoom is set by the page when the content is taller than one page. */
+.quote-sheet {
+  box-sizing: border-box;
+  width: 210mm;
+  max-width: 100%;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 12mm 14mm;
+  background: #fff;
+  color: #111827;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.35);
+  font-size: 14px;
+  line-height: 1.45;
+  zoom: var(--quote-zoom, 1);
+}
+
+.quote-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #111827;
+}
+
+.quote-brand {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #0e7490;
+}
+
+.quote-tagline {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.quote-meta {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 2px 14px;
+  margin: 0;
+  font-size: 12px;
+  text-align: right;
+}
+
+.quote-meta dt {
+  color: #6b7280;
+}
+
+.quote-meta dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.quote-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.quote-table th,
+.quote-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  vertical-align: top;
+}
+
+.quote-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+  border-bottom: 1px solid #111827;
+}
+
+.quote-table .is-num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.quote-category {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.quote-part {
+  font-weight: 600;
+}
+
+.quote-spec,
+.quote-muted {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.quote-retailer a {
+  color: #0e7490;
+  text-decoration: none;
+}
+
+.quote-table tfoot td {
+  border-bottom: none;
+  border-top: 2px solid #111827;
+  font-weight: 700;
+  text-align: right;
+}
+
+.quote-total {
+  font-size: 20px;
+  color: #0e7490;
+}
+
+.quote-footer {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 12px;
+  color: #374151;
+}
+
+.quote-footer p {
+  margin: 0;
+}
+
+@media print {
+  /* Zero page margin: the sheet carries its own, and Chrome then drops its URL/date header & footer */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  nav,
+  footer,
+  .mouse-glow,
+  .quote-toolbar {
+    display: none !important;
+  }
+
+  html,
+  body,
+  main,
+  .quote-page {
+    background: #fff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+  }
+
+  .quote-sheet {
+    min-height: 0;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  .quote-table tr {
+    break-inside: avoid;
+  }
+}

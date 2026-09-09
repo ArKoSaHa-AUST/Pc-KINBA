@@ -2,7 +2,8 @@ import type { BuildPurpose } from './buildConfig';
 import type { BuilderProduct, ComponentCategory } from './builderCatalog';
 import { checkCompatibility, totalPriceOf, type BuildSelection } from './compatibility';
 
-type CoreSlot = 'cpu' | 'gpu' | 'motherboard' | 'ram' | 'storage' | 'psu' | 'case' | 'cooling';
+export type CoreSlot =
+  'cpu' | 'gpu' | 'motherboard' | 'ram' | 'storage' | 'psu' | 'case' | 'cooling';
 
 /** Share of the total budget each slot should get, per purpose (sums to 1). */
 export const BUDGET_SPLIT: Record<BuildPurpose, Record<CoreSlot, number>> = {
@@ -74,8 +75,8 @@ const compatible = (p: BuilderProduct, build: BuildSelection, slot: ComponentCat
   checkCompatibility(p, build, slot).status !== 'incompatible';
 
 /** Best-scoring compatible part at or under `cap`; falls back to the cheapest compatible part. */
-function pickFor(
-  slot: CoreSlot,
+export function pickFor(
+  slot: ComponentCategory,
   cap: number,
   build: BuildSelection,
   catalog: BuilderProduct[],

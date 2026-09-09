@@ -1,17 +1,17 @@
 import Lenis from 'lenis';
 import { Trash2, Wand2 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { saveBuild } from '../api/builds';
+import { defaultBuildName, saveBuild } from '../api/builds';
 import { useAuth } from '../auth/useAuth';
 import AIOptimizer from '../components/builder/AIOptimizer';
-import AssemblyViewport3D from '../components/builder/AssemblyViewport3D';
 import BuildSummary from '../components/builder/BuildSummary';
 import BuilderHero from '../components/builder/BuilderHero';
 import BuildLibraryTeaser from '../components/builder/BuildLibraryTeaser';
 import ComponentGrid from '../components/builder/ComponentGrid';
 import ComponentSelectModal from '../components/builder/ComponentSelectModal';
 import ExportActions from '../components/builder/ExportActions';
+import SaveBuildModal from '../components/builder/SaveBuildModal';
 import { autoBuild } from '../components/builder/autoBuild';
 import {
   BUDGET_MAX,
@@ -33,6 +33,9 @@ import { useBuilderCatalog } from '../hooks/useBuilderCatalog';
 import './PCBuilderPage.css';
 
 const DRAFT_KEY = 'pc-kinba.builder-draft';
+
+// three.js is ~1 MB — keep it out of the main bundle
+const AssemblyViewport3D = lazy(() => import('../components/builder/AssemblyViewport3D'));
 
 interface Draft {
   partIds: string[];
@@ -61,6 +64,7 @@ export default function PCBuilderPage() {
   const [build, setBuild] = useState<BuildSelection>({});
   const [hydrated, setHydrated] = useState(false);
   const [activeSlot, setActiveSlot] = useState<ComponentCategory | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
 
   // Hydrate once the catalog is available: share link wins, otherwise the saved draft.
   useEffect(() => {
@@ -162,23 +166,31 @@ export default function PCBuilderPage() {
     });
   }, [build, budget, purpose, catalog.products, toast]);
 
-  const handleSaveBuild = useCallback(async () => {
+  const handleSaveBuild = useCallback(() => {
     if (status !== 'authenticated') {
       toast({ message: 'Sign in to save your build.', variant: 'info' });
       navigate('/login');
       return;
     }
-    try {
-      const saved = await saveBuild(build, purpose);
-      toast({
-        message: `“${saved.name}” saved. Publish it to the Build Library from your profile.`,
-        variant: 'success',
-      });
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to save build.';
-      toast({ message: msg, variant: 'danger' });
-    }
-  }, [status, build, purpose, navigate, toast]);
+    setSaveOpen(true);
+  }, [status, navigate, toast]);
+
+  const handleConfirmSave = useCallback(
+    async (name: string) => {
+      try {
+        const saved = await saveBuild(build, purpose, name);
+        setSaveOpen(false);
+        toast({
+          message: `“${saved.name}” saved. Publish it to the Build Library from your profile.`,
+          variant: 'success',
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Failed to save build.';
+        toast({ message: msg, variant: 'danger' });
+      }
+    },
+    [build, purpose, toast],
+  );
 
   const handleCheckout = useCallback(() => {
     navigate(`/pc-builder/checkout?parts=${partIdsOf(build).join(',')}`);
@@ -243,7 +255,9 @@ export default function PCBuilderPage() {
             Watch your rig come together — drag to orbit, explode the view, click any part to
             configure it.
           </p>
-          <AssemblyViewport3D build={build} onOpenCategory={setActiveSlot} />
+          <Suspense fallback={<div className="assembly-viewport-placeholder" />}>
+            <AssemblyViewport3D build={build} onOpenCategory={setActiveSlot} />
+          </Suspense>
         </div>
       </section>
 
@@ -259,6 +273,7 @@ export default function PCBuilderPage() {
           <BuildSummary
             build={build}
             budget={budget}
+            purpose={purpose}
             onOpenCategory={setActiveSlot}
             onRemove={handleRemove}
           />
@@ -277,10 +292,16 @@ export default function PCBuilderPage() {
           <AIOptimizer
             build={build}
             budget={budget[1]}
+            purpose={purpose}
             catalog={catalog.products}
             onApply={handleSelectProduct}
           />
-          <ExportActions build={build} onSave={handleSaveBuild} onCheckout={handleCheckout} />
+          <ExportActions
+            build={build}
+            purpose={purpose}
+            onSave={handleSaveBuild}
+            onCheckout={handleCheckout}
+          />
         </div>
       </section>
 
@@ -291,6 +312,12 @@ export default function PCBuilderPage() {
         remainingBudget={remainingBudget}
         onClose={() => setActiveSlot(null)}
         onSelect={handleSelectProduct}
+      />
+      <SaveBuildModal
+        open={saveOpen}
+        defaultName={defaultBuildName(build)}
+        onClose={() => setSaveOpen(false)}
+        onSave={handleConfirmSave}
       />
     </div>
   );

@@ -4,18 +4,34 @@ import {
   CheckCircle2,
   Circle,
   Gauge,
+  Info,
   ShieldCheck,
   Wallet,
   XCircle,
   Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { formatTaka } from './buildConfig';
+import {
+  estimateFps,
+  GAME_BENCHMARKS,
+  ML_WORKLOADS,
+  MODE_FOR_PURPOSE,
+  PERF_MODES,
+  RENDER_WORKLOADS,
+  RESOLUTIONS,
+  renderTimeIndex,
+  vramFit,
+  type PerfMode,
+  type Resolution,
+  type VramFit,
+} from './benchmarks';
+import { formatTaka, type BuildPurpose } from './buildConfig';
 import type { ComponentCategory } from './builderCatalog';
 import {
   estimatePowerDraw,
   getBuildChecks,
   getCompatibilityScore,
+  summarizeChecks,
   type BuildSelection,
 } from './compatibility';
 import MetricCard, { ProgressRing } from './MetricCard';
@@ -24,33 +40,30 @@ import PartsTable from './PartsTable';
 interface BuildSummaryProps {
   build: BuildSelection;
   budget: [number, number];
+  purpose: BuildPurpose;
   onOpenCategory: (category: ComponentCategory) => void;
   onRemove: (category: ComponentCategory) => void;
-}
-
-type Resolution = '1080p' | '1440p' | '4K';
-
-const RESOLUTIONS: Resolution[] = ['1080p', '1440p', '4K'];
-const RES_FACTOR: Record<Resolution, number> = { '1080p': 1, '1440p': 0.68, '4K': 0.42 };
-
-// Baseline FPS for a 100-score GPU at 1080p
-const GAMES = [
-  { title: 'Cyberpunk 2077', base: 110 },
-  { title: 'Valorant', base: 420 },
-  { title: 'Elden Ring', base: 125 },
-  { title: 'Fortnite', base: 240 },
-];
-
-function estimateFps(build: BuildSelection, game: (typeof GAMES)[number], res: Resolution) {
-  const gpu = build.gpu;
-  if (!gpu) return 0;
-  const cpuFactor = build.cpu ? 0.6 + 0.4 * (build.cpu.performanceScore / 100) : 0.85;
-  return Math.round(game.base * (gpu.performanceScore / 100) * RES_FACTOR[res] * cpuFactor);
 }
 
 function fpsTone(fps: number) {
   return fps > 60 ? 'is-good' : fps >= 30 ? 'is-warn' : 'is-bad';
 }
+
+function renderTone(index: number) {
+  return index <= 1.5 ? 'is-good' : index <= 2.5 ? 'is-warn' : 'is-bad';
+}
+
+const VRAM_FIT: Record<VramFit, { tone: string; label: string }> = {
+  fits: { tone: 'is-good', label: 'Fits' },
+  tight: { tone: 'is-warn', label: 'Tight' },
+  no: { tone: 'is-bad', label: 'Too small' },
+};
+
+const PERF_NOTE: Record<PerfMode, string> = {
+  gaming: 'Indicative — tier-based estimate, not a measured benchmark.',
+  creator: 'Indicative — time vs. a flagship reference (1.0×), lower is better.',
+  ml: 'Indicative — VRAM needed for quantised local inference / training.',
+};
 
 const CHECK_ICONS = {
   compatible: <CheckCircle2 size={15} className="check-icon-good" />,
@@ -71,10 +84,16 @@ function AnimatedPrice({ value }: { value: number }) {
 export default function BuildSummary({
   build,
   budget,
+  purpose,
   onOpenCategory,
   onRemove,
 }: BuildSummaryProps) {
   const [resolution, setResolution] = useState<Resolution>('1440p');
+  // Purpose picks the default mode; a manual pick sticks until the purpose changes again.
+  const [modeOverride, setModeOverride] = useState<{ purpose: BuildPurpose; mode: PerfMode }>();
+  const mode = modeOverride?.purpose === purpose ? modeOverride.mode : MODE_FOR_PURPOSE[purpose];
+  const perfTitle = PERF_MODES.find((m) => m.id === mode)!.title;
+  const vramGb = build.gpu?.vramGb;
 
   const total = useMemo(
     () => Object.values(build).reduce((sum, p) => sum + (p?.price ?? 0), 0),
@@ -85,6 +104,8 @@ export default function BuildSummary({
   const headroom = psuWattage > 0 ? (psuWattage - draw) / psuWattage : 0;
   const checks = useMemo(() => getBuildChecks(build), [build]);
   const score = getCompatibilityScore(checks);
+  const counts = summarizeChecks(checks);
+  const applicable = checks.length - counts.pending;
   const withinBudget = total <= budget[1];
 
   return (
@@ -132,40 +153,114 @@ export default function BuildSummary({
           )}
         </MetricCard>
 
-        <MetricCard icon={Gauge} title="Estimated FPS" className="metric-card-fps">
+        <MetricCard icon={Gauge} title={perfTitle} className="metric-card-fps">
           <div className="fps-res-toggle">
-            {RESOLUTIONS.map((res) => (
+            {PERF_MODES.map((m) => (
               <button
-                key={res}
+                key={m.id}
                 type="button"
-                className={`builder-pill${resolution === res ? ' is-active' : ''}`}
-                onClick={() => setResolution(res)}
+                className={`builder-pill${mode === m.id ? ' is-active' : ''}`}
+                onClick={() => setModeOverride({ purpose, mode: m.id })}
               >
-                {res}
+                {m.label}
               </button>
             ))}
+            {mode === 'gaming' && (
+              <>
+                <span className="builder-pill-divider" />
+                {RESOLUTIONS.map((res) => (
+                  <button
+                    key={res}
+                    type="button"
+                    className={`builder-pill${resolution === res ? ' is-active' : ''}`}
+                    onClick={() => setResolution(res)}
+                  >
+                    {res}
+                  </button>
+                ))}
+              </>
+            )}
           </div>
-          {build.gpu ? (
-            <div className="fps-bars">
-              {GAMES.map((game) => {
-                const fps = estimateFps(build, game, resolution);
-                return (
-                  <div key={game.title} className="fps-bar-row">
-                    <span className="fps-game">{game.title}</span>
-                    <div className="fps-bar-track">
-                      <div
-                        className={`fps-bar-fill ${fpsTone(fps)}`}
-                        style={{ width: `${Math.min(100, (fps / 240) * 100)}%` }}
-                      />
+
+          {mode === 'gaming' &&
+            (build.gpu ? (
+              <div className="fps-bars">
+                {GAME_BENCHMARKS.map((game) => {
+                  const fps = estimateFps(build, game, resolution);
+                  return (
+                    <div key={game.title} className="fps-bar-row">
+                      <span className="fps-game">{game.title}</span>
+                      <div className="fps-bar-track">
+                        <div
+                          className={`fps-bar-fill ${fpsTone(fps)}`}
+                          style={{ width: `${Math.min(100, (fps / 240) * 100)}%` }}
+                        />
+                      </div>
+                      <span className={`fps-value ${fpsTone(fps)}`}>{fps}</span>
                     </div>
-                    <span className={`fps-value ${fpsTone(fps)}`}>{fps}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <span className="metric-subtitle">Select a GPU to estimate FPS</span>
-          )}
+                  );
+                })}
+              </div>
+            ) : (
+              <span className="metric-subtitle">Select a GPU to estimate FPS</span>
+            ))}
+
+          {mode === 'creator' &&
+            (build.cpu || build.gpu ? (
+              <div className="fps-bars">
+                {RENDER_WORKLOADS.map((w) => {
+                  const index = renderTimeIndex(build, w);
+                  return (
+                    <div key={w.title} className="fps-bar-row">
+                      <span className="fps-game">{w.title}</span>
+                      <div className="fps-bar-track">
+                        {index > 0 && (
+                          <div
+                            className={`fps-bar-fill ${renderTone(index)}`}
+                            style={{ width: `${Math.min(100, 100 / index)}%` }}
+                          />
+                        )}
+                      </div>
+                      <span className={`fps-value ${index > 0 ? renderTone(index) : ''}`}>
+                        {index > 0 ? `${index}×` : '—'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <span className="metric-subtitle">Select a CPU or GPU to estimate render times</span>
+            ))}
+
+          {mode === 'ml' &&
+            (vramGb ? (
+              <div className="fps-bars">
+                {ML_WORKLOADS.map((w) => {
+                  const fit = VRAM_FIT[vramFit(vramGb, w)];
+                  return (
+                    <div key={w.title} className="fps-bar-row">
+                      <span className="fps-game">{w.title}</span>
+                      <div className="fps-bar-track">
+                        <div
+                          className={`fps-bar-fill ${fit.tone}`}
+                          style={{ width: `${Math.min(100, (vramGb / w.vramGb) * 100)}%` }}
+                        />
+                      </div>
+                      <span className={`fps-value ${fit.tone}`}>{fit.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <span className="metric-subtitle">
+                {build.gpu ? 'VRAM unknown for this GPU' : 'Select a GPU to check VRAM fit'}
+              </span>
+            ))}
+
+          <span className="metric-subtitle">
+            {mode === 'ml' && vramGb ? `${vramGb} GB VRAM · ` : ''}
+            {PERF_NOTE[mode]}
+          </span>
         </MetricCard>
 
         <MetricCard icon={ShieldCheck} title="Compatibility Score" className="metric-card-compat">
@@ -185,6 +280,19 @@ export default function BuildSummary({
               ))}
             </ul>
           </div>
+          <details className="compat-explain">
+            <summary>
+              <Info size={13} /> How is {score}% calculated?
+            </summary>
+            <p>
+              {counts.compatible} passed × 1 pt + {counts.warning} warning
+              {counts.warning === 1 ? '' : 's'} × ½ pt + {counts.incompatible} failed × 0 pt, over{' '}
+              {applicable} applicable check{applicable === 1 ? '' : 's'}
+              {counts.pending > 0 && ` (${counts.pending} not counted yet — parts missing)`}.
+              Warnings such as a needed BIOS update or a power adapter cost half a point; a hard
+              incompatibility costs the full point. Hover a check for its detail.
+            </p>
+          </details>
         </MetricCard>
       </div>
 

@@ -8,7 +8,9 @@ import RegisterPage from './pages/auth/RegisterPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import VerifyPage from './pages/auth/VerifyPage';
 import BuildCheckoutPage from './pages/BuildCheckoutPage';
+import BuildComparePage from './pages/BuildComparePage';
 import BuildLibraryPage from './pages/BuildLibraryPage';
+import BuildQuotePage from './pages/BuildQuotePage';
 import ComparePage from './pages/ComparePage';
 import ComponentsPage from './pages/ComponentsPage';
 import Home from './pages/Home';
@@ -16,6 +18,7 @@ import PCBuilderPage from './pages/PCBuilderPage';
 import ProductDetailsPage from './pages/ProductDetailsPage';
 import ProfilePage from './pages/ProfilePage';
 import SearchPage from './pages/SearchPage';
+import SharedBuildPage from './pages/SharedBuildPage';
 
 function App() {
   return (
@@ -29,7 +32,10 @@ function App() {
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/pc-builder" element={<PCBuilderPage />} />
           <Route path="/pc-builder/checkout" element={<BuildCheckoutPage />} />
+          <Route path="/pc-builder/compare" element={<BuildComparePage />} />
+          <Route path="/pc-builder/quote" element={<BuildQuotePage />} />
           <Route path="/pc-builder/library" element={<BuildLibraryPage />} />
+          <Route path="/b/:code" element={<SharedBuildPage />} />
           <Route path="/ai-assistant" element={<AIAssistantPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />

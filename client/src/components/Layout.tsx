@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 import Footer from './Footer';
@@ -10,11 +10,14 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const lenisRef = useRef<Lenis | null>(null);
   const location = useLocation();
   const isProductPage = location.pathname.startsWith('/product/');
 
   // New route → start at the top (query-string changes such as filters don't reset scroll).
+  // Lenis must be told too, or an in-flight smooth scroll lerps back to the old position.
   useEffect(() => {
+    lenisRef.current?.scrollTo(0, { immediate: true, force: true });
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [location.pathname]);
 
@@ -25,6 +28,7 @@ export default function Layout({ children }: LayoutProps) {
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
     });
+    lenisRef.current = lenis;
 
     // Mouse glow effect
     const handleMouseMove = (e: MouseEvent) => {
@@ -35,6 +39,7 @@ export default function Layout({ children }: LayoutProps) {
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       lenis.destroy();
+      lenisRef.current = null;
     };
   }, []);
 

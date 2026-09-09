@@ -630,6 +630,27 @@
   }
 }
 
+/* ---- Section 3: 3D viewport placeholder while the three.js chunk loads ---- */
+.assembly-viewport-placeholder {
+  height: 600px;
+  margin-top: 48px;
+  border-radius: 24px;
+  border: 1px solid var(--glass-border);
+  background: #06080f;
+}
+
+@media (max-width: 1024px) {
+  .assembly-viewport-placeholder {
+    height: 420px;
+  }
+}
+
+@media (max-width: 640px) {
+  .assembly-viewport-placeholder {
+    height: 320px;
+  }
+}
+
 /* ---- Section 4: Build Summary & Analytics ---- */
 /* Bento: price + power tiles with FPS beside them, compatibility as a full-width strip below */
 .metric-grid {
@@ -777,6 +798,8 @@
 /* FPS chart */
 .fps-res-toggle {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -788,7 +811,7 @@
 .fps-bars {
   /* One grid for all rows so the name column sizes to the longest title and bars stay aligned */
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) 34px;
+  grid-template-columns: max-content minmax(0, 1fr) minmax(34px, max-content);
   align-items: center;
   gap: 10px 10px;
   font-size: 12px;
@@ -889,6 +912,33 @@
 
 .compat-checks li span {
   min-width: 0;
+}
+
+.compat-explain {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.compat-explain summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--text-secondary);
+}
+
+.compat-explain summary::-webkit-details-marker {
+  display: none;
+}
+
+.compat-explain summary:hover {
+  color: var(--accent);
+}
+
+.compat-explain p {
+  margin: 8px 0 0;
+  line-height: 1.5;
 }
 
 .check-icon-good {
@@ -1052,6 +1102,14 @@
   color: var(--accent);
 }
 
+.ai-suggestion.is-buy .ai-suggestion-icon {
+  color: var(--success);
+}
+
+.ai-suggestion.is-wait .ai-suggestion-icon {
+  color: var(--warning);
+}
+
 .ai-suggestion-message {
   flex: 1;
   font-size: 14px;
@@ -1066,8 +1124,12 @@
 }
 
 .ai-suggestion-apply {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 0.4rem 1.2rem;
   font-size: 13px;
+  text-decoration: none;
 }
 
 .ai-suggestion-dismiss {
