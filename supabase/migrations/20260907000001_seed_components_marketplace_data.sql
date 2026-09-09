@@ -1,5 +1,5 @@
 -- Migration: 20260907000001_seed_components_marketplace_data.sql
--- Description: Authentic seed data for PC Components Marketplace
+-- Description: Authentic seed data for PC Components Marketplace (Idempotent)
 
 DO $$
 DECLARE
@@ -149,19 +149,19 @@ BEGIN
     ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name RETURNING id INTO cat_cooler;
 
   INSERT INTO public.categories (name, slug, icon, accent_color, display_order) VALUES
-    ('Monitor', 'monitor', 'Monitor', '#6366f1', 9)
+    ('Gaming Monitor', 'monitor', 'Monitor', '#14b8a6', 9)
     ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name RETURNING id INTO cat_monitor;
 
   INSERT INTO public.categories (name, slug, icon, accent_color, display_order) VALUES
-    ('Keyboard', 'keyboard', 'Keyboard', '#14b8a6', 10)
+    ('Gaming Keyboard', 'keyboard', 'Terminal', '#a855f7', 10)
     ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name RETURNING id INTO cat_keyboard;
 
   INSERT INTO public.categories (name, slug, icon, accent_color, display_order) VALUES
-    ('Gaming Mouse', 'mouse', 'Mouse', '#f97316', 11)
+    ('Gaming Mouse', 'mouse', 'MousePointer', '#f43f5e', 11)
     ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name RETURNING id INTO cat_mouse;
 
   INSERT INTO public.categories (name, slug, icon, accent_color, display_order) VALUES
-    ('Headphones & Audio', 'headphone', 'Headphones', '#a855f7', 12)
+    ('Headphones & Audio', 'headphone', 'Headphones', '#eab308', 12)
     ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name RETURNING id INTO cat_headphone;
 
   -- 3. Insert Subcategories
@@ -174,27 +174,27 @@ BEGIN
     ON CONFLICT (slug) DO UPDATE SET parent_id = EXCLUDED.parent_id RETURNING id INTO cat_cpu_intel;
 
   INSERT INTO public.categories (name, slug, parent_id, display_order) VALUES
-    ('NVIDIA GeForce RTX', 'gpu-nvidia', cat_gpu, 1)
+    ('NVIDIA GeForce GPUs', 'gpu-nvidia', cat_gpu, 1)
     ON CONFLICT (slug) DO UPDATE SET parent_id = EXCLUDED.parent_id RETURNING id INTO cat_gpu_nvidia;
 
   INSERT INTO public.categories (name, slug, parent_id, display_order) VALUES
-    ('AMD Radeon RX', 'gpu-amd', cat_gpu, 2)
+    ('AMD Radeon GPUs', 'gpu-amd', cat_gpu, 2)
     ON CONFLICT (slug) DO UPDATE SET parent_id = EXCLUDED.parent_id RETURNING id INTO cat_gpu_amd;
 
   INSERT INTO public.categories (name, slug, parent_id, display_order) VALUES
-    ('AMD Motherboards (AM5/AM4)', 'mb-amd', cat_mb, 1)
+    ('AMD Motherboards', 'mb-amd', cat_mb, 1)
     ON CONFLICT (slug) DO UPDATE SET parent_id = EXCLUDED.parent_id RETURNING id INTO cat_mb_amd;
 
   INSERT INTO public.categories (name, slug, parent_id, display_order) VALUES
-    ('Intel Motherboards (LGA1700)', 'mb-intel', cat_mb, 2)
+    ('Intel Motherboards', 'mb-intel', cat_mb, 2)
     ON CONFLICT (slug) DO UPDATE SET parent_id = EXCLUDED.parent_id RETURNING id INTO cat_mb_intel;
 
   INSERT INTO public.categories (name, slug, parent_id, display_order) VALUES
-    ('DDR5 RAM', 'ram-ddr5', cat_ram, 1)
+    ('DDR5 Desktop RAM', 'ram-ddr5', cat_ram, 1)
     ON CONFLICT (slug) DO UPDATE SET parent_id = EXCLUDED.parent_id RETURNING id INTO cat_ram_ddr5;
 
   INSERT INTO public.categories (name, slug, parent_id, display_order) VALUES
-    ('DDR4 RAM', 'ram-ddr4', cat_ram, 2)
+    ('DDR4 Desktop RAM', 'ram-ddr4', cat_ram, 2)
     ON CONFLICT (slug) DO UPDATE SET parent_id = EXCLUDED.parent_id RETURNING id INTO cat_ram_ddr4;
 
   INSERT INTO public.categories (name, slug, parent_id, display_order) VALUES
@@ -214,36 +214,32 @@ BEGIN
     ON CONFLICT (slug) DO UPDATE SET parent_id = EXCLUDED.parent_id RETURNING id INTO cat_cooler_air;
 
   -- 4. Insert Filters Configuration
-  -- CPU filters
+  DELETE FROM public.filters_config;
+
   INSERT INTO public.filters_config (category_id, filter_key, filter_label, filter_type, options, display_order) VALUES
     (cat_cpu, 'socket', 'Processor Socket', 'multi-select', '[{"label":"AM5 (AMD 7000/9000)","value":"AM5"},{"label":"LGA1700 (Intel 13/14th)","value":"LGA1700"},{"label":"AM4 (AMD 5000)","value":"AM4"},{"label":"LGA1851 (Intel Arrow Lake)","value":"LGA1851"}]'::jsonb, 1),
     (cat_cpu, 'cores', 'Core Count', 'multi-select', '[{"label":"6 Cores (12 Threads)","value":"6 Cores"},{"label":"8 Cores (16 Threads)","value":"8 Cores"},{"label":"12 Cores (24 Threads)","value":"12 Cores"},{"label":"14 Cores (20 Threads)","value":"14 Cores"},{"label":"16 Cores (32 Threads)","value":"16 Cores"},{"label":"20 Cores (28 Threads)","value":"20 Cores"},{"label":"24 Cores (32 Threads)","value":"24 Cores"}]'::jsonb, 2),
     (cat_cpu, 'series', 'Processor Series', 'select', '[{"label":"AMD Ryzen 7000","value":"Ryzen 7000"},{"label":"AMD Ryzen 9000","value":"Ryzen 9000"},{"label":"Intel Core 14th Gen","value":"Core 14th Gen"},{"label":"Intel Core 13th Gen","value":"Core 13th Gen"}]'::jsonb, 3);
 
-  -- GPU filters
   INSERT INTO public.filters_config (category_id, filter_key, filter_label, filter_type, options, display_order) VALUES
     (cat_gpu, 'chipset', 'Graphics Chipset', 'multi-select', '[{"label":"GeForce RTX 4090","value":"RTX 4090"},{"label":"GeForce RTX 4080 Super","value":"RTX 4080 Super"},{"label":"GeForce RTX 4070 Ti Super","value":"RTX 4070 Ti Super"},{"label":"GeForce RTX 4070 Super","value":"RTX 4070 Super"},{"label":"GeForce RTX 4060 Ti","value":"RTX 4060 Ti"},{"label":"GeForce RTX 4060","value":"RTX 4060"},{"label":"Radeon RX 7900 XTX","value":"RX 7900 XTX"},{"label":"Radeon RX 7800 XT","value":"RX 7800 XT"}]'::jsonb, 1),
     (cat_gpu, 'vram', 'VRAM Capacity', 'multi-select', '[{"label":"8 GB","value":"8GB"},{"label":"12 GB","value":"12GB"},{"label":"16 GB","value":"16GB"},{"label":"20 GB","value":"20GB"},{"label":"24 GB","value":"24GB"}]'::jsonb, 2),
     (cat_gpu, 'memory_type', 'Memory Type', 'select', '[{"label":"GDDR6X","value":"GDDR6X"},{"label":"GDDR6","value":"GDDR6"}]'::jsonb, 3);
 
-  -- Motherboard filters
   INSERT INTO public.filters_config (category_id, filter_key, filter_label, filter_type, options, display_order) VALUES
     (cat_mb, 'socket', 'CPU Socket', 'multi-select', '[{"label":"Socket AM5","value":"AM5"},{"label":"LGA1700","value":"LGA1700"},{"label":"Socket AM4","value":"AM4"}]'::jsonb, 1),
     (cat_mb, 'chipset', 'Chipset', 'multi-select', '[{"label":"AMD B650","value":"B650"},{"label":"AMD X670E","value":"X670E"},{"label":"Intel Z790","value":"Z790"},{"label":"Intel B760","value":"B760"}]'::jsonb, 2),
     (cat_mb, 'form_factor', 'Form Factor', 'multi-select', '[{"label":"ATX","value":"ATX"},{"label":"Micro-ATX","value":"Micro-ATX"},{"label":"Mini-ITX","value":"Mini-ITX"}]'::jsonb, 3);
 
-  -- RAM filters
   INSERT INTO public.filters_config (category_id, filter_key, filter_label, filter_type, options, display_order) VALUES
     (cat_ram, 'memory_type', 'Memory Standard', 'multi-select', '[{"label":"DDR5","value":"DDR5"},{"label":"DDR4","value":"DDR4"}]'::jsonb, 1),
     (cat_ram, 'capacity', 'Kit Capacity', 'multi-select', '[{"label":"16GB (2x8GB)","value":"16GB"},{"label":"32GB (2x16GB)","value":"32GB"},{"label":"64GB (2x32GB)","value":"64GB"}]'::jsonb, 2),
     (cat_ram, 'speed', 'Memory Speed', 'multi-select', '[{"label":"6000 MHz","value":"6000MHz"},{"label":"5600 MHz","value":"5600MHz"},{"label":"3600 MHz","value":"3600MHz"},{"label":"3200 MHz","value":"3200MHz"}]'::jsonb, 3);
 
-  -- Storage filters
   INSERT INTO public.filters_config (category_id, filter_key, filter_label, filter_type, options, display_order) VALUES
     (cat_storage, 'capacity', 'Storage Capacity', 'multi-select', '[{"label":"500 GB","value":"500GB"},{"label":"1 TB","value":"1TB"},{"label":"2 TB","value":"2TB"},{"label":"4 TB","value":"4TB"}]'::jsonb, 1),
     (cat_storage, 'interface', 'Interface / Gen', 'multi-select', '[{"label":"PCIe Gen 5.0 x4","value":"PCIe 5.0"},{"label":"PCIe Gen 4.0 x4","value":"PCIe 4.0"},{"label":"SATA III 6Gb/s","value":"SATA III"}]'::jsonb, 2);
 
-  -- PSU filters
   INSERT INTO public.filters_config (category_id, filter_key, filter_label, filter_type, options, display_order) VALUES
     (cat_psu, 'wattage', 'Wattage', 'multi-select', '[{"label":"650 Watts","value":"650W"},{"label":"750 Watts","value":"750W"},{"label":"850 Watts","value":"850W"},{"label":"1000 Watts","value":"1000W"},{"label":"1200 Watts","value":"1200W"}]'::jsonb, 1),
     (cat_psu, 'efficiency', '80 Plus Rating', 'multi-select', '[{"label":"80+ Platinum","value":"80+ Platinum"},{"label":"80+ Gold","value":"80+ Gold"},{"label":"80+ Bronze","value":"80+ Bronze"}]'::jsonb, 2),
@@ -256,7 +252,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('AMD Ryzen 7 7800X3D Gaming Processor', 'amd-ryzen-7-7800x3d', cat_cpu_amd, br_amd, 48500, 46500, 18, 4.95, 142, true, false)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80', true, 1),
@@ -278,7 +278,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('Intel Core i7-14700K 14th Gen Desktop Processor', 'intel-core-i7-14700k', cat_cpu_intel, br_intel, 49000, 47500, 24, 4.88, 98, true, true)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -299,7 +303,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('AMD Ryzen 5 7600X 6-Core AM5 Processor', 'amd-ryzen-5-7600x', cat_cpu_amd, br_amd, 24500, 23200, 35, 4.82, 110, false, false)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -318,7 +326,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('ASUS ROG Strix GeForce RTX 4070 Super 12GB GDDR6X OC Edition', 'asus-rog-strix-rtx-4070-super-12gb', cat_gpu_nvidia, br_asus, 89500, 86000, 12, 4.92, 64, true, true)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -338,7 +350,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('MSI GeForce RTX 4060 Gaming X Slim 8GB GDDR6', 'msi-geforce-rtx-4060-gaming-x-slim-8gb', cat_gpu_nvidia, br_msi, 42500, 39900, 22, 4.75, 87, false, false)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -356,7 +372,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('Gigabyte Radeon RX 7800 XT Gaming OC 16GB GDDR6', 'gigabyte-radeon-rx-7800-xt-gaming-oc-16gb', cat_gpu_amd, br_gigabyte, 72000, 68500, 15, 4.86, 45, true, false)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -374,7 +394,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('MSI MAG B650 Tomahawk WiFi AM5 ATX Motherboard', 'msi-mag-b650-tomahawk-wifi', cat_mb_amd, br_msi, 27500, 25900, 20, 4.90, 83, true, false)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -394,7 +418,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('Gigabyte Z790 AORUS ELITE AX Intel Motherboard', 'gigabyte-z790-aorus-elite-ax', cat_mb_intel, br_gigabyte, 34500, 32900, 16, 4.85, 52, false, true)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -411,7 +439,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('G.Skill Trident Z5 Neo RGB 32GB (2x16GB) DDR5 6000MHz CL30 EXPO', 'gskill-trident-z5-neo-rgb-32gb-ddr5-6000', cat_ram_ddr5, br_gskill, 16500, 15200, 40, 4.94, 91, true, false)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1562976540-1502c2145186?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -429,7 +461,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('Corsair Vengeance RGB 32GB (2x16GB) DDR5 5600MHz Black', 'corsair-vengeance-rgb-32gb-ddr5-5600', cat_ram_ddr5, br_corsair, 13800, 12600, 28, 4.80, 67, false, false)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1562976540-1502c2145186?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -445,7 +481,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('Samsung 990 PRO 2TB PCIe 4.0 M.2 NVMe SSD', 'samsung-990-pro-2tb-nvme-ssd', cat_storage_nvme, br_samsung, 23500, 21900, 30, 4.96, 178, true, true)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -463,7 +503,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('Kingston KC3000 1TB PCIe 4.0 NVMe M.2 SSD', 'kingston-kc3000-1tb-nvme-ssd', cat_storage_nvme, br_kingston, 11500, 10200, 45, 4.88, 120, false, false)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -479,7 +523,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('Corsair RM850e 850W 80 Plus Gold Fully Modular ATX 3.0 Power Supply', 'corsair-rm850e-850w-gold-modular-psu', cat_psu_mod, br_corsair, 14500, 13600, 25, 4.91, 74, true, false)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -496,7 +544,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('Seasonic FOCUS GX-750 750W 80+ Gold Full Modular Power Supply', 'seasonic-focus-gx-750-750w-gold-modular-psu', cat_psu_mod, br_seasonic, 13000, 12200, 18, 4.93, 62, false, false)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -511,7 +563,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('Lian Li O11 Vision Chrome Panoramic Glass Gaming Casing', 'lian-li-o11-vision-chrome-casing', cat_case, br_lianli, 17500, 16200, 14, 4.97, 89, true, true)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -528,7 +584,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('DeepCool AK620 DIGITAL Dual-Tower CPU Air Cooler with Screen', 'deepcool-ak620-digital-cpu-cooler', cat_cooler_air, br_deepcool, 7800, 7200, 32, 4.87, 105, true, false)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -545,7 +605,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('NZXT Kraken Elite 360 RGB 360mm AIO Liquid Cooler with LCD', 'nzxt-kraken-elite-360-rgb-liquid-cooler', cat_cooler_liquid, br_nzxt, 32000, 29800, 10, 4.95, 48, true, true)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -561,7 +625,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('Logitech G PRO X SUPERLIGHT 2 Wireless Gaming Mouse', 'logitech-g-pro-x-superlight-2', cat_mouse, br_logitech, 15500, 14200, 24, 4.94, 156, true, true)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -577,7 +645,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('Razer BlackWidow V4 Pro RGB Mechanical Gaming Keyboard', 'razer-blackwidow-v4-pro-mechanical-keyboard', cat_keyboard, br_razer, 22500, 20500, 16, 4.88, 73, false, false)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&auto=format&fit=crop&q=80', true, 1);
@@ -593,7 +665,11 @@ BEGIN
   -------------------------------------------------------------
   INSERT INTO public.products (name, slug, category_id, brand_id, price, discount_price, stock, rating, review_count, is_featured, is_new_arrival)
   VALUES ('ASUS ROG Swift OLED PG27AQDM 27" 240Hz QHD 0.03ms Gaming Monitor', 'asus-rog-swift-oled-pg27aqdm-27-monitor', cat_monitor, br_asus, 115000, 108000, 8, 4.98, 42, true, true)
+  ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount_price = EXCLUDED.discount_price, stock = EXCLUDED.stock, is_featured = EXCLUDED.is_featured, is_new_arrival = EXCLUDED.is_new_arrival
   RETURNING id INTO prod_id;
+
+  DELETE FROM public.product_images WHERE product_id = prod_id;
+  DELETE FROM public.product_specs WHERE product_id = prod_id;
 
   INSERT INTO public.product_images (product_id, image_url, is_primary, display_order) VALUES
     (prod_id, 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&auto=format&fit=crop&q=80', true, 1);

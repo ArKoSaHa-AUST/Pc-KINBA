@@ -33,22 +33,26 @@ CREATE INDEX IF NOT EXISTS idx_price_alerts_created_at ON public.price_alerts (c
 ALTER TABLE public.price_alerts ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access to verify subscription status
+DROP POLICY IF EXISTS "Allow read access to price alerts" ON public.price_alerts;
 CREATE POLICY "Allow read access to price alerts"
     ON public.price_alerts FOR SELECT
     USING (true);
 
 -- Allow public / authenticated insert for price alerts
+DROP POLICY IF EXISTS "Allow insert access to price alerts" ON public.price_alerts;
 CREATE POLICY "Allow insert access to price alerts"
     ON public.price_alerts FOR INSERT
     WITH CHECK (true);
 
 -- Allow update access
+DROP POLICY IF EXISTS "Allow update access to price alerts" ON public.price_alerts;
 CREATE POLICY "Allow update access to price alerts"
     ON public.price_alerts FOR UPDATE
     USING (true)
     WITH CHECK (true);
 
 -- Allow delete access
+DROP POLICY IF EXISTS "Allow delete access to price alerts" ON public.price_alerts;
 CREATE POLICY "Allow delete access to price alerts"
     ON public.price_alerts FOR DELETE
     USING (true);
