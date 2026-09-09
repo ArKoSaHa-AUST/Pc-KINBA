@@ -14,8 +14,16 @@ import { extractAttributes, generateFingerprint, isSameProductVariant, group5Sto
 import { getGroqSuggestions } from "./lib/groq.js";
 import { buildProductAlternatives, deriveCategory, getCategoryFallbackImage } from "./lib/alternatives.js";
 import { batchEnrichCallForPrice, enrichGroupedShops, estimateSingleProductPrice } from "./lib/priceEstimator.js";
+import { deriveBuySignal } from "./lib/priceInsights.js";
+import { runBuildOrchestrator, runRefineOrchestrator, ACTIVE_SESSIONS } from "./lib/ai/orchestrator.js";
 
 dotenv.config();
+
+const PYTHON_BIN = process.env.PYTHON_BIN || (
+  process.platform === "win32" 
+    ? path.join(process.cwd(), "scrapers/venv/Scripts/python.exe")
+    : path.join(process.cwd(), "scrapers/venv/bin/python")
+);
 
 /**
  * Sanitizes input string to prevent log injection vulnerabilities.
@@ -1473,32 +1481,7 @@ app.get("/api/product/:id/price-history", apiLimiter, async (req, res) => {
   }
 });
 
-/**
- * "Best time to buy" heuristic: where the current price sits in the window's range,
- * combined with the direction of the last 7 days.
- * @returns {{ signal: "buy"|"fair"|"wait"|"neutral", reason: string }}
- */
-function deriveBuySignal(points, current, lowest, highest, days) {
-  if (current <= 0 || points.length < 2) {
-    return { signal: "neutral", reason: "Not enough price history yet to judge timing." };
-  }
-  const range = highest - lowest;
-  const position = range > 0 ? (current - lowest) / range : 0;
-  const weekAgo = Date.now() - 7 * 86400000;
-  const ref = [...points].reverse().find(p => Date.parse(p.date) < weekAgo) ?? points[0];
-  const trendPct = ref.price > 0 ? ((current - ref.price) / ref.price) * 100 : 0;
 
-  if (position <= 0.1) {
-    return { signal: "buy", reason: `At its lowest price in ${days} days — a strong time to buy.` };
-  }
-  if (trendPct <= -3) {
-    return { signal: "wait", reason: `Down ${Math.abs(trendPct).toFixed(1)}% this week and still falling — it may drop further.` };
-  }
-  if (position >= 0.6) {
-    return { signal: "wait", reason: `৳${(current - lowest).toLocaleString()} above its ${days}-day low — wait for a better deal.` };
-  }
-  return { signal: "fair", reason: "Close to its recent low with stable pricing — a fair time to buy." };
-}
 
 /**
  * Drains price_drop_events (enqueued by a DB trigger on price_history): emails price-alert
@@ -2256,6 +2239,140 @@ app.post("/api/upload/imagekit", authActionLimiter, async (req, res) => {
     return res.status(500).json({ error: "ImageKit upload failed", details: errText });
   } catch (err) {
     return res.status(500).json({ error: err.message });
+  }
+});
+
+// 8. Tonima AI Build Agent Endpoints (Multi-Model SSE Architecture)
+/**
+ * AI Assistant Endpoint: Stream PC Build configuration using team of models
+ * POST /api/ai/build
+ * Body: { message: string, sessionId?: string, userId?: string, language?: 'en'|'bn' }
+ */
+app.post("/api/ai/build", commandLimiter, async (req, res) => {
+  const { message, sessionId, userId, language } = req.body || {};
+
+  if (!message || typeof message !== "string" || !message.trim()) {
+    return res.status(400).json({ error: "Message query is required" });
+  }
+
+  // Set SSE Headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  if (typeof res.flushHeaders === "function") {
+    res.flushHeaders();
+  }
+
+  const sendEvent = (event, data) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    const generator = runBuildOrchestrator(
+      message.trim(),
+      { sessionId, userId, language },
+      supabase
+    );
+
+    for await (const item of generator) {
+      sendEvent(item.event, item.data);
+    }
+  } catch (err) {
+    console.error("[AI Build Error]:", sanitizeLog(err.message));
+    sendEvent("error", { message: "Failed to generate build. Please try again." });
+  } finally {
+    res.end();
+  }
+});
+
+/**
+ * AI Assistant Endpoint: Stream Build Refinement / Part-Swap
+ * POST /api/ai/refine
+ * Body: { sessionId: string, message: string, language?: 'en'|'bn' }
+ */
+app.post("/api/ai/refine", commandLimiter, async (req, res) => {
+  const { sessionId, message, language } = req.body || {};
+
+  if (!sessionId || !message || typeof message !== "string" || !message.trim()) {
+    return res.status(400).json({ error: "sessionId and message are required" });
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  if (typeof res.flushHeaders === "function") {
+    res.flushHeaders();
+  }
+
+  const sendEvent = (event, data) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    const generator = runRefineOrchestrator(
+      sessionId,
+      message.trim(),
+      { language },
+      supabase
+    );
+
+    for await (const item of generator) {
+      sendEvent(item.event, item.data);
+    }
+  } catch (err) {
+    console.error("[AI Refine Error]:", sanitizeLog(err.message));
+    sendEvent("error", { message: "Failed to refine build. Please try again." });
+  } finally {
+    res.end();
+  }
+});
+
+/**
+ * AI Assistant Endpoint: Retrieve Saved or In-Progress Session
+ * GET /api/ai/session/:id
+ */
+app.get("/api/ai/session/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ error: "Session ID required" });
+
+  const active = ACTIVE_SESSIONS.get(id);
+  if (active) {
+    return res.json({
+      sessionId: active.id,
+      request: active.request,
+      build: active.build,
+      parts: active.partsList,
+      validation: active.validation
+    });
+  }
+
+  try {
+    const { data: dbSession, error: sErr } = await supabase
+      .from("ai_sessions")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (sErr || !dbSession) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    const { data: messages } = await supabase
+      .from("ai_messages")
+      .select("*")
+      .eq("session_id", id)
+      .order("created_at", { ascending: true });
+
+    return res.json({
+      sessionId: dbSession.id,
+      request: dbSession.request,
+      build: dbSession.build,
+      messages: messages || []
+    });
+  } catch (err) {
+    return res.status(500).json({ error: "Failed to load session" });
   }
 });
 
