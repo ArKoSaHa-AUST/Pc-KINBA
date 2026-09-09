@@ -14,7 +14,6 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { use3DTilt } from './use3DTilt';
 import type { BuildComponentItem } from './BuildPreviewHUD';
 import './ChatWorkspace.css';
 
@@ -52,6 +51,177 @@ interface ChatWorkspaceProps {
   onBuildUpdated?: (payload: BuildUpdatePayload) => void;
   onResetSession?: () => void;
   className?: string;
+}
+
+function renderInlineFormatted(text: string, isUser: boolean) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      const boldText = part.slice(2, -2);
+      return (
+        <strong
+          key={idx}
+          className={
+            isUser
+              ? 'font-bold text-white'
+              : 'font-bold text-accent drop-shadow-[0_0_8px_rgba(0,229,255,0.25)]'
+          }
+        >
+          {boldText}
+        </strong>
+      );
+    }
+    return <span key={idx}>{part}</span>;
+  });
+}
+
+function FormattedMessageContent({ text, isUser }: { text: string; isUser: boolean }) {
+  const lines = text.split('\n');
+  const blocks: Array<
+    | { type: 'table'; headers: string[]; rows: string[][] }
+    | { type: 'paragraph'; lines: string[] }
+  > = [];
+
+  let currentTableLines: string[] = [];
+  let currentParagraphLines: string[] = [];
+
+  const flushParagraph = () => {
+    if (currentParagraphLines.length > 0) {
+      blocks.push({ type: 'paragraph', lines: [...currentParagraphLines] });
+      currentParagraphLines = [];
+    }
+  };
+
+  const flushTable = () => {
+    if (currentTableLines.length > 0) {
+      const parsedRows = currentTableLines
+        .filter((l) => !/^\s*\|?\s*[-:]+[-| :]*\|\s*$/.test(l))
+        .map((l) =>
+          l
+            .trim()
+            .replace(/^\|/, '')
+            .replace(/\|$/, '')
+            .split('|')
+            .map((c) => c.trim()),
+        );
+
+      if (parsedRows.length > 0) {
+        const headers = parsedRows[0];
+        const rows = parsedRows.slice(1);
+        blocks.push({ type: 'table', headers, rows });
+      }
+      currentTableLines = [];
+    }
+  };
+
+  for (const line of lines) {
+    const isTableLine = /^\s*\|.*\|\s*$/.test(line);
+    if (isTableLine) {
+      flushParagraph();
+      currentTableLines.push(line);
+    } else {
+      flushTable();
+      currentParagraphLines.push(line);
+    }
+  }
+
+  flushTable();
+  flushParagraph();
+
+  return (
+    <div
+      className={`space-y-2 leading-relaxed ${
+        isUser ? 'text-text-primary text-sm' : 'text-text-primary text-[13.5px]'
+      }`}
+    >
+      {blocks.map((block, bIdx) => {
+        if (block.type === 'table') {
+          return (
+            <div
+              key={bIdx}
+              className="my-2.5 overflow-x-auto rounded-xl border border-glass-border bg-fill-subtle/80 shadow-md backdrop-blur-md"
+            >
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-glass-border bg-bg-surface/80">
+                    {block.headers.map((h, hIdx) => (
+                      <th
+                        key={hIdx}
+                        className="py-2 px-2.5 font-bold uppercase tracking-wider text-[10px] text-accent font-mono"
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-glass-border/40">
+                  {block.rows.map((row, rIdx) => {
+                    const isTotalRow = row.some((cell) => /total|মোট/i.test(cell));
+                    return (
+                      <tr
+                        key={rIdx}
+                        className={`transition-colors ${
+                          isTotalRow
+                            ? 'bg-accent/10 font-bold border-t border-accent/30'
+                            : 'hover:bg-fill-muted/60'
+                        }`}
+                      >
+                        {row.map((cell, cIdx) => {
+                          const isPrice = /৳|bdt|tk/i.test(cell);
+                          const isCategory = cIdx === 0 && !isTotalRow;
+                          return (
+                            <td
+                              key={cIdx}
+                              className={`py-1.5 px-2.5 whitespace-nowrap text-[12px] ${
+                                isTotalRow
+                                  ? 'text-accent font-extrabold text-[13px]'
+                                  : isPrice
+                                    ? 'text-accent font-semibold'
+                                    : isCategory
+                                      ? 'text-text-secondary font-mono text-[11px]'
+                                      : 'text-text-primary'
+                              }`}
+                            >
+                              {renderInlineFormatted(cell, isUser)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+
+        return (
+          <div key={bIdx} className="space-y-1.5">
+            {block.lines.map((para, pIdx) => {
+              const trimmed = para.trim();
+              if (!trimmed) {
+                return <div key={pIdx} className="h-1" />;
+              }
+
+              const isBullet = /^[•\-*]\s+/.test(trimmed);
+              const content = isBullet ? trimmed.replace(/^[•\-*]\s+/, '') : trimmed;
+
+              if (isBullet) {
+                return (
+                  <div key={pIdx} className="flex items-start gap-2 pl-1.5">
+                    <span className="text-accent text-xs mt-1 shrink-0">•</span>
+                    <span>{renderInlineFormatted(content, isUser)}</span>
+                  </div>
+                );
+              }
+
+              return <p key={pIdx}>{renderInlineFormatted(trimmed, isUser)}</p>;
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 const DEFAULT_MESSAGES: ChatMessage[] = [
@@ -119,18 +289,6 @@ export default function ChatWorkspace({
   const [thinkingStatus, setThinkingStatus] = useState<string>('');
   const [hasActiveBuild, setHasActiveBuild] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-  // 3D Parallax Tilt Physics with Framer Motion spring
-  const {
-    cardRef,
-    rotateX,
-    rotateY,
-    scale,
-    glossPos,
-    handleMouseMove,
-    handleMouseEnter,
-    handleMouseLeave,
-  } = use3DTilt({ maxTilt: 5, scaleOnHover: 1.005 });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -273,11 +431,30 @@ export default function ChatWorkspace({
           }
         }
 
-        // Finalize bot message with dynamic chips from alternatives
-        const dynamicChips = currentAlternatives.map((alt) => ({
+        // Finalize bot message with dynamic chips from alternatives or starter recommendation chips
+        let finalChips = currentAlternatives.map((alt) => ({
           label: alt.label,
           actionQuery: alt.label.replace(/^[^\w]+/, '').trim(),
         }));
+
+        if (finalChips.length === 0 && !hasActiveBuild) {
+          finalChips = [
+            {
+              label: '🎮 1440p Gaming Under ৳150K',
+              actionQuery: 'Build me a gaming PC for 1440p high-FPS gaming under ৳ 1,50,000',
+            },
+            {
+              label: '🎬 4K Video Editing ৳220K',
+              actionQuery:
+                'Recommend a high-end 4K video editing workstation with 64GB RAM and fast NVMe storage around ৳ 2,20,000',
+            },
+            {
+              label: '🧠 AI Deep Learning Rig ৳200K',
+              actionQuery:
+                'I need a PC for machine learning and deep learning. Budget is around 2 lakh taka.',
+            },
+          ];
+        }
 
         setMessages((prev) =>
           prev.map((msg) =>
@@ -285,7 +462,7 @@ export default function ChatWorkspace({
               ? {
                   ...msg,
                   text: accumulatedText || 'Here is your configured PC architecture blueprint.',
-                  highlightChips: dynamicChips.length > 0 ? dynamicChips : undefined,
+                  highlightChips: finalChips.length > 0 ? finalChips : undefined,
                 }
               : msg,
           ),
@@ -334,50 +511,29 @@ export default function ChatWorkspace({
   };
 
   return (
-    <div
-      ref={cardRef}
-      className={`tonima-chat-card-perspective-wrapper ${className}`}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      <motion.div
-        className="tonima-chat-card"
-        style={{
-          rotateX,
-          rotateY,
-          scale,
-        }}
-      >
-        {/* Dynamic Gloss Highlight Overlay */}
-        <div
-          className="tonima-card-gloss"
-          style={{
-            background: `radial-gradient(circle at ${glossPos.x}% ${glossPos.y}%, rgba(255, 255, 255, 0.35), transparent 60%)`,
-          }}
-        />
-
+    <div className={`tonima-chat-card-container ${className}`}>
+      <div className="tonima-chat-card">
         {/* Sticky Top Header Bar inside Card */}
         <div className="tonima-chat-header">
           <div className="flex items-center gap-3">
             <div className="tonima-avatar-pulse">
-              <Bot className="w-5 h-5 text-accent" />
+              <Bot className="w-5 h-5 text-white" />
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm text-text-primary">Tonima AI Core</span>
-                <span className="flex items-center gap-1 text-[11px] text-green font-medium">
-                  <span className="w-2 h-2 rounded-full bg-green animate-pulse" />
+                <span className="flex items-center gap-1.5 text-[11px] text-green font-semibold bg-green/10 px-2 py-0.5 rounded-full border border-green/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
                   Live Engine
                 </span>
               </div>
               <div className="flex items-center gap-2 text-[11px] text-text-muted mt-0.5">
                 <span className="flex items-center gap-1">
                   <Cpu className="w-3 h-3 text-accent" />
-                  Multi-Model Team (Groq Pool)
+                  Multi-Model (Groq Pool)
                 </span>
                 <span>•</span>
-                <span className="text-accent/90 font-mono">Real-Time Prices</span>
+                <span className="text-accent font-medium">Real-Time Prices (BD)</span>
               </div>
             </div>
           </div>
@@ -386,12 +542,12 @@ export default function ChatWorkspace({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              className="p-2 rounded-full glass text-text-muted hover:text-text-primary hover:border-accent transition-all flex items-center gap-1.5 text-xs font-semibold"
+              className="px-3 py-1.5 rounded-xl glass border border-glass-border text-text-muted hover:text-text-primary hover:border-accent hover:bg-fill-muted transition-all flex items-center gap-1.5 text-xs font-semibold"
               onClick={handleClear}
               title="Reset Conversation Session"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Reset</span>
+              <span>Reset</span>
             </button>
           </div>
         </div>
@@ -403,24 +559,24 @@ export default function ChatWorkspace({
               <motion.div
                 key={msg.id}
                 className={msg.sender === 'bot' ? 'tonima-msg-bot' : 'tonima-msg-user'}
-                initial={{ opacity: 0, y: 15, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.3 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
               >
-                <div className="whitespace-pre-line leading-relaxed">{msg.text}</div>
+                <FormattedMessageContent text={msg.text} isUser={msg.sender === 'user'} />
 
                 {/* Interactive Suggestion Chips inside bot message */}
                 {msg.sender === 'bot' && msg.highlightChips && msg.highlightChips.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3 pt-2.5 border-t border-glass-border">
+                  <div className="flex flex-wrap gap-2 mt-3.5 pt-3 border-t border-glass-border">
                     {msg.highlightChips.map((chip, cIdx) => (
                       <button
                         key={cIdx}
                         type="button"
-                        className="tonima-hardware-chip"
+                        className="tonima-hardware-chip group"
                         onClick={() => chip.actionQuery && handleUserSubmit(chip.actionQuery)}
                         disabled={isProcessing}
                       >
-                        <ArrowDownUp className="w-3 h-3" />
+                        <ArrowDownUp className="w-3 h-3 text-accent transition-transform group-hover:rotate-180" />
                         <span>{chip.label}</span>
                       </button>
                     ))}
@@ -428,15 +584,15 @@ export default function ChatWorkspace({
                 )}
 
                 {msg.isError && (
-                  <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-400">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>Click reset or submit another query to restart.</span>
+                  <div className="mt-2.5 flex items-center gap-1.5 text-xs text-amber-400 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Connection interrupted. Click reset or submit another query to restart.</span>
                   </div>
                 )}
 
                 <div
-                  className={`text-[10px] mt-2 ${
-                    msg.sender === 'bot' ? 'text-text-muted' : 'text-text-primary/70 text-right'
+                  className={`text-[10px] mt-2 font-mono ${
+                    msg.sender === 'bot' ? 'text-text-muted' : 'text-text-secondary text-right'
                   }`}
                 >
                   {msg.timestamp}
@@ -448,11 +604,11 @@ export default function ChatWorkspace({
           {/* Thinking / Streaming Indicator */}
           {isProcessing && (
             <motion.div
-              className="tonima-msg-bot flex items-center gap-2 text-accent"
+              className="tonima-msg-bot flex items-center gap-2.5 text-accent"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <Sparkles className="w-4 h-4 animate-spin text-accent" />
+              <Sparkles className="w-4 h-4 animate-spin text-accent shrink-0" />
               <span className="text-xs font-medium">
                 {thinkingStatus ||
                   'Tonima is calculating hardware matrices & lowest store prices...'}
@@ -478,21 +634,30 @@ export default function ChatWorkspace({
         </div>
 
         {/* Interactive Refinement Quick Ticker Bar */}
-        <div className="px-4 py-2 bg-fill-subtle border-t border-glass-border overflow-x-auto flex items-center gap-1.5 scrollbar-none">
-          <span className="text-[10px] font-bold text-accent uppercase tracking-wider whitespace-nowrap mr-1 flex items-center gap-1">
-            <Sparkles className="w-3 h-3" /> Refine:
-          </span>
-          {REFINEMENT_SHORTCUTS.map((refine, idx) => (
-            <button
-              key={idx}
-              type="button"
-              className="px-2.5 py-1 rounded-full glass border border-glass-border text-[11px] text-text-secondary hover:text-text-primary hover:border-accent whitespace-nowrap transition-all flex items-center gap-1 disabled:opacity-50"
-              onClick={() => handleUserSubmit(refine.query)}
-              disabled={isProcessing}
-            >
-              <span>{refine.label}</span>
-            </button>
-          ))}
+        <div className="tonima-refine-bar-wrapper">
+          <div
+            className="tonima-refine-ticker-bar"
+            onWheel={(e) => {
+              if (e.deltaY !== 0) {
+                e.currentTarget.scrollLeft += e.deltaY;
+              }
+            }}
+          >
+            <span className="text-[11px] font-bold text-accent uppercase tracking-wider whitespace-nowrap mr-1 flex items-center gap-1 shrink-0">
+              <Sparkles className="w-3 h-3" /> Refine:
+            </span>
+            {REFINEMENT_SHORTCUTS.map((refine, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className="tonima-refine-chip"
+                onClick={() => handleUserSubmit(refine.query)}
+                disabled={isProcessing}
+              >
+                <span>{refine.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Pinned Multimodal Floating Input Bar */}
@@ -500,7 +665,7 @@ export default function ChatWorkspace({
           <form className="tonima-input-bar" onSubmit={handleFormSubmit}>
             <button
               type="button"
-              className="p-1.5 rounded-full text-text-muted hover:text-text-primary hover:bg-fill-muted transition-colors"
+              className="p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-fill-muted transition-colors shrink-0"
               title="Attach benchmark or requirement notes"
             >
               <Paperclip className="w-4 h-4" />
@@ -521,7 +686,7 @@ export default function ChatWorkspace({
 
             <button
               type="button"
-              className="p-1.5 rounded-full text-text-muted hover:text-text-primary hover:bg-fill-muted transition-colors"
+              className="p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-fill-muted transition-colors shrink-0"
               title="Voice input"
             >
               <Mic className="w-4 h-4" />
@@ -529,7 +694,7 @@ export default function ChatWorkspace({
 
             <button
               type="submit"
-              className="w-8 h-8 rounded-full bg-gradient-to-r from-accent to-purple text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_0_12px_var(--glass-glow)]"
+              className="w-8 h-8 rounded-full bg-gradient-to-r from-accent to-purple text-white flex items-center justify-center hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_0_12px_var(--glass-glow)] shrink-0"
               disabled={!inputVal.trim() || isProcessing}
               aria-label="Send Message"
             >
@@ -542,15 +707,15 @@ export default function ChatWorkspace({
           </form>
           <div className="flex items-center justify-between text-[11px] text-text-muted mt-2 px-2">
             <span>Supports English & বাংলা natural queries</span>
-            <span className="flex items-center gap-1 font-mono">
+            <span className="flex items-center gap-1 font-mono text-[10px]">
               <span>Press</span>
               <kbd className="px-1.5 py-0.5 rounded bg-fill-muted text-[10px] text-text-secondary border border-glass-border">
-                <CornerDownLeft className="w-2.5 h-2.5 inline" /> Enter
+                <CornerDownLeft className="w-2.5 h-2.5 inline mr-0.5" /> Enter
               </kbd>
             </span>
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

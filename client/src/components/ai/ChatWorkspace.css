@@ -1,45 +1,31 @@
 /* ==========================================================================
-   Tonima Chat Workspace - Left Column (tonima2.md & tonima3.md Specification)
+   Tonima Chat Workspace - Left Column (Solid, Fixed, Glassmorphic UI)
    ========================================================================== */
 
-.tonima-chat-card-perspective-wrapper {
-  perspective: 1200px;
-  transform-style: preserve-3d;
+.tonima-chat-card-container {
   width: 100%;
   min-width: 0;
 }
 
 .tonima-chat-card {
   width: 100%;
-  height: 680px;
+  height: clamp(580px, calc(100vh - 140px), 740px);
   background: var(--glass-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--glass-border);
   border-radius: 24px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  transform-style: preserve-3d;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.3s ease;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .tonima-chat-card:hover {
-  box-shadow: 0 30px 60px var(--glass-glow);
-}
-
-/* Dynamic Gloss Highlight Overlay */
-.tonima-card-gloss {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.15;
-  z-index: 1;
-  transition: opacity 0.3s ease;
+  border-color: rgba(0, 229, 255, 0.25);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 229, 255, 0.08);
 }
 
 /* Sticky Header inside Chat Card */
@@ -50,22 +36,23 @@
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--glass-border);
   background: var(--fill-subtle);
-  transform: translateZ(20px);
   position: relative;
   z-index: 2;
+  flex-shrink: 0;
 }
 
 .tonima-avatar-pulse {
   position: relative;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
   background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  box-shadow: 0 0 15px var(--glass-glow);
+  box-shadow: 0 0 16px var(--glass-glow);
+  flex-shrink: 0;
 }
 
 .tonima-avatar-pulse::after {
@@ -111,89 +98,145 @@
 /* Message Bubble Styles */
 .tonima-msg-bot {
   align-self: flex-start;
-  max-width: 82%;
-  background: var(--fill-subtle);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
+  max-width: 85%;
+  background: rgba(15, 22, 38, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px 20px 20px 4px;
-  padding: 1rem 1.25rem;
+  padding: 1.1rem 1.35rem;
   color: var(--text-primary);
-  font-size: 0.9375rem;
-  line-height: 1.6;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  transform: translateZ(25px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.2s ease;
+}
+
+.tonima-msg-bot:hover {
+  border-color: rgba(0, 229, 255, 0.18);
 }
 
 .tonima-msg-user {
   align-self: flex-end;
   max-width: 80%;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.25), rgba(0, 229, 255, 0.25));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 229, 255, 0.3);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(0, 229, 255, 0.25));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 229, 255, 0.35);
   border-radius: 20px 20px 4px 20px;
-  padding: 0.9rem 1.25rem;
+  padding: 0.95rem 1.3rem;
   color: var(--text-primary);
-  font-size: 0.9375rem;
-  line-height: 1.5;
-  box-shadow: 0 4px 20px rgba(0, 229, 255, 0.1);
-  transform: translateZ(25px);
+  box-shadow: 0 4px 20px rgba(0, 229, 255, 0.12);
 }
 
-/* Component Chips inside Message Bubble */
+/* Component Suggestion Chips inside Message Bubble */
 .tonima-hardware-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem 0.6rem;
-  border-radius: 6px;
-  background: var(--fill-muted);
-  border: 1px solid var(--glass-border);
+  gap: 0.45rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 9999px;
+  background: rgba(0, 229, 255, 0.06);
+  border: 1px solid rgba(0, 229, 255, 0.25);
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--accent);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
-  transform: translateZ(10px);
 }
 
-.tonima-hardware-chip:hover {
+.tonima-hardware-chip:hover:not(:disabled) {
   background: var(--accent);
-  color: #000;
+  color: #030712;
   border-color: var(--accent);
-  transform: translateZ(25px) translateY(-1px);
-  box-shadow: 0 4px 12px var(--glass-glow);
+  box-shadow: 0 0 16px var(--glass-glow);
+  transform: translateY(-1px);
+}
+
+.tonima-hardware-chip:hover:not(:disabled) .text-accent {
+  color: #030712;
+}
+
+.tonima-hardware-chip:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Refinement Quick Ticker Bar */
+.tonima-refine-bar-wrapper {
+  position: relative;
+  background: var(--fill-subtle);
+  border-top: 1px solid var(--glass-border);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.tonima-refine-ticker-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tonima-refine-ticker-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.tonima-refine-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.tonima-refine-chip:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: rgba(0, 229, 255, 0.08);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.15);
+}
+
+.tonima-refine-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Floating Multimodal Input Bar */
 .tonima-input-bar-wrapper {
-  padding: 1rem 1.5rem;
+  padding: 0.85rem 1.25rem 1rem;
   background: var(--fill-subtle);
   border-top: 1px solid var(--glass-border);
-  transform: translateZ(30px);
   position: relative;
   z-index: 2;
+  flex-shrink: 0;
 }
 
 .tonima-input-bar {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 1rem;
+  gap: 0.5rem;
+  padding: 0.5rem 0.85rem;
   border-radius: 9999px;
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .tonima-input-bar:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 16px var(--glass-glow);
+  box-shadow: 0 0 18px var(--glass-glow);
 }
 
 .tonima-input-field {
@@ -203,6 +246,7 @@
   color: var(--text-primary);
   font-size: 0.9375rem;
   outline: none;
+  min-width: 0;
 }
 
 .tonima-input-field::placeholder {
