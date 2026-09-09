@@ -15,7 +15,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { use3DTilt } from './use3DTilt';
 import Chassis3DViewer from './Chassis3DViewer';
 import CompatibilityGauge from './CompatibilityGauge';
 import './BuildPreviewHUD.css';
@@ -122,18 +121,6 @@ export default function BuildPreviewHUD({
   const [showQuotationModal, setShowQuotationModal] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  // 3D Tilt hook
-  const {
-    cardRef,
-    rotateX,
-    rotateY,
-    scale,
-    glossPos,
-    handleMouseMove,
-    handleMouseEnter,
-    handleMouseLeave,
-  } = use3DTilt({ maxTilt: 5, scaleOnHover: 1.005 });
-
   // Calculate actual total from components if not explicitly provided
   const computedTotal = components.reduce((sum, c) => sum + c.priceBDT, 0);
   const targetPrice = initialTotalPrice || computedTotal;
@@ -210,29 +197,8 @@ export default function BuildPreviewHUD({
   const gpuTemp = isHighEnd ? '~65°C' : '~59°C';
 
   return (
-    <div
-      ref={cardRef}
-      className={`tonima-hud-card-perspective-wrapper ${className}`}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      <motion.div
-        className="tonima-hud-card"
-        style={{
-          rotateX,
-          rotateY,
-          scale,
-        }}
-      >
-        {/* Dynamic Gloss Highlight Overlay */}
-        <div
-          className="tonima-card-gloss"
-          style={{
-            background: `radial-gradient(circle at ${glossPos.x}% ${glossPos.y}%, rgba(255, 255, 255, 0.35), transparent 60%)`,
-          }}
-        />
-
+    <div className={`tonima-hud-card-container ${className}`}>
+      <div className="tonima-hud-card">
         {/* Tab Navigation Header */}
         <div className="tonima-hud-tabs">
           <button
@@ -428,7 +394,7 @@ export default function BuildPreviewHUD({
             </button>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* PDF Quotation Modal */}
       <AnimatePresence>

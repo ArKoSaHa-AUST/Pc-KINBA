@@ -146,9 +146,9 @@ Five roles. Only **one** of them uses an expensive closed model; the rest are ch
 
 ### Role → model mapping
 
-| Role      | Primary                             | Fallback 1                             | Fallback 2                                             |
-| --------- | ----------------------------------- | -------------------------------------- | ------------------------------------------------------ |
-| Intent    | `qwen/qwen3.8-27b` (Groq)           | local Ollama `qwen2.5:1.5b`            | regex heuristics (budget numbers, purpose keywords)    |
+| Role                                                                                             | Primary                                                     | Fallback 1                          | Fallback 2                                             |
+| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------ |
+| Intent                                                                                           | `qwen/qwen3.8-27b` (Groq)                                   | local Ollama `qwen2.5:1.5b`         | regex heuristics (budget numbers, purpose keywords)    |
 | Planner   | `openai/gpt-oss-120b` (Groq)        | `llama-3.3-70b-versatile` (Groq)       | `qwen/qwen3.8-27b` (Groq) + stricter validator loop    |
 | Explainer | `qwen/qwen3.8-27b` (Groq, streamed) | local Ollama `qwen2.5:7b` if installed | template-rendered markdown (no LLM)                    |
 | Refiner   | `qwen/qwen3.8-27b` (Groq)           | local Ollama                           | keyword rules (existing `swap_gpu_4060`-style actions) |
