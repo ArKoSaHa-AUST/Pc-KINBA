@@ -24,12 +24,16 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .tonima-hud-card:hover {
   border-color: rgba(0, 229, 255, 0.25);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 229, 255, 0.08);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(0, 229, 255, 0.08);
 }
 
 /* Tabs Navigation Bar */

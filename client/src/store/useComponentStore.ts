@@ -239,7 +239,15 @@ export const useComponentStore = create<ComponentStore>()(
     }),
     {
       name: 'pc-kinba-components-store',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() =>
+        typeof window !== 'undefined'
+          ? window.localStorage
+          : {
+              getItem: () => null,
+              setItem: () => {},
+              removeItem: () => {},
+            },
+      ),
       partialize: (state) => ({
         compareList: state.compareList,
         wishlist: state.wishlist,

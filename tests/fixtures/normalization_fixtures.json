@@ -1,0 +1,50 @@
+{
+  "test_cases": [
+    {
+      "id": "NORM-GPU-GIGABYTE",
+      "raw_title": "GIGABYTE GeForce RTX 4070 Super WindForce OC 12G Graphics Card",
+      "expected_manufacturer": "NVIDIA",
+      "expected_brand": "Gigabyte",
+      "expected_model": "RTX 4070 Super",
+      "expected_capacity": "12GB",
+      "expected_fingerprint_contains": ["nvidia", "4070", "12gb"]
+    },
+    {
+      "id": "NORM-CPU-AMD",
+      "raw_title": "AMD Ryzen 7 7700 Gaming Desktop Processor",
+      "expected_manufacturer": "AMD",
+      "expected_brand": "AMD",
+      "expected_model": "Ryzen 7 7700",
+      "expected_fingerprint_contains": ["amd", "ryzen", "7700"]
+    },
+    {
+      "id": "NORM-RAM-CORSAIR",
+      "raw_title": "Corsair Vengeance 32GB (2x16GB) DDR5 5600MHz Desktop RAM",
+      "expected_manufacturer": "Corsair",
+      "expected_brand": "Corsair",
+      "expected_type": "DDR5",
+      "expected_capacity": "32GB",
+      "expected_speed": "5600MHz"
+    },
+    {
+      "id": "NORM-SSD-SAMSUNG",
+      "raw_title": "Samsung 990 Pro 2TB PCIe 4.0 M.2 NVMe SSD",
+      "expected_manufacturer": "Samsung",
+      "expected_brand": "Samsung",
+      "expected_model": "990 Pro",
+      "expected_capacity": "2TB",
+      "expected_type": "NVMe"
+    },
+    {
+      "id": "NORM-PRICE-CLEANING",
+      "prices": [
+        { "raw": "৳ 45,500", "expected": 45500 },
+        { "raw": "48,000 BDT", "expected": 48000 },
+        { "raw": "Call for Price", "expected": null },
+        { "raw": "0", "expected": null },
+        { "raw": "৳0", "expected": null },
+        { "raw": null, "expected": null }
+      ]
+    }
+  ]
+}
