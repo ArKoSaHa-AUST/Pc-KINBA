@@ -8,7 +8,8 @@
     "start": "node server.js",
     "server": "node server.js",
     "client": "npm --prefix client run dev",
-    "dev": "node server.js",
+    "dev": "npm --prefix client run dev",
+    "dev:server": "node server.js",
     "release": "semantic-release"
   },
   "engines": {
