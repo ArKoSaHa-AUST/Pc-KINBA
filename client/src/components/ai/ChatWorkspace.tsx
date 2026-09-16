@@ -78,8 +78,7 @@ function renderInlineFormatted(text: string, isUser: boolean) {
 function FormattedMessageContent({ text, isUser }: { text: string; isUser: boolean }) {
   const lines = text.split('\n');
   const blocks: Array<
-    | { type: 'table'; headers: string[]; rows: string[][] }
-    | { type: 'paragraph'; lines: string[] }
+    { type: 'table'; headers: string[]; rows: string[][] } | { type: 'paragraph'; lines: string[] }
   > = [];
 
   let currentTableLines: string[] = [];
@@ -586,7 +585,9 @@ export default function ChatWorkspace({
                 {msg.isError && (
                   <div className="mt-2.5 flex items-center gap-1.5 text-xs text-amber-400 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>Connection interrupted. Click reset or submit another query to restart.</span>
+                    <span>
+                      Connection interrupted. Click reset or submit another query to restart.
+                    </span>
                   </div>
                 )}
 

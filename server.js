@@ -115,14 +115,32 @@ function detectSearchIntent(query) {
     return { category: "Desktop PC", type: "pc", modelCode: null, isExplicitSystem: true, excludes: [] };
   }
 
-  // 2. Extract GPU Model Code (e.g. 4060, 4060 Ti, 4070, 4080, 4090, 5060, 3060, 7600, 7800, 6600)
-  const gpuModelMatch = q.match(/\b(rtx\s*)?(\d{4}(?:\s*ti|\s*super)?)\b/i) || q.match(/\b(rx\s*)(\d{4}(?:\s*xt)?)\b/i) || q.match(/\b(gtx\s*)(\d{4}(?:\s*ti)?)\b/i);
+  // 2. CPU Intent (e.g. Ryzen 7 7700, Core i5 13400, 7800X3D, 14700K)
+  const cpuModelMatch = q.match(/\b(ryzen\s*[3579]\s*\d{4}[xX3dD]*)\b/i) || q.match(/\b(i[3579]-?\d{4,5}[kKfF]*)\b/i) || (q.includes("processor") || q.includes("cpu") ? q.match(/\b(\d{4,5}[xX3dDkKfF]*)\b/i) : null);
+  let cpuModelCode = cpuModelMatch ? (cpuModelMatch[1] || cpuModelMatch[0]).replace(/\s+/g, " ").trim() : null;
+
+  if (q.includes("ryzen") || q.includes("core i") || q.includes("processor") || q.includes("cpu") || q.includes("threadripper") || cpuModelMatch) {
+    if (!cpuModelCode) {
+      const numMatch = q.match(/\b(\d{4,5}[xX3dDkKfF]*)\b/);
+      if (numMatch) cpuModelCode = numMatch[0];
+    }
+    return {
+      category: "Processor",
+      type: "cpu",
+      modelCode: cpuModelCode,
+      isExplicitSystem: false,
+      excludes: ["laptop", "notebook", "desktop pc", "gaming pc", "budget pc", "pc build", "combo offer", "motherboard", "cooler", "casing"]
+    };
+  }
+
+  // 3. Extract GPU Model Code (e.g. 4060, 4060 Ti, 4070, 4080, 4090, 5060, 3060, 7600, 7800, 6600)
+  const gpuModelMatch = q.match(/\b(rtx\s*)(\d{4}(?:\s*ti|\s*super)?)\b/i) || q.match(/\b(rx\s*)(\d{4}(?:\s*xt)?)\b/i) || q.match(/\b(gtx\s*)(\d{4}(?:\s*ti)?)\b/i) || q.match(/\b(4060|4070|4080|4090|3060|3070|3080|3090|5060|5070|5080|5090|7600|7700\s*xt|7800\s*xt|7900\s*xtx?|6600|6700\s*xt)\b/i);
   let gpuModelCode = null;
   if (gpuModelMatch) {
     gpuModelCode = (gpuModelMatch[2] || gpuModelMatch[0]).replace(/\s+/g, " ").trim();
   }
 
-  // 3. GPU Intent
+  // 4. GPU Intent
   if (q.includes("rtx") || q.includes("gtx") || q.includes("rx ") || q.includes("graphics card") || q.includes("gpu") || q.includes("radeon") || q.includes("geforce") || gpuModelMatch) {
     return {
       category: "Graphics Card",
@@ -130,20 +148,6 @@ function detectSearchIntent(query) {
       modelCode: gpuModelCode,
       isExplicitSystem: false,
       excludes: ["laptop", "notebook", "desktop pc", "gaming pc", "combo offer", "budget pc", "casing", "chassis", "motherboard", "processor"]
-    };
-  }
-
-  // 4. CPU Intent (e.g. Ryzen 7 7700, Core i5 13400, 7800X3D, 14700K)
-  const cpuModelMatch = q.match(/\b(\d{4,5}[xX3dDkKfF]*)\b/i) || q.match(/\b(i[3579]-?\d{4,5}[kKfF]*)\b/i) || q.match(/\b(ryzen\s*[3579]\s*\d{4}[xX3dD]*)\b/i);
-  let cpuModelCode = cpuModelMatch ? cpuModelMatch[0].trim() : null;
-
-  if (q.includes("ryzen") || q.includes("core i") || q.includes("processor") || q.includes("cpu") || q.includes("threadripper") || cpuModelMatch) {
-    return {
-      category: "Processor",
-      type: "cpu",
-      modelCode: cpuModelCode,
-      isExplicitSystem: false,
-      excludes: ["laptop", "notebook", "desktop pc", "gaming pc", "budget pc", "pc build", "combo offer", "motherboard", "cooler", "casing"]
     };
   }
 
@@ -2377,6 +2381,13 @@ app.get("/api/ai/session/:id", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`🚀 PC Kinba Backend Server running on http://localhost:${PORT}`);
-});
+
+let server = null;
+if (process.env.NODE_ENV !== "test") {
+  server = app.listen(PORT, () => {
+    console.log(`🚀 PC Kinba Backend Server running on http://localhost:${PORT}`);
+  });
+}
+
+export { app, server, detectSearchIntent, getQueryVariations, sanitizeCliArg, sanitizeLog };
+

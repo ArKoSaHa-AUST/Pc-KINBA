@@ -1,0 +1,78 @@
+{
+  "test_cases": [
+    {
+      "id": "COMPAT-AM5-B650",
+      "description": "AMD Ryzen 7 7700 (AM5) with MSI B650 Motherboard and DDR5 RAM",
+      "parts": {
+        "cpu": { "id": "cpu-1", "name": "AMD Ryzen 7 7700", "socket": "AM5", "tdp": 65 },
+        "motherboard": { "id": "mobo-1", "name": "MSI PRO B650M-A WiFi", "socket": "AM5", "ram_type": "DDR5", "form_factor": "mATX" },
+        "ram": { "id": "ram-1", "name": "Corsair Vengeance 32GB (2x16GB) DDR5-5600", "ram_type": "DDR5" },
+        "gpu": { "id": "gpu-1", "name": "Gigabyte RTX 4070 Super 12GB", "tdp": 220, "recommended_psu": 650 },
+        "psu": { "id": "psu-1", "name": "Cooler Master MWE 750W Gold", "wattage": 750 },
+        "case": { "id": "case-1", "name": "NZXT H5 Flow", "supported_form_factors": ["ATX", "mATX", "Mini-ITX"], "max_gpu_length": 365, "max_cooler_height": 165 },
+        "cooler": { "id": "cooler-1", "name": "Deepcool AG400", "height": 150, "supported_sockets": ["AM5", "LGA1700"] }
+      },
+      "expected": {
+        "compatible": true,
+        "warnings": [],
+        "errors": []
+      }
+    },
+    {
+      "id": "COMPAT-SOCKET-MISMATCH",
+      "description": "AMD AM5 CPU installed in Intel LGA1700 Motherboard",
+      "parts": {
+        "cpu": { "id": "cpu-1", "name": "AMD Ryzen 7 7700", "socket": "AM5", "tdp": 65 },
+        "motherboard": { "id": "mobo-2", "name": "ASUS PRIME Z790-P", "socket": "LGA1700", "ram_type": "DDR5", "form_factor": "ATX" },
+        "ram": { "id": "ram-1", "name": "Corsair 32GB DDR5", "ram_type": "DDR5" },
+        "psu": { "id": "psu-1", "name": "Corsair 650W", "wattage": 650 }
+      },
+      "expected": {
+        "compatible": false,
+        "errors": ["SOCKET_MISMATCH"]
+      }
+    },
+    {
+      "id": "COMPAT-RAM-MISMATCH",
+      "description": "DDR5 RAM installed in DDR4 Motherboard",
+      "parts": {
+        "cpu": { "id": "cpu-2", "name": "Intel Core i5-12400", "socket": "LGA1700", "tdp": 65 },
+        "motherboard": { "id": "mobo-3", "name": "MSI PRO B660M-A DDR4", "socket": "LGA1700", "ram_type": "DDR4", "form_factor": "mATX" },
+        "ram": { "id": "ram-1", "name": "Corsair Vengeance 32GB DDR5-5600", "ram_type": "DDR5" },
+        "psu": { "id": "psu-1", "name": "Corsair 550W", "wattage": 550 }
+      },
+      "expected": {
+        "compatible": false,
+        "errors": ["RAM_GENERATION_MISMATCH"]
+      }
+    },
+    {
+      "id": "COMPAT-PSU-UNDERPOWERED",
+      "description": "RTX 4090 (450W) + i9-14900K (253W) with only 500W PSU",
+      "parts": {
+        "cpu": { "id": "cpu-3", "name": "Intel Core i9-14900K", "socket": "LGA1700", "tdp": 253, "specs": { "tdp": "253", "socket": "LGA1700" } },
+        "motherboard": { "id": "mobo-4", "name": "MSI Z790 MEG ACE", "socket": "LGA1700", "ram_type": "DDR5", "form_factor": "ATX", "specs": { "socket": "LGA1700", "ram_type": "DDR5" } },
+        "gpu": { "id": "gpu-2", "name": "NVIDIA GeForce RTX 4090 24GB", "tdp": 450, "recommended_psu": 850, "specs": { "tdp": "450" } },
+        "psu": { "id": "psu-2", "name": "Generic 500W PSU", "wattage": 500, "specs": { "wattage": "500" } }
+      },
+      "expected": {
+        "compatible": false,
+        "errors": ["PSU_INSUFFICIENT_WATTAGE"]
+      }
+    },
+    {
+      "id": "COMPAT-FORM-FACTOR-MISMATCH",
+      "description": "ATX Motherboard in Mini-ITX Only Chassis",
+      "parts": {
+        "cpu": { "id": "cpu-1", "name": "AMD Ryzen 5 7600", "socket": "AM5", "tdp": 65 },
+        "motherboard": { "id": "mobo-5", "name": "Gigabyte B650 AORUS ELITE AX", "socket": "AM5", "ram_type": "DDR5", "form_factor": "ATX" },
+        "case": { "id": "case-2", "name": "Cooler Master NR200P", "supported_form_factors": ["Mini-ITX", "Mini-DTX"] },
+        "psu": { "id": "psu-3", "name": "SFX 600W", "wattage": 600 }
+      },
+      "expected": {
+        "compatible": false,
+        "errors": ["FORM_FACTOR_MISMATCH"]
+      }
+    }
+  ]
+}
