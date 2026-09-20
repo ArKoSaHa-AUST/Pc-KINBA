@@ -17,8 +17,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
-    "prepare": "npm run build"
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "engines": {
     "node": ">=22.0.0"

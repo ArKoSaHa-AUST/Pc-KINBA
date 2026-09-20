@@ -9,7 +9,7 @@
     "lint": "eslint src",
     "format": "prettier --check src",
     "preview": "vite preview",
-    "prebuild": "npm --prefix ../packages/compat-rules run build"
+    "prebuild": "tsc -p ../packages/compat-rules/tsconfig.json"
   },
   "dependencies": {
     "@pc-kinba/compat-rules": "file:../packages/compat-rules",
