@@ -8,9 +8,11 @@
     "build": "tsc -b && vite build",
     "lint": "eslint src",
     "format": "prettier --check src",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prebuild": "npm --prefix ../packages/compat-rules run build"
   },
   "dependencies": {
+    "@pc-kinba/compat-rules": "file:../packages/compat-rules",
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
     "@supabase/server": "^1.4.1",

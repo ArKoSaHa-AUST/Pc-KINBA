@@ -4,13 +4,55 @@
       "id": "COMPAT-AM5-B650",
       "description": "AMD Ryzen 7 7700 (AM5) with MSI B650 Motherboard and DDR5 RAM",
       "parts": {
-        "cpu": { "id": "cpu-1", "name": "AMD Ryzen 7 7700", "socket": "AM5", "tdp": 65 },
-        "motherboard": { "id": "mobo-1", "name": "MSI PRO B650M-A WiFi", "socket": "AM5", "ram_type": "DDR5", "form_factor": "mATX" },
-        "ram": { "id": "ram-1", "name": "Corsair Vengeance 32GB (2x16GB) DDR5-5600", "ram_type": "DDR5" },
-        "gpu": { "id": "gpu-1", "name": "Gigabyte RTX 4070 Super 12GB", "tdp": 220, "recommended_psu": 650 },
-        "psu": { "id": "psu-1", "name": "Cooler Master MWE 750W Gold", "wattage": 750 },
-        "case": { "id": "case-1", "name": "NZXT H5 Flow", "supported_form_factors": ["ATX", "mATX", "Mini-ITX"], "max_gpu_length": 365, "max_cooler_height": 165 },
-        "cooler": { "id": "cooler-1", "name": "Deepcool AG400", "height": 150, "supported_sockets": ["AM5", "LGA1700"] }
+        "cpu": {
+          "id": "cpu-1",
+          "name": "AMD Ryzen 7 7700",
+          "socket": "AM5",
+          "tdp": 65
+        },
+        "motherboard": {
+          "id": "mobo-1",
+          "name": "MSI PRO B650M-A WiFi",
+          "socket": "AM5",
+          "ram_type": "DDR5",
+          "form_factor": "mATX"
+        },
+        "ram": {
+          "id": "ram-1",
+          "name": "Corsair Vengeance 32GB (2x16GB) DDR5-5600",
+          "ram_type": "DDR5"
+        },
+        "gpu": {
+          "id": "gpu-1",
+          "name": "Gigabyte RTX 4070 Super 12GB",
+          "tdp": 220,
+          "recommended_psu": 650
+        },
+        "psu": {
+          "id": "psu-1",
+          "name": "Cooler Master MWE 750W Gold",
+          "wattage": 750
+        },
+        "case": {
+          "id": "case-1",
+          "name": "NZXT H5 Flow",
+          "supported_form_factors": [
+            "ATX",
+            "mATX",
+            "Mini-ITX"
+          ],
+          "max_gpu_length": 365,
+          "max_cooler_height": 165
+        },
+        "cooler": {
+          "id": "cooler-1",
+          "name": "Deepcool AG400",
+          "height": 150,
+          "supported_sockets": [
+            "AM5",
+            "LGA1700"
+          ]
+        }
       },
       "expected": {
         "compatible": true,
@@ -22,57 +64,2141 @@
       "id": "COMPAT-SOCKET-MISMATCH",
       "description": "AMD AM5 CPU installed in Intel LGA1700 Motherboard",
       "parts": {
-        "cpu": { "id": "cpu-1", "name": "AMD Ryzen 7 7700", "socket": "AM5", "tdp": 65 },
-        "motherboard": { "id": "mobo-2", "name": "ASUS PRIME Z790-P", "socket": "LGA1700", "ram_type": "DDR5", "form_factor": "ATX" },
-        "ram": { "id": "ram-1", "name": "Corsair 32GB DDR5", "ram_type": "DDR5" },
-        "psu": { "id": "psu-1", "name": "Corsair 650W", "wattage": 650 }
+        "cpu": {
+          "id": "cpu-1",
+          "name": "AMD Ryzen 7 7700",
+          "socket": "AM5",
+          "tdp": 65
+        },
+        "motherboard": {
+          "id": "mobo-2",
+          "name": "ASUS PRIME Z790-P",
+          "socket": "LGA1700",
+          "ram_type": "DDR5",
+          "form_factor": "ATX"
+        },
+        "ram": {
+          "id": "ram-1",
+          "name": "Corsair 32GB DDR5",
+          "ram_type": "DDR5"
+        },
+        "psu": {
+          "id": "psu-1",
+          "name": "Corsair 650W",
+          "wattage": 650
+        }
       },
       "expected": {
         "compatible": false,
-        "errors": ["SOCKET_MISMATCH"]
+        "errors": [
+          "SOCKET_MISMATCH"
+        ]
       }
     },
     {
       "id": "COMPAT-RAM-MISMATCH",
       "description": "DDR5 RAM installed in DDR4 Motherboard",
       "parts": {
-        "cpu": { "id": "cpu-2", "name": "Intel Core i5-12400", "socket": "LGA1700", "tdp": 65 },
-        "motherboard": { "id": "mobo-3", "name": "MSI PRO B660M-A DDR4", "socket": "LGA1700", "ram_type": "DDR4", "form_factor": "mATX" },
-        "ram": { "id": "ram-1", "name": "Corsair Vengeance 32GB DDR5-5600", "ram_type": "DDR5" },
-        "psu": { "id": "psu-1", "name": "Corsair 550W", "wattage": 550 }
+        "cpu": {
+          "id": "cpu-2",
+          "name": "Intel Core i5-12400",
+          "socket": "LGA1700",
+          "tdp": 65
+        },
+        "motherboard": {
+          "id": "mobo-3",
+          "name": "MSI PRO B660M-A DDR4",
+          "socket": "LGA1700",
+          "ram_type": "DDR4",
+          "form_factor": "mATX"
+        },
+        "ram": {
+          "id": "ram-1",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "ram_type": "DDR5"
+        },
+        "psu": {
+          "id": "psu-1",
+          "name": "Corsair 550W",
+          "wattage": 550
+        }
       },
       "expected": {
         "compatible": false,
-        "errors": ["RAM_GENERATION_MISMATCH"]
+        "errors": [
+          "RAM_GENERATION_MISMATCH"
+        ]
       }
     },
     {
       "id": "COMPAT-PSU-UNDERPOWERED",
       "description": "RTX 4090 (450W) + i9-14900K (253W) with only 500W PSU",
       "parts": {
-        "cpu": { "id": "cpu-3", "name": "Intel Core i9-14900K", "socket": "LGA1700", "tdp": 253, "specs": { "tdp": "253", "socket": "LGA1700" } },
-        "motherboard": { "id": "mobo-4", "name": "MSI Z790 MEG ACE", "socket": "LGA1700", "ram_type": "DDR5", "form_factor": "ATX", "specs": { "socket": "LGA1700", "ram_type": "DDR5" } },
-        "gpu": { "id": "gpu-2", "name": "NVIDIA GeForce RTX 4090 24GB", "tdp": 450, "recommended_psu": 850, "specs": { "tdp": "450" } },
-        "psu": { "id": "psu-2", "name": "Generic 500W PSU", "wattage": 500, "specs": { "wattage": "500" } }
+        "cpu": {
+          "id": "cpu-3",
+          "name": "Intel Core i9-14900K",
+          "socket": "LGA1700",
+          "tdp": 253,
+          "specs": {
+            "tdp": "253",
+            "socket": "LGA1700"
+          }
+        },
+        "motherboard": {
+          "id": "mobo-4",
+          "name": "MSI Z790 MEG ACE",
+          "socket": "LGA1700",
+          "ram_type": "DDR5",
+          "form_factor": "ATX",
+          "specs": {
+            "socket": "LGA1700",
+            "ram_type": "DDR5"
+          }
+        },
+        "gpu": {
+          "id": "gpu-2",
+          "name": "NVIDIA GeForce RTX 4090 24GB",
+          "tdp": 450,
+          "recommended_psu": 850,
+          "specs": {
+            "tdp": "450"
+          }
+        },
+        "psu": {
+          "id": "psu-2",
+          "name": "Generic 500W PSU",
+          "wattage": 500,
+          "specs": {
+            "wattage": "500"
+          }
+        }
       },
       "expected": {
         "compatible": false,
-        "errors": ["PSU_INSUFFICIENT_WATTAGE"]
+        "errors": [
+          "PSU_INSUFFICIENT_WATTAGE"
+        ]
       }
     },
     {
       "id": "COMPAT-FORM-FACTOR-MISMATCH",
       "description": "ATX Motherboard in Mini-ITX Only Chassis",
       "parts": {
-        "cpu": { "id": "cpu-1", "name": "AMD Ryzen 5 7600", "socket": "AM5", "tdp": 65 },
-        "motherboard": { "id": "mobo-5", "name": "Gigabyte B650 AORUS ELITE AX", "socket": "AM5", "ram_type": "DDR5", "form_factor": "ATX" },
-        "case": { "id": "case-2", "name": "Cooler Master NR200P", "supported_form_factors": ["Mini-ITX", "Mini-DTX"] },
-        "psu": { "id": "psu-3", "name": "SFX 600W", "wattage": 600 }
+        "cpu": {
+          "id": "cpu-1",
+          "name": "AMD Ryzen 5 7600",
+          "socket": "AM5",
+          "tdp": 65
+        },
+        "motherboard": {
+          "id": "mobo-5",
+          "name": "Gigabyte B650 AORUS ELITE AX",
+          "socket": "AM5",
+          "ram_type": "DDR5",
+          "form_factor": "ATX"
+        },
+        "case": {
+          "id": "case-2",
+          "name": "Cooler Master NR200P",
+          "supported_form_factors": [
+            "Mini-ITX",
+            "Mini-DTX"
+          ]
+        },
+        "psu": {
+          "id": "psu-3",
+          "name": "SFX 600W",
+          "wattage": 600
+        }
       },
       "expected": {
         "compatible": false,
-        "errors": ["FORM_FACTOR_MISMATCH"]
+        "errors": [
+          "FORM_FACTOR_MISMATCH"
+        ]
       }
+    }
+  ],
+  "parity_cases": [
+    {
+      "id": "PARITY-AM5-VALID",
+      "description": "Valid AM5 + DDR5, mATX board in an ATX case",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-AM4-VALID",
+      "description": "Valid AM4 + DDR4 platform",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am4",
+          "name": "AMD Ryzen 5 5600",
+          "priceBDT": 16500,
+          "socket": "AM4",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am4",
+          "name": "MSI B550M PRO-VDH",
+          "priceBDT": 11000,
+          "socket": "AM4",
+          "memoryType": "DDR4",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr4",
+          "name": "Corsair Vengeance 32GB DDR4-3200",
+          "priceBDT": 9500,
+          "memoryType": "DDR4"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-LGA1700-VALID",
+      "description": "Valid LGA1700 + DDR5 platform",
+      "parts": {
+        "cpu": {
+          "id": "cpu-1700",
+          "name": "Intel Core i5-12400",
+          "priceBDT": 18000,
+          "socket": "LGA1700",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-1700",
+          "name": "ASUS PRIME B760M-A",
+          "priceBDT": 17000,
+          "socket": "LGA1700",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-SOCKET-MISMATCH",
+      "description": "AM5 CPU in an LGA1700 board",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-1700",
+          "name": "ASUS PRIME B760M-A",
+          "priceBDT": 17000,
+          "socket": "LGA1700",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "error"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-DDR4-IN-DDR5-BOARD",
+      "description": "DDR4 kit in a DDR5-only board",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr4",
+          "name": "Corsair Vengeance 32GB DDR4-3200",
+          "priceBDT": 9500,
+          "memoryType": "DDR4"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "error"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-DDR5-IN-DDR4-BOARD",
+      "description": "DDR5 kit in a DDR4-only board",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am4",
+          "name": "AMD Ryzen 5 5600",
+          "priceBDT": 16500,
+          "socket": "AM4",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am4",
+          "name": "MSI B550M PRO-VDH",
+          "priceBDT": 11000,
+          "socket": "AM4",
+          "memoryType": "DDR4",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "error"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-PSU-EXACT-DRAW",
+      "description": "PSU rated exactly at the 400W estimated draw",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "gpu": {
+          "id": "gpu-260",
+          "name": "RTX 4070 Ti Super 16G",
+          "priceBDT": 95000,
+          "tdpWatts": 260
+        },
+        "psu": {
+          "id": "psu-400w",
+          "name": "Corsair RM400e 400W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 400
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "warning"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-PSU-124-PCT",
+      "description": "PSU at 1.24x draw, just under the 25% headroom bar",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "gpu": {
+          "id": "gpu-260",
+          "name": "RTX 4070 Ti Super 16G",
+          "priceBDT": 95000,
+          "tdpWatts": 260
+        },
+        "psu": {
+          "id": "psu-496w",
+          "name": "Corsair RM496e 496W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 496
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "warning"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-PSU-125-PCT",
+      "description": "PSU at exactly 1.25x draw, meets the headroom bar",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "gpu": {
+          "id": "gpu-260",
+          "name": "RTX 4070 Ti Super 16G",
+          "priceBDT": 95000,
+          "tdpWatts": 260
+        },
+        "psu": {
+          "id": "psu-500w",
+          "name": "Corsair RM500e 500W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 500
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-PSU-200-PCT",
+      "description": "PSU at 2x draw, comfortable headroom",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "gpu": {
+          "id": "gpu-260",
+          "name": "RTX 4070 Ti Super 16G",
+          "priceBDT": 95000,
+          "tdpWatts": 260
+        },
+        "psu": {
+          "id": "psu-800w",
+          "name": "Corsair RM800e 800W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 800
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-PSU-INSUFFICIENT",
+      "description": "PSU rated below the estimated draw",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "gpu": {
+          "id": "gpu-260",
+          "name": "RTX 4070 Ti Super 16G",
+          "priceBDT": 95000,
+          "tdpWatts": 260
+        },
+        "psu": {
+          "id": "psu-350w",
+          "name": "Corsair RM350e 350W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 350
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_insufficient",
+          "severity": "error"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-FF-ATX-IN-MATX",
+      "description": "ATX board in an mATX case",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-atx",
+          "name": "Gigabyte B650 AORUS ELITE AX",
+          "priceBDT": 24000,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "ATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-matx",
+          "name": "Montech X3 Mesh",
+          "priceBDT": 6500,
+          "formFactor": "mATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "error"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-FF-EATX-IN-ATX",
+      "description": "E-ATX board in an ATX case: the size the builder table used to lack entirely",
+      "parts": {
+        "cpu": {
+          "id": "cpu-1700",
+          "name": "Intel Core i5-12400",
+          "priceBDT": 18000,
+          "socket": "LGA1700",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-eatx",
+          "name": "ASUS ROG Maximus Z790 EXTREME",
+          "priceBDT": 95000,
+          "socket": "LGA1700",
+          "memoryType": "DDR5",
+          "formFactor": "E-ATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "error"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-FF-ITX-IN-ATX",
+      "description": "ITX board in an ATX case fits",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-itx",
+          "name": "ASUS ROG STRIX B650E-I",
+          "priceBDT": 32000,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "ITX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-GPU-1MM-TOO-LONG",
+      "description": "GPU 1mm longer than the case allows",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "gpu": {
+          "id": "gpu-331",
+          "name": "RTX 4080 Super OC",
+          "priceBDT": 150000,
+          "tdpWatts": 260,
+          "lengthMm": 331
+        },
+        "psu": {
+          "id": "psu-800w",
+          "name": "Corsair RM800e 800W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 800
+        },
+        "case": {
+          "id": "case-gpu330",
+          "name": "Compact Mesh Tower",
+          "priceBDT": 7000,
+          "formFactor": "ATX",
+          "maxGpuLengthMm": 330
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        },
+        {
+          "rule": "gpu_clearance",
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-GPU-14MM-SPARE",
+      "description": "GPU with 14mm spare trips the tight-clearance warning",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "gpu": {
+          "id": "gpu-316",
+          "name": "RTX 4070 Ti Gaming X",
+          "priceBDT": 120000,
+          "tdpWatts": 260,
+          "lengthMm": 316
+        },
+        "psu": {
+          "id": "psu-800w",
+          "name": "Corsair RM800e 800W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 800
+        },
+        "case": {
+          "id": "case-gpu330",
+          "name": "Compact Mesh Tower",
+          "priceBDT": 7000,
+          "formFactor": "ATX",
+          "maxGpuLengthMm": 330
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        },
+        {
+          "rule": "gpu_clearance",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-AIO-360-IN-240-CASE",
+      "description": "360mm AIO in a case that only mounts 240mm",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "cooler": {
+          "id": "cooler-360",
+          "name": "DeepCool LT720 360mm",
+          "priceBDT": 11500,
+          "radiatorMm": 360
+        },
+        "case": {
+          "id": "case-rad240",
+          "name": "Mini Mesh 240",
+          "priceBDT": 6000,
+          "formFactor": "mATX",
+          "radiatorSupportMm": [
+            120,
+            240
+          ]
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooler_clearance",
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-TOWER-COOLER-1MM-OVER",
+      "description": "Tower cooler 1mm over the case clearance",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "cooler": {
+          "id": "cooler-166",
+          "name": "Thermalright Peerless Assassin",
+          "priceBDT": 5500,
+          "heightMm": 166
+        },
+        "case": {
+          "id": "case-cool165",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX",
+          "maxCoolerHeightMm": 165
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooler_clearance",
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-COOLER-NO-BRACKET",
+      "description": "Cooler ships no bracket for the CPU socket",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        },
+        "cooler": {
+          "id": "cooler-intel",
+          "name": "Intel-only Tower Cooler",
+          "priceBDT": 4000,
+          "heightMm": 150,
+          "coolerSockets": [
+            "LGA1700",
+            "LGA1200"
+          ]
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooler_socket",
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-12VHPWR-ADAPTER",
+      "description": "12VHPWR GPU on a non-ATX-3.0 PSU that has enough 8-pins",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "gpu": {
+          "id": "gpu-4080",
+          "name": "RTX 4080 Super",
+          "priceBDT": 150000,
+          "tdpWatts": 320,
+          "gpuPower": {
+            "type": "12vhpwr",
+            "pcie8pin": 3
+          }
+        },
+        "psu": {
+          "id": "psu-850w",
+          "name": "Corsair RM850e 850W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 850,
+          "pcie8pin": 4,
+          "has12vhpwr": false,
+          "sataPower": 4
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_connectors",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-12VHPWR-TOO-FEW-PINS",
+      "description": "12VHPWR GPU on a PSU without enough 8-pins for the adapter",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "gpu": {
+          "id": "gpu-4090",
+          "name": "RTX 4090",
+          "priceBDT": 250000,
+          "tdpWatts": 450,
+          "gpuPower": {
+            "type": "12vhpwr",
+            "pcie8pin": 4
+          }
+        },
+        "psu": {
+          "id": "psu-1000w",
+          "name": "Corsair RM1000e 1000W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 1000,
+          "pcie8pin": 2,
+          "has12vhpwr": false,
+          "sataPower": 4
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_connectors",
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-SATA-NO-POWER",
+      "description": "SATA drive with a PSU that has no SATA power connector",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650,
+          "pcie8pin": 2,
+          "sataPower": 0
+        },
+        "storage": {
+          "id": "ssd-sata",
+          "name": "Crucial BX500 1TB SATA",
+          "priceBDT": 6500,
+          "storageInterface": "sata"
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_connectors",
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-CPU-105W-NO-COOLER",
+      "description": "CPU at exactly 105W TDP needs no dedicated cooler",
+      "parts": {
+        "cpu": {
+          "id": "cpu-105",
+          "name": "Ryzen 7 5800X",
+          "priceBDT": 30000,
+          "socket": "AM4",
+          "tdpWatts": 105
+        },
+        "motherboard": {
+          "id": "mb-am4",
+          "name": "MSI B550M PRO-VDH",
+          "priceBDT": 11000,
+          "socket": "AM4",
+          "memoryType": "DDR4",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr4",
+          "name": "Corsair Vengeance 32GB DDR4-3200",
+          "priceBDT": 9500,
+          "memoryType": "DDR4"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-CPU-106W-NO-COOLER",
+      "description": "CPU one watt over the threshold warns about cooling",
+      "parts": {
+        "cpu": {
+          "id": "cpu-106",
+          "name": "Ryzen 9 5900X",
+          "priceBDT": 40000,
+          "socket": "AM4",
+          "tdpWatts": 106
+        },
+        "motherboard": {
+          "id": "mb-am4",
+          "name": "MSI B550M PRO-VDH",
+          "priceBDT": 11000,
+          "socket": "AM4",
+          "memoryType": "DDR4",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr4",
+          "name": "Corsair Vengeance 32GB DDR4-3200",
+          "priceBDT": 9500,
+          "memoryType": "DDR4"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-BIOS-CPU-NEWER",
+      "description": "CPU released after the board may need a BIOS flash",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65,
+          "releasedYearMonth": "2024-01"
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX",
+          "releasedYearMonth": "2022-09"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        },
+        {
+          "rule": "bios_support",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-BUDGET-EXACTLY-MET",
+      "description": "Build total exactly equals the stated budget",
+      "budgetBDT": 86500,
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        },
+        {
+          "rule": "budget_exceeded",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-BUDGET-OVER-BY-1",
+      "description": "Build 1 BDT over budget still passes: the validator has always allowed a 3% tolerance",
+      "budgetBDT": 86499,
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        },
+        {
+          "rule": "budget_exceeded",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-BUDGET-OVER-CEILING",
+      "description": "Build above the 3% tolerance ceiling is flagged",
+      "budgetBDT": 80000,
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        },
+        {
+          "rule": "budget_exceeded",
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-UNKNOWN-SOCKET",
+      "description": "Board with no known socket: the socket rule must decline to judge, not pass",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-unknown",
+          "name": "Generic Mainboard",
+          "priceBDT": 9000,
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-atx",
+          "name": "NZXT H5 Flow",
+          "priceBDT": 9500,
+          "formFactor": "ATX"
+        }
+      },
+      "expected": [
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "form_factor",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "id": "PARITY-UNKNOWN-CASE-FORM-FACTOR",
+      "description": "Case with no known form factor: the fit rule must decline to judge",
+      "parts": {
+        "cpu": {
+          "id": "cpu-am5",
+          "name": "AMD Ryzen 7 7700",
+          "priceBDT": 34000,
+          "socket": "AM5",
+          "tdpWatts": 65
+        },
+        "motherboard": {
+          "id": "mb-am5",
+          "name": "MSI PRO B650M-A WIFI",
+          "priceBDT": 18500,
+          "socket": "AM5",
+          "memoryType": "DDR5",
+          "formFactor": "mATX"
+        },
+        "ram": {
+          "id": "ram-ddr5",
+          "name": "Corsair Vengeance 32GB DDR5-5600",
+          "priceBDT": 13500,
+          "memoryType": "DDR5"
+        },
+        "psu": {
+          "id": "psu-650w",
+          "name": "Corsair RM650e 650W 80 Plus Gold",
+          "priceBDT": 11000,
+          "psuWatts": 650
+        },
+        "case": {
+          "id": "case-unknown",
+          "name": "Generic Chassis",
+          "priceBDT": 4000
+        }
+      },
+      "expected": [
+        {
+          "rule": "socket_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "ram_mismatch",
+          "severity": "ok"
+        },
+        {
+          "rule": "psu_headroom",
+          "severity": "ok"
+        },
+        {
+          "rule": "cooling_required",
+          "severity": "ok"
+        }
+      ]
     }
   ]
 }
