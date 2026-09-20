@@ -27,7 +27,7 @@
     "pcbuilder-root": "file:..",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-i18next": "^17.0.11",
+    "react-i18next": "^17.0.14",
     "react-router-dom": "^7.18.2",
     "recharts": "^3.9.2",
     "tailwind-merge": "^3.6.0",
