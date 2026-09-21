@@ -77,6 +77,12 @@
   /* Ambient page gradient. Dark stays flat for visual parity. */
   --app-gradient: none;
 
+  /* Tonima UI structural tokens */
+  --tonima-hairline: 1px;
+  --tonima-radius-card: 20px;
+  --tonima-radius-bubble: 14px;
+  --tonima-radius-pill: 999px;
+
   color-scheme: dark;
 }
 
