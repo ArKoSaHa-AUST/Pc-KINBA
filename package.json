@@ -13,7 +13,6 @@
     "release": "semantic-release",
     "build:packages": "npm run build --workspace @pc-kinba/compat-rules",
     "test": "vitest run",
-    "pretest": "npm run build:packages",
     "prestart": "npm run build:packages"
   },
   "engines": {

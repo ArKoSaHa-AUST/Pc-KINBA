@@ -20,7 +20,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './client/src')
+      '@': path.resolve(__dirname, './client/src'),
+      // Resolve the shared rules package to its SOURCE, so the test run never
+      // depends on packages/compat-rules/dist being built first.
+      '@pc-kinba/compat-rules': path.resolve(__dirname, './packages/compat-rules/src/index.ts')
     }
   }
 });
