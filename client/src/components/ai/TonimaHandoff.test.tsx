@@ -306,9 +306,10 @@ describe('Tonima AI Handoff & Wiring Test Suite (TonimaHandoff.test.tsx)', () =>
       });
     });
 
-    expect(capturedBody).not.toBeNull();
-    expect(capturedBody?.budgetBDT).toBe(180000);
-    expect(capturedBody?.message).toContain('1,80,000');
+    const body = capturedBody as { budgetBDT?: number; message?: string } | null;
+    expect(body).not.toBeNull();
+    expect(body?.budgetBDT).toBe(180000);
+    expect(body?.message).toContain('1,80,000');
   });
 
   // UI-HUD-001: With no build, HUD renders empty states without fake Ryzen 7 7800X3D
