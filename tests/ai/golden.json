@@ -194,5 +194,30 @@
     "expected_purpose": "streaming",
     "expected_budget": 400000,
     "language": "en"
+  },
+  {
+    "id": "prompt-26",
+    "prompt": "Gaming PC with RTX 4070 under 1.5 lakh taka strictly",
+    "expected_purpose": "gaming",
+    "expected_budget": 150000,
+    "language": "en"
+  },
+  {
+    "id": "prompt-27",
+    "prompt": "১.৫ লাখ টাকার গেমিং পিসি",
+    "expected_purpose": "gaming",
+    "expected_budget": 150000,
+    "language": "bn"
+  },
+  {
+    "id": "prompt-28",
+    "prompt": "Can we swap the GPU to RTX 4060 to save money?",
+    "expected_purpose": "gaming",
+    "expected_budget": 150000,
+    "language": "en",
+    "history": [
+      { "role": "user", "content": "I want a 1.5 lakh gaming PC" },
+      { "role": "assistant", "content": "Here is your 150k gaming build." }
+    ]
   }
 ]

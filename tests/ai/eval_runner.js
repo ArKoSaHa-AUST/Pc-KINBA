@@ -11,6 +11,7 @@ import { retrieveCandidates } from "../../lib/ai/retriever.js";
 import { planBuild } from "../../lib/ai/planner.js";
 import { validateBuild } from "../../lib/ai/validator.js";
 import { streamExplanation } from "../../lib/ai/explainer.js";
+import { getBudgetCeiling } from "../../lib/ai/budget.js";
 
 dotenv.config();
 
@@ -50,7 +51,7 @@ async function runEvaluation() {
 
     try {
       // 1. Intent Parsing
-      const { request, tokensIn: iIn, tokensOut: iOut } = await parseIntent(item.prompt);
+      const { request, tokensIn: iIn, tokensOut: iOut } = await parseIntent(item.prompt, item.history || []);
       totalTokens += (iIn + iOut);
 
       // 2. Candidate Retrieval
@@ -80,9 +81,9 @@ async function runEvaluation() {
       const isCompatible = compScore >= 95;
       if (isCompatible) passedCompatibility++;
 
-      // 6. Budget Check (+3% ceiling)
+      // 6. Budget Check (Strict 0% ceiling)
       const targetBudget = item.expected_budget || request.budget_bdt || 150000;
-      const budgetCeiling = Math.round(targetBudget * 1.03);
+      const budgetCeiling = getBudgetCeiling(targetBudget);
       const isBudgetOk = build.total_bdt <= budgetCeiling;
       if (isBudgetOk) passedBudget++;
 
@@ -144,7 +145,7 @@ async function runEvaluation() {
   console.log("================================================================================");
   console.log(`Total Test Cases        : ${totalTests}`);
   console.log(`Compatibility Pass Rate : ${passedCompatibility}/${totalTests} (${((passedCompatibility / totalTests) * 100).toFixed(1)}%)  [Target >= 95%]`);
-  console.log(`Budget Adherence (+3%)  : ${passedBudget}/${totalTests} (${((passedBudget / totalTests) * 100).toFixed(1)}%)  [Target 100%]`);
+  console.log(`Budget Adherence (Strict 0% tol): ${passedBudget}/${totalTests} (${((passedBudget / totalTests) * 100).toFixed(1)}%)  [Target 100%]`);
   console.log(`Grounding & Anti-Halluc.: ${passedGrounding}/${totalTests} (${((passedGrounding / totalTests) * 100).toFixed(1)}%)  [Target 100%]`);
   console.log(`Purpose & Spec Fit Rate : ${passedPurpose}/${totalTests} (${((passedPurpose / totalTests) * 100).toFixed(1)}%)  [Target 100%]`);
   console.log(`Total Runtime           : ${duration}s`);
