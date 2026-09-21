@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot,
@@ -7,11 +7,13 @@ import {
   Sparkles,
   Mic,
   Paperclip,
-  Cpu,
   CornerDownLeft,
   ArrowDownUp,
   AlertCircle,
   RefreshCw,
+  ChevronUp,
+  ChevronDown,
+  ArrowDown,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { BuildComponentItem } from './BuildPreviewHUD';
@@ -136,10 +138,7 @@ function FormattedMessageContent({ text, isUser }: { text: string; isUser: boole
       {blocks.map((block, bIdx) => {
         if (block.type === 'table') {
           return (
-            <div
-              key={bIdx}
-              className="my-2.5 overflow-x-auto rounded-xl border border-glass-border bg-fill-subtle/80 shadow-md backdrop-blur-md"
-            >
+            <div key={bIdx} className="tonima-table-scroller" data-lenis-prevent-wheel>
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-glass-border bg-bg-surface/80">
@@ -287,15 +286,74 @@ export default function ChatWorkspace({
   const [isProcessing, setIsProcessing] = useState(false);
   const [thinkingStatus, setThinkingStatus] = useState<string>('');
   const [hasActiveBuild, setHasActiveBuild] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const lastMessageRef = useRef<HTMLDivElement | null>(null);
+  const [pinnedToBottom, setPinnedToBottom] = useState(true);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [isRailHovered, setIsRailHovered] = useState(false);
+  const [isRailPinned, setIsRailPinned] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const railLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const el = listRef.current;
+    if (el) {
+      if (typeof el.scrollTo === 'function') {
+        el.scrollTo({ top: el.scrollHeight, behavior });
+      } else {
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+    setPinnedToBottom(true);
+    setHasUnreadMessages(false);
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 64;
+    setPinnedToBottom(isNearBottom);
+    if (isNearBottom) {
+      setHasUnreadMessages(false);
+    }
+  }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isProcessing, thinkingStatus]);
+    if (typeof window !== 'undefined') {
+      const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+      setPrefersReducedMotion(mq.matches);
+      const listener = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+      mq.addEventListener?.('change', listener);
+      return () => mq.removeEventListener?.('change', listener);
+    }
+  }, []);
+
+  const prevMsgCountRef = useRef(messages.length);
+  useEffect(() => {
+    if (messages.length > prevMsgCountRef.current) {
+      if (pinnedToBottom) {
+        scrollToBottom(prefersReducedMotion ? 'auto' : 'smooth');
+      } else {
+        setHasUnreadMessages(true);
+      }
+    }
+    prevMsgCountRef.current = messages.length;
+  }, [messages.length, pinnedToBottom, prefersReducedMotion, scrollToBottom]);
+
+  // Smooth resize observer for streaming token growth
+  useEffect(() => {
+    if (!isProcessing || !lastMessageRef.current || !pinnedToBottom) return;
+
+    const ro = new ResizeObserver(() => {
+      if (pinnedToBottom && listRef.current) {
+        listRef.current.scrollTop = listRef.current.scrollHeight;
+      }
+    });
+
+    ro.observe(lastMessageRef.current);
+    return () => ro.disconnect();
+  }, [isProcessing, pinnedToBottom]);
 
   const handleUserSubmit = useCallback(
     async (userQuery: string) => {
@@ -495,10 +553,36 @@ export default function ChatWorkspace({
     }
   }, [initialPrompt, handleUserSubmit]);
 
+  const lastUserMsg = [...messages].reverse().find((m) => m.sender === 'user');
+
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!inputVal.trim() || isProcessing) return;
     handleUserSubmit(inputVal);
+    inputRef.current?.focus();
   };
+
+  useLayoutEffect(() => {
+    if (!isProcessing) {
+      inputRef.current?.focus();
+    }
+  }, [isProcessing]);
+
+  const handleRailMouseEnter = () => {
+    if (railLeaveTimerRef.current) {
+      clearTimeout(railLeaveTimerRef.current);
+      railLeaveTimerRef.current = null;
+    }
+    setIsRailHovered(true);
+  };
+
+  const handleRailMouseLeave = () => {
+    railLeaveTimerRef.current = setTimeout(() => {
+      setIsRailHovered(false);
+    }, 250);
+  };
+
+  const isRailOpen = hasActiveBuild && (isRailHovered || isRailPinned);
 
   const handleClear = () => {
     setMessages(DEFAULT_MESSAGES);
@@ -512,28 +596,21 @@ export default function ChatWorkspace({
   return (
     <div className={`tonima-chat-card-container ${className}`}>
       <div className="tonima-chat-card">
-        {/* Sticky Top Header Bar inside Card */}
+        {/* Compact Header Bar (<= 56px) */}
         <div className="tonima-chat-header">
-          <div className="flex items-center gap-3">
-            <div className="tonima-avatar-pulse">
-              <Bot className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-2.5">
+            <div className="tonima-avatar-compact">
+              <Bot className="w-4 h-4 text-white" />
             </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm text-text-primary">Tonima AI Core</span>
-                <span className="flex items-center gap-1.5 text-[11px] text-green font-semibold bg-green/10 px-2 py-0.5 rounded-full border border-green/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
-                  Live Engine
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-[11px] text-text-muted mt-0.5">
-                <span className="flex items-center gap-1">
-                  <Cpu className="w-3 h-3 text-accent" />
-                  Multi-Model (Groq Pool)
-                </span>
-                <span>•</span>
-                <span className="text-accent font-medium">Real-Time Prices (BD)</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="tonima-header-title">Tonima AI Core</span>
+              <span
+                className="tonima-live-badge"
+                title="Multi-Model (Groq Pool) • Real-Time Prices (BD)"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
+                Live Engine
+              </span>
             </div>
           </div>
 
@@ -541,7 +618,7 @@ export default function ChatWorkspace({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              className="px-3 py-1.5 rounded-xl glass border border-glass-border text-text-muted hover:text-text-primary hover:border-accent hover:bg-fill-muted transition-all flex items-center gap-1.5 text-xs font-semibold"
+              className="tonima-reset-btn"
               onClick={handleClear}
               title="Reset Conversation Session"
             >
@@ -551,128 +628,168 @@ export default function ChatWorkspace({
           </div>
         </div>
 
-        {/* Messages Scroll Container */}
-        <div className="tonima-messages-container">
+        {/* Messages Scroll Container (Container-Local, No Document Yank) */}
+        <div
+          ref={listRef}
+          className="tonima-messages-container"
+          data-lenis-prevent
+          onScroll={handleScroll}
+        >
           <AnimatePresence initial={false}>
-            {messages.map((msg) => (
-              <motion.div
-                key={msg.id}
-                className={msg.sender === 'bot' ? 'tonima-msg-bot' : 'tonima-msg-user'}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <FormattedMessageContent text={msg.text} isUser={msg.sender === 'user'} />
+            {messages.map((msg, mIdx) => {
+              const isLastMsg = mIdx === messages.length - 1;
+              const isStreamingBot = isProcessing && isLastMsg && msg.sender === 'bot';
+              const hasTable = /^\s*\|.*\|\s*$/m.test(msg.text);
 
-                {/* Interactive Suggestion Chips inside bot message */}
-                {msg.sender === 'bot' && msg.highlightChips && msg.highlightChips.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3.5 pt-3 border-t border-glass-border">
-                    {msg.highlightChips.map((chip, cIdx) => (
-                      <button
-                        key={cIdx}
-                        type="button"
-                        className="tonima-hardware-chip group"
-                        onClick={() => chip.actionQuery && handleUserSubmit(chip.actionQuery)}
-                        disabled={isProcessing}
-                      >
-                        <ArrowDownUp className="w-3 h-3 text-accent transition-transform group-hover:rotate-180" />
-                        <span>{chip.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {msg.isError && (
-                  <div className="mt-2.5 flex items-center gap-1.5 text-xs text-amber-400 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>
-                      Connection interrupted. Click reset or submit another query to restart.
-                    </span>
-                  </div>
-                )}
-
-                <div
-                  className={`text-[10px] mt-2 font-mono ${
-                    msg.sender === 'bot' ? 'text-text-muted' : 'text-text-secondary text-right'
-                  }`}
+              return (
+                <motion.div
+                  key={msg.id}
+                  ref={isLastMsg ? lastMessageRef : null}
+                  className={
+                    msg.sender === 'bot'
+                      ? `tonima-msg-bot ${hasTable ? 'has-table' : ''}`
+                      : 'tonima-msg-user'
+                  }
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
                 >
-                  {msg.timestamp}
-                </div>
-              </motion.div>
-            ))}
+                  {isStreamingBot && !msg.text ? (
+                    <div className="tonima-thinking-inline">
+                      <Sparkles className="w-3.5 h-3.5 animate-spin text-accent shrink-0" />
+                      <span className="text-xs font-medium">
+                        {thinkingStatus ||
+                          'Tonima is calculating hardware matrices & lowest store prices...'}
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <FormattedMessageContent text={msg.text} isUser={msg.sender === 'user'} />
+                      {isStreamingBot && (
+                        <span className="tonima-caret" aria-hidden="true">
+                          ▍
+                        </span>
+                      )}
+                    </>
+                  )}
+
+                  {/* Interactive Suggestion Chips inside bot message */}
+                  {msg.sender === 'bot' && msg.highlightChips && msg.highlightChips.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3 pt-2.5 border-t border-glass-border">
+                      {msg.highlightChips.map((chip, cIdx) => (
+                        <button
+                          key={cIdx}
+                          type="button"
+                          className="tonima-hardware-chip group"
+                          onClick={() => chip.actionQuery && handleUserSubmit(chip.actionQuery)}
+                          disabled={isProcessing}
+                        >
+                          <ArrowDownUp className="w-3 h-3 text-accent transition-transform group-hover:rotate-180" />
+                          <span>{chip.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Consolidated Error Notice with Retry */}
+                  {msg.isError && (
+                    <div className="mt-2.5 flex items-center justify-between gap-2 text-xs text-warning bg-warning/10 p-2.5 rounded-lg border border-warning/20">
+                      <div className="flex items-center gap-1.5">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-warning" />
+                        <span>Connection interrupted. Click retry or submit another query.</span>
+                      </div>
+                      {lastUserMsg && (
+                        <button
+                          type="button"
+                          onClick={() => handleUserSubmit(lastUserMsg.text)}
+                          className="px-2.5 py-1 rounded bg-warning/20 hover:bg-warning/30 text-warning font-semibold text-xs transition-colors flex items-center gap-1 shrink-0"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Retry</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="tonima-msg-timestamp">{msg.timestamp}</div>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
 
-          {/* Thinking / Streaming Indicator */}
-          {isProcessing && (
-            <motion.div
-              className="tonima-msg-bot flex items-center gap-2.5 text-accent"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+          {/* Floating "New Messages" Pill */}
+          {hasUnreadMessages && !pinnedToBottom && (
+            <button
+              type="button"
+              className="tonima-scroll-bottom-pill"
+              onClick={() => scrollToBottom()}
             >
-              <Sparkles className="w-4 h-4 animate-spin text-accent shrink-0" />
-              <span className="text-xs font-medium">
-                {thinkingStatus ||
-                  'Tonima is calculating hardware matrices & lowest store prices...'}
-              </span>
-              <div className="flex gap-1 ml-1">
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce"
-                  style={{ animationDelay: '0ms' }}
-                />
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce"
-                  style={{ animationDelay: '150ms' }}
-                />
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce"
-                  style={{ animationDelay: '300ms' }}
-                />
-              </div>
-            </motion.div>
+              <ArrowDown className="w-3 h-3" />
+              <span>New messages</span>
+            </button>
           )}
-
-          <div ref={messagesEndRef} />
         </div>
 
-        {/* Interactive Refinement Quick Ticker Bar */}
-        <div className="tonima-refine-bar-wrapper">
-          <div
-            className="tonima-refine-ticker-bar"
-            onWheel={(e) => {
-              if (e.deltaY !== 0) {
-                e.currentTarget.scrollLeft += e.deltaY;
-              }
-            }}
-          >
-            <span className="text-[11px] font-bold text-accent uppercase tracking-wider whitespace-nowrap mr-1 flex items-center gap-1 shrink-0">
-              <Sparkles className="w-3 h-3" /> Refine:
-            </span>
-            {REFINEMENT_SHORTCUTS.map((refine, idx) => (
-              <button
-                key={idx}
-                type="button"
-                className="tonima-refine-chip"
-                onClick={() => handleUserSubmit(refine.query)}
-                disabled={isProcessing}
-              >
-                <span>{refine.label}</span>
-              </button>
-            ))}
+        {/* Collapsible Refinement Suggestion Rail (Task 4: Zero Height when Collapsed) */}
+        <div
+          className="tonima-refine-hotzone"
+          onMouseEnter={handleRailMouseEnter}
+          onMouseLeave={handleRailMouseLeave}
+        />
+        <div
+          className={`tonima-refine-rail ${isRailOpen ? 'is-open' : ''}`}
+          role="group"
+          aria-label="Refinement suggestions"
+          aria-expanded={isRailOpen}
+          onMouseEnter={handleRailMouseEnter}
+          onMouseLeave={handleRailMouseLeave}
+        >
+          <span className="tonima-refine-label">
+            <Sparkles className="w-3 h-3" /> Refine:
+          </span>
+          <div className="tonima-refine-rail-inner">
+            {hasActiveBuild &&
+              REFINEMENT_SHORTCUTS.map((refine, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  className="tonima-refine-chip"
+                  onClick={() => handleUserSubmit(refine.query)}
+                  disabled={isProcessing}
+                >
+                  <span>{refine.label}</span>
+                </button>
+              ))}
           </div>
+          <button
+            type="button"
+            className="tonima-refine-toggle-btn"
+            onClick={() => setIsRailPinned((p) => !p)}
+            title={isRailPinned ? 'Unpin suggestions' : 'Pin suggestions'}
+            aria-label="Toggle suggestions rail"
+          >
+            {isRailPinned ? (
+              <ChevronDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronUp className="w-3.5 h-3.5" />
+            )}
+          </button>
         </div>
 
-        {/* Pinned Multimodal Floating Input Bar */}
+        {/* Multimodal Input Bar (Target <= 72px) */}
         <div className="tonima-input-bar-wrapper">
           <form className="tonima-input-bar" onSubmit={handleFormSubmit}>
             <button
               type="button"
-              className="p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-fill-muted transition-colors shrink-0"
+              className="tonima-input-btn"
               title="Attach benchmark or requirement notes"
+              aria-label="Attach notes"
             >
               <Paperclip className="w-4 h-4" />
             </button>
 
             <input
+              ref={inputRef}
               type="text"
               className="tonima-input-field"
               placeholder={
@@ -687,15 +804,16 @@ export default function ChatWorkspace({
 
             <button
               type="button"
-              className="p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-fill-muted transition-colors shrink-0"
+              className="tonima-input-btn"
               title="Voice input"
+              aria-label="Voice input"
             >
               <Mic className="w-4 h-4" />
             </button>
 
             <button
               type="submit"
-              className="w-8 h-8 rounded-full bg-gradient-to-r from-accent to-purple text-white flex items-center justify-center hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_0_12px_var(--glass-glow)] shrink-0"
+              className="tonima-send-btn"
               disabled={!inputVal.trim() || isProcessing}
               aria-label="Send Message"
             >
@@ -706,7 +824,7 @@ export default function ChatWorkspace({
               )}
             </button>
           </form>
-          <div className="flex items-center justify-between text-[11px] text-text-muted mt-2 px-2">
+          <div className="tonima-input-hint-row">
             <span>Supports English & বাংলা natural queries</span>
             <span className="flex items-center gap-1 font-mono text-[10px]">
               <span>Press</span>
