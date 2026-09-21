@@ -14,6 +14,14 @@ export default function AIAssistantPage() {
   useEffect(() => {
     document.title = 'Tonima AI Assistant - PC Kinba | Next-Gen AI PC Architect';
 
+    // Skip Lenis on prefers-reduced-motion for native scrolling
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      return;
+    }
+
     // 2.1 Smooth Scroll Orchestration with Lenis
     const lenis = new Lenis({
       duration: 1.2,
@@ -23,6 +31,7 @@ export default function AIAssistantPage() {
       smoothWheel: true,
       wheelMultiplier: 1.0,
       touchMultiplier: 2.0,
+      prevent: (node) => node.hasAttribute?.('data-lenis-prevent'),
     });
 
     let animationFrameId: number;
