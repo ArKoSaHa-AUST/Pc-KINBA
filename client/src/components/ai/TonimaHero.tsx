@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, ArrowRight, SlidersHorizontal, Cpu } from 'lucide-react';
+import { Mic, MicOff, ArrowRight, SlidersHorizontal, Check, Cpu } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import HolographicCore from './HolographicCore';
+import { useTonimaSession } from '../../store/useTonimaSession';
 import './TonimaHero.css';
 
 interface TonimaHeroProps {
@@ -11,10 +12,15 @@ interface TonimaHeroProps {
 
 export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
   const { t } = useTranslation('ai');
+  const dispatchPrompt = useTonimaSession((s) => s.dispatchPrompt);
+  const sessionBudget = useTonimaSession((s) => s.budgetBDT);
+  const setSessionBudget = useTonimaSession((s) => s.setBudget);
+
   const [promptText, setPromptText] = useState('');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [showBudgetSlider, setShowBudgetSlider] = useState(false);
-  const [budgetBDT, setBudgetBDT] = useState<number>(150000);
+  const [showSentConfirmation, setShowSentConfirmation] = useState(false);
+  const [budgetBDT, setBudgetBDT] = useState<number>(() => sessionBudget || 150000);
 
   const presets = [
     {
@@ -51,8 +57,18 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
   ];
 
   const handlePresetClick = (query: string, presetBudget: number) => {
-    setPromptText(query);
     setBudgetBDT(presetBudget);
+    setSessionBudget(presetBudget);
+    const promptId = `prompt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    dispatchPrompt({
+      id: promptId,
+      text: query,
+      budgetBDT: presetBudget,
+      source: 'preset',
+    });
+    setPromptText('');
+    setShowSentConfirmation(true);
+    setTimeout(() => setShowSentConfirmation(false), 2500);
     if (onLaunchPrompt) {
       onLaunchPrompt(query, presetBudget);
     }
@@ -61,8 +77,19 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!promptText.trim()) return;
+    const query = promptText.trim();
+    const promptId = `prompt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    dispatchPrompt({
+      id: promptId,
+      text: query,
+      budgetBDT,
+      source: 'hero',
+    });
+    setPromptText('');
+    setShowSentConfirmation(true);
+    setTimeout(() => setShowSentConfirmation(false), 2500);
     if (onLaunchPrompt) {
-      onLaunchPrompt(promptText, budgetBDT);
+      onLaunchPrompt(query, budgetBDT);
     }
   };
 
@@ -232,6 +259,24 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
               </button>
             </div>
 
+            {/* Sent to Tonima confirmation */}
+            <AnimatePresence>
+              {showSentConfirmation && (
+                <motion.div
+                  className="mt-2.5 px-3 py-1.5 rounded-lg bg-accent/15 border border-accent/30 text-accent text-xs font-semibold flex items-center justify-between"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{t('sentToTonima', { defaultValue: 'Sent to Tonima ↓' })}</span>
+                  </span>
+                  <span className="text-[10px] text-text-muted">Opening workspace...</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Voice Active Indicator */}
             <AnimatePresence>
               {isVoiceActive && (
@@ -281,7 +326,11 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
                     max="500000"
                     step="5000"
                     value={budgetBDT}
-                    onChange={(e) => setBudgetBDT(Number(e.target.value))}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setBudgetBDT(val);
+                      setSessionBudget(val);
+                    }}
                     className="w-full accent-accent cursor-pointer"
                   />
                   <div className="flex justify-between text-[11px] text-text-muted mt-1">
