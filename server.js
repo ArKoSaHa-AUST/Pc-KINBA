@@ -2251,6 +2251,13 @@ app.post("/api/upload/imagekit", authActionLimiter, async (req, res) => {
  * AI Assistant Endpoint: Stream PC Build configuration using team of models
  * POST /api/ai/build
  * Body: { message: string, sessionId?: string, userId?: string, language?: 'en'|'bn' }
+ * SSE Events emitted:
+ *  - thinking: { phase, message }
+ *  - build: { sessionId, build, parts, validation, totalBDT, budget_status, budget_shortfall_bdt, alternatives, swaps }
+ *  - token: { token }
+ *  - correction: { text, reason, offendingToken } (emitted when explainer output is grounded/corrected against verified build)
+ *  - done: { sessionId, tokensIn, tokensOut, model }
+ *  - error: { message }
  */
 app.post("/api/ai/build", commandLimiter, async (req, res) => {
   const { message, sessionId, userId, language } = req.body || {};
@@ -2268,8 +2275,22 @@ app.post("/api/ai/build", commandLimiter, async (req, res) => {
     res.flushHeaders();
   }
 
+  let clientDisconnected = false;
+  req.on("close", () => {
+    clientDisconnected = true;
+  });
+
+  // 15-Second SSE heartbeat to keep proxy connections alive
+  const heartbeatInterval = setInterval(() => {
+    if (!clientDisconnected && !res.writableEnded) {
+      res.write(": ping\n\n");
+    }
+  }, 15000);
+
   const sendEvent = (event, data) => {
-    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (!clientDisconnected && !res.writableEnded) {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    }
   };
 
   try {
@@ -2280,13 +2301,17 @@ app.post("/api/ai/build", commandLimiter, async (req, res) => {
     );
 
     for await (const item of generator) {
+      if (clientDisconnected) break;
       sendEvent(item.event, item.data);
     }
   } catch (err) {
     console.error("[AI Build Error]:", sanitizeLog(err.message));
     sendEvent("error", { message: "Failed to generate build. Please try again." });
   } finally {
-    res.end();
+    clearInterval(heartbeatInterval);
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 });
 
@@ -2294,6 +2319,13 @@ app.post("/api/ai/build", commandLimiter, async (req, res) => {
  * AI Assistant Endpoint: Stream Build Refinement / Part-Swap
  * POST /api/ai/refine
  * Body: { sessionId: string, message: string, language?: 'en'|'bn' }
+ * SSE Events emitted:
+ *  - thinking: { phase, message }
+ *  - build: { sessionId, build, parts, validation, totalBDT, budget_status, budget_shortfall_bdt, diff, alternatives, swaps }
+ *  - token: { token }
+ *  - correction: { text, reason, offendingToken } (emitted when explainer output is grounded/corrected against verified build)
+ *  - done: { sessionId }
+ *  - error: { message }
  */
 app.post("/api/ai/refine", commandLimiter, async (req, res) => {
   const { sessionId, message, language } = req.body || {};
@@ -2310,8 +2342,21 @@ app.post("/api/ai/refine", commandLimiter, async (req, res) => {
     res.flushHeaders();
   }
 
+  let clientDisconnected = false;
+  req.on("close", () => {
+    clientDisconnected = true;
+  });
+
+  const heartbeatInterval = setInterval(() => {
+    if (!clientDisconnected && !res.writableEnded) {
+      res.write(": ping\n\n");
+    }
+  }, 15000);
+
   const sendEvent = (event, data) => {
-    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (!clientDisconnected && !res.writableEnded) {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    }
   };
 
   try {
@@ -2323,13 +2368,17 @@ app.post("/api/ai/refine", commandLimiter, async (req, res) => {
     );
 
     for await (const item of generator) {
+      if (clientDisconnected) break;
       sendEvent(item.event, item.data);
     }
   } catch (err) {
     console.error("[AI Refine Error]:", sanitizeLog(err.message));
     sendEvent("error", { message: "Failed to refine build. Please try again." });
   } finally {
-    res.end();
+    clearInterval(heartbeatInterval);
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 });
 
@@ -2343,12 +2392,14 @@ app.get("/api/ai/session/:id", async (req, res) => {
 
   const active = ACTIVE_SESSIONS.get(id);
   if (active) {
+    const memoryMessages = active.memory?.turns || [];
     return res.json({
       sessionId: active.id,
       request: active.request,
       build: active.build,
       parts: active.partsList,
-      validation: active.validation
+      validation: active.validation,
+      messages: memoryMessages
     });
   }
 
