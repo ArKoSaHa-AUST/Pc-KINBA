@@ -1,8 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, BellRing, Heart, Radar, Trash2 } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, BellRing, Heart, Radar, RefreshCw, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getUserPriceAlerts, unsubscribePriceAlert, type PriceAlert } from '../../api/priceAlerts';
+import {
+  getUserPriceAlerts,
+  resendPriceAlert,
+  unsubscribePriceAlert,
+  type PriceAlert,
+} from '../../api/priceAlerts';
 import { getWishlistProducts, type WishlistProduct } from '../../api/wishlist';
 import { useAuth } from '../../auth/useAuth';
 import { useWishlist } from '../../hooks/useWishlist';
@@ -13,6 +18,7 @@ import { useToast } from '../ui/useToast';
 
 interface TrackedItem {
   key: string;
+  id?: string;
   title: string;
   image: string | null;
   price: number | null;
@@ -20,9 +26,14 @@ interface TrackedItem {
   since: string;
   kind: 'wishlist' | 'alert';
   status?: PriceAlert['status'];
+  lastNotificationStatus?: string | null;
+  lastNotificationAt?: string | null;
+  failedNotificationCount?: number;
   /** Product page link (listing id) — absent when a wishlist product has no live listing yet. */
   href: string | null;
   remove: () => void;
+  resend?: () => void;
+  isResending?: boolean;
 }
 
 const formatTaka = (n: number | null) => (n && n > 0 ? `৳${n.toLocaleString()}` : '—');
@@ -55,6 +66,20 @@ export function TrackedProductsPanel() {
     onError: () => toast({ message: 'Could not cancel price alert.', variant: 'danger' }),
   });
 
+  const resendAlert = useMutation({
+    mutationFn: (alertId: string) => resendPriceAlert(alertId, user!.email),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['price-alerts', user?.email] });
+      toast({ message: 'Price drop notification resent to your email.', variant: 'success' });
+    },
+    onError: (err: Error) => {
+      toast({
+        message: err.message || 'Could not resend price alert notification.',
+        variant: 'danger',
+      });
+    },
+  });
+
   const removeWish = (productId: string) =>
     toggle(productId, {
       onSuccess: () => {
@@ -78,6 +103,7 @@ export function TrackedProductsPanel() {
       .filter((a) => a.status !== 'cancelled')
       .map<TrackedItem>((a) => ({
         key: `alert-${a.id}`,
+        id: a.id,
         title: a.product_title || 'Component',
         image: a.product_image,
         price: a.current_price,
@@ -85,8 +111,13 @@ export function TrackedProductsPanel() {
         since: a.created_at,
         kind: 'alert',
         status: a.status,
+        lastNotificationStatus: a.last_notification_status,
+        lastNotificationAt: a.last_notification_at,
+        failedNotificationCount: a.failed_notification_count,
         href: `/product/${a.product_id}`,
         remove: () => removeAlert.mutate(a.product_id),
+        resend: () => resendAlert.mutate(a.id),
+        isResending: resendAlert.isPending && resendAlert.variables === a.id,
       })),
   ].sort((a, b) => Date.parse(b.since) - Date.parse(a.since));
 
@@ -134,6 +165,13 @@ export function TrackedProductsPanel() {
                       <Badge variant="accent">
                         <Heart className="w-3 h-3" /> Wishlist
                       </Badge>
+                    ) : item.lastNotificationStatus?.startsWith('failed') ? (
+                      <Badge
+                        variant="warning"
+                        className="border-amber-500/30 text-amber-400 bg-amber-500/10"
+                      >
+                        <AlertCircle className="w-3 h-3" /> Email delivery failed
+                      </Badge>
                     ) : (
                       <Badge variant={item.status === 'triggered' ? 'success' : 'warning'}>
                         <BellRing className="w-3 h-3" />
@@ -164,33 +202,69 @@ export function TrackedProductsPanel() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
               >
-                <Card className="border border-border p-4 rounded-xl hover:border-accent/40 transition-colors flex items-center gap-4">
-                  {item.href ? (
-                    <Link to={item.href} className="flex items-center gap-4 min-w-0 flex-1">
-                      {inner}
-                    </Link>
-                  ) : (
-                    <div className="flex items-center gap-4 min-w-0 flex-1">{inner}</div>
-                  )}
-                  <div className="flex items-center gap-1 shrink-0">
-                    {item.href && (
-                      <Link
-                        to={item.href}
-                        aria-label="Open product"
-                        className="p-2 rounded-lg text-text-muted hover:text-accent hover:bg-border transition-colors"
-                      >
-                        <ArrowUpRight className="w-4 h-4" />
+                <Card className="border border-border p-4 rounded-xl hover:border-accent/40 transition-colors flex flex-col gap-3">
+                  <div className="flex items-center gap-4">
+                    {item.href ? (
+                      <Link to={item.href} className="flex items-center gap-4 min-w-0 flex-1">
+                        {inner}
                       </Link>
+                    ) : (
+                      <div className="flex items-center gap-4 min-w-0 flex-1">{inner}</div>
                     )}
-                    <button
-                      type="button"
-                      onClick={item.remove}
-                      aria-label="Stop tracking"
-                      className="p-2 rounded-lg text-text-muted hover:text-danger hover:bg-border transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {item.href && (
+                        <Link
+                          to={item.href}
+                          aria-label="Open product"
+                          className="p-2 rounded-lg text-text-muted hover:text-accent hover:bg-border transition-colors"
+                        >
+                          <ArrowUpRight className="w-4 h-4" />
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        onClick={item.remove}
+                        aria-label="Stop tracking"
+                        className="p-2 rounded-lg text-text-muted hover:text-danger hover:bg-border transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
+
+                  {item.kind === 'alert' && item.lastNotificationStatus?.startsWith('failed') && (
+                    <div className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span className="truncate">
+                          We couldn't reach your email — the price did drop.
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            item.resend?.();
+                          }}
+                          disabled={item.isResending}
+                          className="px-2.5 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 hover:text-white font-medium transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          <RefreshCw
+                            className={`w-3 h-3 ${item.isResending ? 'animate-spin' : ''}`}
+                          />
+                          {item.isResending ? 'Resending...' : 'Resend'}
+                        </button>
+                        <Link
+                          to="/profile"
+                          className="text-text-muted hover:text-text-primary underline transition-colors"
+                        >
+                          Update email
+                        </Link>
+                      </div>
+                    </div>
+                  )}
                 </Card>
               </motion.div>
             );
