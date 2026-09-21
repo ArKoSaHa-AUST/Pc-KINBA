@@ -8,6 +8,10 @@ export interface PriceAlert {
   target_price: number | null;
   status: 'active' | 'paused' | 'triggered' | 'cancelled';
   created_at: string;
+  last_notification_status?: string | null;
+  last_notification_at?: string | null;
+  last_notification_error?: string | null;
+  failed_notification_count?: number;
 }
 
 export async function getUserPriceAlerts(email: string): Promise<PriceAlert[]> {
@@ -24,4 +28,20 @@ export async function unsubscribePriceAlert(listingId: string, email: string): P
     body: JSON.stringify({ email }),
   });
   if (!res.ok) throw new Error('Failed to cancel price alert');
+}
+
+export async function resendPriceAlert(
+  alertId: string,
+  email: string,
+): Promise<{ success: boolean; message?: string }> {
+  const res = await fetch(`/api/price-alerts/${encodeURIComponent(alertId)}/resend`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const errData = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(errData.error || 'Failed to resend price alert notification');
+  }
+  return res.json();
 }
