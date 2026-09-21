@@ -33,3 +33,31 @@ def test_py_norm_003_price_normalizer_edge_cases():
     for p in fixture['prices']:
         actual = normalize_price(p['raw'])
         assert actual == p['expected'], f"Failed for raw price {p['raw']}: expected {p['expected']}, got {actual}"
+
+
+def test_py_norm_004_corpus_validation():
+    corpus_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../fixtures/normalization_corpus.json'))
+    with open(corpus_path, 'r', encoding='utf-8') as f:
+        corpus = json.load(f)
+
+    assert len(corpus['titles']) >= 120
+
+    for item in corpus['titles']:
+        attrs = extract_attributes(item['raw_title'])
+        fp = generate_fingerprint(item['raw_title'])
+        expected = item['expected']
+
+        assert attrs['manufacturer'] == expected['manufacturer'], f"[{item['id']}] manufacturer mismatch"
+        assert attrs['brand'] == expected['brand'], f"[{item['id']}] brand mismatch"
+        assert attrs['capacity'] == expected['capacity'], f"[{item['id']}] capacity mismatch"
+        assert attrs['type'] == expected['type'], f"[{item['id']}] type mismatch"
+        assert attrs['speed'] == expected['speed'], f"[{item['id']}] speed mismatch"
+        assert attrs['model'] == expected['model'], f"[{item['id']}] model mismatch"
+        assert attrs['baseModel'] == expected['baseModel'], f"[{item['id']}] baseModel mismatch"
+        assert attrs['mpn'] == expected['mpn'], f"[{item['id']}] mpn mismatch"
+        assert fp['fingerprint'] == expected['fingerprint'], f"[{item['id']}] fingerprint mismatch"
+
+    for p in corpus.get('prices', []):
+        actual = normalize_price(p['raw'])
+        assert actual == p['expected'], f"Price mismatch for {p['raw']}: expected {p['expected']}, got {actual}"
+

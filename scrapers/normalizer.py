@@ -1,17 +1,66 @@
 """
-PC Kinba - Production Python Attribute Normalization & Fingerprinting Engine
-
-Rules:
-1. Extract manufacturer (NVIDIA, AMD, Intel, etc.) vs brand (ASUS, MSI, etc.)
-2. Strip noise words to isolate base_model
-3. Generate canonical fingerprint WITHOUT vendor brand (order-independent):
-   fingerprint = sorted([manufacturer, base_model, type, capacity]).join("-")
-4. MPN / SKU extraction for exact matching
-5. Strict price normalization (0, "৳0", "Call for Price" -> None)
-6. Match confidence score (0.0 - 1.0)
+============================================================================
+PC-KINBA CANONICAL PRODUCT TITLE NORMALISER & FINGERPRINT SPECIFICATION
+============================================================================
+SIBLING IMPLEMENTATION NOTICE:
+This file has a sibling implementation in lib/normalizer.js.
+Any change here must be mirrored there and validated with:
+  node scripts/normalizer_parity.mjs
+============================================================================
+CANONICAL RULES (Provably identical between Node.js and Python):
+1. Manufacturer Detection:
+   - Ordered keyword list (MANUFACTURERS). First match wins. Word-boundary,
+     case-insensitive matching. Defaults to 'Generic'.
+2. Vendor Brand Detection:
+   - Ordered list (BRANDS_LIST). First match wins. Defaults to ''.
+3. Capacity Extraction:
+   - Pattern: \b(\d+)\s*(GB|G|TB)\b (case-insensitive). First match.
+     Normalised to "{n}GB" or "{n}TB".
+4. Spec Type Extraction:
+   - Pattern: \b(DDR5|DDR4|DDR3|GDDR7|GDDR6X|GDDR6|GDDR5|NVMe|SATA)\b (case-insensitive).
+     Uppercased.
+5. Speed Extraction:
+   - Pattern: \b(\d{4})\s*(MHz|MHz/s)\b (case-insensitive).
+     Unit REQUIRED (bare 4-digit numbers are NOT speeds). Normalised to "{speed}MHz".
+6. MPN / SKU Extraction:
+   - Pattern: \b([A-Z0-9]{5,15}-[A-Z0-9]{3,10}|[A-Z0-9]{8,18})\b
+     CASE-SENSITIVE by design (omits 'i' flag to prevent matching lower-case slugs).
+     Excludes stop-list: ['GRAPHICS', 'DESKTOP', 'PROCESSOR', 'GEFORCE'].
+7. Model Extraction (Four-Stage Cascade):
+   - Stage 1: GPU regex: \b(RTX\s*\d{4}(?:\s*Ti)?|RX\s*\d{4}(?:\s*XT)?|GTX\s*\d{4}(?:\s*Ti)?)\b
+   - Stage 2: CPU regex: \b(Ryzen\s*[3579]\s*\d{4}[X3D]*|i[3579]-?\d{4,5}[KFX]*|Core\s*Ultra\s*[579]\s*\d+K?)\b
+   - Stage 3: Series regex: Vengeance LPX, Vengeance, Fury Renegade, Fury Beast,
+              T-Force Delta, Dominator, Ripjaws, Trident Z, 990 Pro, 980 Pro,
+              SN850X, SN770, Blue SN570, P3 Plus, P3, NV3, NV2, KC3000, MP600, Barracuda.
+   - Stage 4: Fallback: strip brand and NOISE_WORDS, take first 3 non-empty whitespace tokens.
+8. Noise Words:
+   - Canonical 18 patterns: ram, memory, desktop, laptop, graphics card, gpu,
+     processor, cpu, motherboard, casing, case, power supply, psu, cooler,
+     ssd, hard drive, hdd, kit.
+9. Base Model Extraction:
+   - Model with EDITION_NOISE stripped, whitespace collapsed, trimmed.
+     Falls back to model if stripping empties it.
+10. Order-Independent Canonical Fingerprint:
+    - fingerprint = sorted(unique([manufacturer, baseModel, type, capacity] minus falsy)).join("-")
+      Each component lowercased and stripped to [a-z0-9].
+      (type and capacity are already alphanumeric).
+11. Strict Price Normalisation:
+    - 0, "0", "৳0", "Call for Price", null, undefined, negative -> null.
+    - Non-digits stripped, then parsed.
+12. Jaccard Token Similarity:
+    - Over whitespace tokens of [^a-z0-9\s]-stripped lowercase strings.
+    - Returns 0.0 if either token set is empty.
+13. Match Confidence (0.0 to 1.0):
+    - Capacity mismatch -> 0.0.
+    - Type mismatch -> 0.0.
+    - MPN exact match -> 1.0.
+    - Fingerprint exact match -> 0.95.
+    - Otherwise Jaccard similarity with half-up rounding to 2 decimal places.
+============================================================================
 """
 
 import re
+import decimal
 from typing import Dict, Any, List, Optional, Tuple
 
 MANUFACTURERS = [
@@ -35,7 +84,8 @@ BRANDS_LIST = [
 NOISE_WORDS = [
     r'\bram\b', r'\bmemory\b', r'\bdesktop\b', r'\blaptop\b', r'\bgraphics\s*card\b',
     r'\bgpu\b', r'\bprocessor\b', r'\bcpu\b', r'\bmotherboard\b', r'\bcasing\b',
-    r'\bcase\b', r'\bpower\s*supply\b', r'\bpsu\b', r'\bcooler\b', r'\bssd\b', r'\bhard\s*drive\b'
+    r'\bcase\b', r'\bpower\s*supply\b', r'\bpsu\b', r'\bcooler\b', r'\bssd\b',
+    r'\bhard\s*drive\b', r'\bhdd\b', r'\bkit\b'
 ]
 
 EDITION_NOISE = [
@@ -43,12 +93,15 @@ EDITION_NOISE = [
 ]
 
 def normalize_price(raw_price: Any) -> Optional[int]:
-    """Strict Price Normalizer: Converts 0, '0', '৳0', 'Call for Price' to None."""
+    """Strict Price Normalizer: Converts 0, '0', '৳0', 'Call for Price', negative to None."""
     if raw_price is None:
         return None
     if isinstance(raw_price, (int, float)):
         return int(raw_price) if raw_price > 0 else None
-    digits = re.sub(r'[^0-9]', '', str(raw_price))
+    s = str(raw_price).strip()
+    if s.startswith('-'):
+        return None
+    digits = re.sub(r'[^0-9]', '', s)
     if digits:
         val = int(digits)
         return val if val > 0 else None
@@ -96,7 +149,7 @@ def extract_attributes(raw_title: str) -> Dict[str, str]:
 
     # 5. Speed
     speed = ''
-    speed_match = re.search(r'\b(\d{4})\s*(MHz|MHz/s)?\b', title, re.IGNORECASE)
+    speed_match = re.search(r'\b(\d{4})\s*(MHz|MHz/s)\b', title, re.IGNORECASE)
     if speed_match:
         speed = f"{speed_match.group(1)}MHz"
 
@@ -118,7 +171,7 @@ def extract_attributes(raw_title: str) -> Dict[str, str]:
             model = re.sub(r'\s+', ' ', cpu_match.group(1))
 
     if not model:
-        series_match = re.search(r'\b(Vengeance\s*LPX|Vengeance|Fury\s*Beast|T-Force\s*Delta|Dominator|990\s*Pro|980\s*Pro|SN850X|SN770)\b', title, re.IGNORECASE)
+        series_match = re.search(r'\b(Vengeance\s*LPX|Vengeance|Fury\s*Renegade|Fury\s*Beast|T-Force\s*Delta|Dominator|Ripjaws|Trident\s*Z|990\s*Pro|980\s*Pro|SN850X|SN770|Blue\s*SN570|P3\s*Plus|P3|NV3|NV2|KC3000|MP600|Barracuda)\b', title, re.IGNORECASE)
         if series_match:
             model = series_match.group(1)
 
@@ -128,7 +181,7 @@ def extract_attributes(raw_title: str) -> Dict[str, str]:
             clean = re.sub(r'\b' + re.escape(brand) + r'\b', '', clean, flags=re.IGNORECASE)
         for nw in NOISE_WORDS:
             clean = re.sub(nw, '', clean, flags=re.IGNORECASE)
-        words = [w for w in clean.strip().split() if len(w) > 1]
+        words = [w for w in clean.strip().split() if w]
         model = ' '.join(words[:3])
 
     base_model = model
@@ -190,6 +243,11 @@ def calculate_similarity(str1: str, str2: str) -> float:
 
     return len(intersection) / len(union)
 
+def _round_half_up(val: float, decimals: int = 2) -> float:
+    """Half-up arithmetic rounding matching JavaScript Math.round(val * 100) / 100."""
+    d = decimal.Decimal(str(round(val, 8)))
+    return float(d.quantize(decimal.Decimal('1.' + '0' * decimals), rounding=decimal.ROUND_HALF_UP))
+
 def calculate_match_confidence(title1: str, title2: str) -> float:
     """
     Calculate Match Confidence (0.0 to 1.0)
@@ -215,4 +273,4 @@ def calculate_match_confidence(title1: str, title2: str) -> float:
     if fp1 == fp2:
         return 0.95
 
-    return round(calculate_similarity(title1, title2), 2)
+    return _round_half_up(calculate_similarity(title1, title2), 2)

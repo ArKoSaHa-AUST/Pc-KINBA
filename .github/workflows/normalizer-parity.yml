@@ -1,0 +1,59 @@
+name: Title Normaliser Parity
+
+# Enforces that the Node.js (lib/normalizer.js) and Python (scrapers/normalizer.py)
+# title normalisers remain 100% identical in attributes, fingerprints, and scoring.
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'lib/normalizer.js'
+      - 'scrapers/normalizer.py'
+      - 'tests/fixtures/normalization_corpus.json'
+      - 'scripts/normalizer_parity.mjs'
+      - 'scripts/normalizer_dump.py'
+      - 'tests/backend/normalizer_parity.test.js'
+      - '.github/workflows/normalizer-parity.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'lib/normalizer.js'
+      - 'scrapers/normalizer.py'
+      - 'tests/fixtures/normalization_corpus.json'
+      - 'scripts/normalizer_parity.mjs'
+      - 'scripts/normalizer_dump.py'
+      - 'tests/backend/normalizer_parity.test.js'
+      - '.github/workflows/normalizer-parity.yml'
+  workflow_call:
+
+jobs:
+  parity:
+    name: Cross-Language Normalizer Parity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Node Dependencies
+        run: npm ci
+
+      - name: Run Cross-Language Parity Harness
+        run: node scripts/normalizer_parity.mjs
+
+      - name: Run Vitest Normalizer Suite
+        run: npx vitest run tests/backend/normalizer.test.js tests/backend/normalizer_parity.test.js
+
+      - name: Run Python Normalizer Suite
+        run: python -m pytest tests/scrapers/test_normalizer_parity.py
