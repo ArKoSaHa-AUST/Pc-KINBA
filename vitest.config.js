@@ -9,7 +9,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['tests/**/*.test.js', 'tests/**/*.test.ts'],
+    include: [
+      'tests/**/*.test.js',
+      'tests/**/*.test.ts',
+      // Unit tests for the shared compatibility-rules package.
+      'packages/*/src/**/*.test.ts'
+    ],
     testTimeout: 20000,
     hookTimeout: 20000
   },

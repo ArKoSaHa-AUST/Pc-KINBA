@@ -10,7 +10,11 @@
     "client": "npm --prefix client run dev",
     "dev": "npm --prefix client run dev",
     "dev:server": "node server.js",
-    "release": "semantic-release"
+    "release": "semantic-release",
+    "build:packages": "npm run build --workspace @pc-kinba/compat-rules",
+    "test": "vitest run",
+    "pretest": "npm run build:packages",
+    "prestart": "npm run build:packages"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -28,6 +32,7 @@
     "vitest": "^4.1.11"
   },
   "dependencies": {
+    "@pc-kinba/compat-rules": "*",
     "@supabase/server": "^1.4.1",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
@@ -38,5 +43,8 @@
     "nodemailer": "^9.0.5",
     "sharp": "^0.35.4",
     "zod": "^4.5.4"
-  }
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }

@@ -5,17 +5,21 @@
 FROM node:20-slim AS build
 WORKDIR /app
 
-# Install dependencies
-COPY client/package*.json ./
+# Copy shared packages and client package files
+COPY packages/ ./packages/
+COPY client/package*.json ./client/
+
+# Install client dependencies
+WORKDIR /app/client
 RUN npm install
 
-# Copy source and build static bundle
+# Copy client source code and build static bundle
 COPY client/ ./
 RUN npm run build
 
 # Production Server Stage
 FROM nginx:alpine AS production
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/client/dist /usr/share/nginx/html
 
 # Copy custom Nginx configuration if needed, default otherwise
 EXPOSE 80

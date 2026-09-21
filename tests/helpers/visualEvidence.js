@@ -6,17 +6,23 @@ let browser = null;
 
 export async function getBrowser() {
   if (!browser) {
-    browser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+    try {
+      browser = await chromium.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+    } catch (err) {
+      return null;
+    }
   }
   return browser;
 }
 
 export async function closeBrowser() {
   if (browser) {
-    await browser.close();
+    try {
+      await browser.close();
+    } catch (_) {}
     browser = null;
   }
 }
@@ -37,20 +43,25 @@ export async function captureEvidence({
   outputData = null,
   outputPath = null
 }) {
-  const targetPath = outputPath || path.join(
-    process.cwd(),
-    'testSS',
-    service.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-    `${testId}.png`
-  );
+  try {
+    const b = await getBrowser();
+    if (!b) {
+      return null;
+    }
 
-  const dir = path.dirname(targetPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+    const targetPath = outputPath || path.join(
+      process.cwd(),
+      'testSS',
+      service.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      `${testId}.png`
+    );
 
-  const b = await getBrowser();
-  const page = await b.newPage({ viewport: { width: 1000, height: 700 } });
+    const dir = path.dirname(targetPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    const page = await b.newPage({ viewport: { width: 1000, height: 700 } });
 
   const isPass = status.toUpperCase() === 'PASS';
   const statusColor = isPass ? '#10b981' : '#ef4444';
@@ -208,8 +219,11 @@ export async function captureEvidence({
 </html>
   `;
 
-  await page.setContent(html);
-  await page.screenshot({ path: targetPath, fullPage: true });
-  await page.close();
-  return targetPath;
+    await page.setContent(html);
+    await page.screenshot({ path: targetPath, fullPage: true });
+    await page.close();
+    return targetPath;
+  } catch (err) {
+    return null;
+  }
 }

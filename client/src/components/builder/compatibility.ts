@@ -1,4 +1,33 @@
-import type { BuilderProduct, ComponentCategory, FormFactor } from './builderCatalog';
+/**
+ * PC Builder compatibility — React builder adapter.
+ *
+ * ---------------------------------------------------------------------------
+ * Compatibility rules live in `@pc-kinba/compat-rules` (packages/compat-rules).
+ * Do NOT add rule logic here — this file only maps `BuilderProduct` onto the
+ * shared `CompatPart`, and maps the shared `RuleResult` back onto the
+ * `CompatResult` / `BuildCheck` shapes this app's components render.
+ * ---------------------------------------------------------------------------
+ */
+import {
+  estimatePowerDraw as sharedEstimatePowerDraw,
+  ruleBios,
+  ruleCoolerClearance,
+  ruleCoolerSocket,
+  ruleFormFactor,
+  ruleFrontUsbC,
+  ruleGpuClearance,
+  ruleM2Sata,
+  rulePcieLanes,
+  rulePsuConnectors,
+  rulePsuFormFactor,
+  rulePsuHeadroom,
+  ruleRamFit,
+  type CompatBuild,
+  type CompatPart,
+  type RuleResult,
+  type Severity,
+} from '@pc-kinba/compat-rules';
+import type { BuilderProduct, ComponentCategory } from './builderCatalog';
 
 export type BuildSelection = Partial<Record<ComponentCategory, BuilderProduct>>;
 
@@ -27,6 +56,7 @@ export function partIdsOf(build: BuildSelection): string[] {
     .map((p) => p.id);
 }
 
+/** Sums every slot, including peripherals, which the shared rules do not model. */
 export function totalPriceOf(build: BuildSelection): number {
   return Object.values(build).reduce((sum, p) => sum + (p?.price ?? 0), 0);
 }
@@ -38,220 +68,144 @@ export interface CompatResult {
   message: string;
 }
 
-const FORM_FACTOR_SIZE: Record<FormFactor, number> = { ITX: 0, mATX: 1, ATX: 2 };
-const BASE_DRAW_WATTS = 75; // mobo, ram, storage, fans
+// ---------------------------------------------------------------------------
+// Adapter: BuilderProduct <-> CompatPart, RuleResult <-> CompatResult
+// ---------------------------------------------------------------------------
 
-export function estimatePowerDraw(build: BuildSelection): number {
-  return BASE_DRAW_WATTS + (build.cpu?.tdp ?? 0) + (build.gpu?.tdp ?? 0);
+const STATUS_FOR_SEVERITY: Record<Severity, CompatStatus> = {
+  ok: 'compatible',
+  warning: 'warning',
+  error: 'incompatible',
+};
+
+/** The builder's slot vocabulary differs from the shared one in two places. */
+function compatCategoryOf(category: ComponentCategory): CompatPart['category'] | null {
+  switch (category) {
+    case 'cooling':
+      return 'cooler';
+    case 'storage2':
+      return 'storage';
+    case 'cpu':
+    case 'gpu':
+    case 'motherboard':
+    case 'ram':
+    case 'storage':
+    case 'psu':
+    case 'case':
+      return category;
+    default:
+      return null; // monitor / keyboard / mouse are not part of compatibility
+  }
 }
 
-function checkPsuHeadroom(wattage: number, draw: number): CompatResult {
-  if (wattage < draw) {
-    return { status: 'incompatible', message: `Needs ~${draw}W, PSU is ${wattage}W` };
-  }
-  if (wattage < draw * 1.25) {
-    return { status: 'warning', message: `Under 25% PSU headroom (~${draw}W draw)` };
-  }
-  return { status: 'compatible', message: 'Compatible' };
+/** Exported for the cross-adapter parity suite; not used by app code. */
+export function toCompatPart(product: BuilderProduct | undefined): CompatPart | undefined {
+  if (!product) return undefined;
+  const category = compatCategoryOf(product.category);
+  if (!category) return undefined;
+
+  return {
+    id: product.id,
+    category,
+    name: product.name,
+    priceBDT: product.price,
+    socket: product.socket,
+    memoryType: product.ramType,
+    formFactor: product.formFactor,
+    releasedYearMonth: product.released,
+    tdpWatts: product.tdp,
+    psuWatts: product.wattage,
+    pcie8pin: product.pcie8pin,
+    has12vhpwr: product.has12vhpwr,
+    sataPower: product.sataPower,
+    gpuPower: product.gpuPower,
+    psuFormFactor: product.psuFormFactor,
+    psuSupport: product.psuSupport,
+    lengthMm: product.lengthMm,
+    heightMm: product.heightMm,
+    radiatorMm: product.radiatorMm,
+    maxGpuLengthMm: product.maxGpuLengthMm,
+    maxCoolerHeightMm: product.maxCoolerHeightMm,
+    radiatorSupportMm: product.radiatorSupportMm,
+    ramSlots: product.ramSlots,
+    maxRamGb: product.maxRamGb,
+    moduleCount: product.moduleCount,
+    capacityGb: product.capacityGb,
+    speedMhz: product.speedMhz,
+    storageInterface: product.storageInterface,
+    pcieGen: product.pcieGen,
+    m2Slots: product.m2Slots,
+    sataPorts: product.sataPorts,
+    m2SataShared: product.m2SataShared,
+    m2SharesGpuLanes: product.m2SharesGpuLanes,
+    coolerSockets: product.coolerSockets,
+    frontUsbC: product.frontUsbC,
+    usbCHeader: product.usbCHeader,
+  };
 }
 
-// ---- Rule functions: return null when the required parts/specs aren't selected yet ----
+/** `null` in, `null` out: "not enough information" must never become "compatible". */
+function toCompatResult(result: RuleResult | null): CompatResult | null {
+  if (!result) return null;
+  return { status: STATUS_FOR_SEVERITY[result.severity], message: result.message };
+}
 
 type P = BuilderProduct | undefined;
 
-function checkGpuClearance(gpu: P, pcCase: P): CompatResult | null {
-  if (!gpu?.lengthMm || !pcCase?.maxGpuLengthMm) return null;
-  const spare = pcCase.maxGpuLengthMm - gpu.lengthMm;
-  if (spare < 0) {
-    return {
-      status: 'incompatible',
-      message: `${gpu.lengthMm}mm GPU exceeds ${pcCase.maxGpuLengthMm}mm case limit`,
-    };
-  }
-  if (spare < 15) {
-    return { status: 'warning', message: `Only ${spare}mm spare — a front radiator may block it` };
-  }
-  return { status: 'compatible', message: `${gpu.lengthMm}mm GPU, ${spare}mm spare` };
+const part = toCompatPart;
+
+// --- Rule wrappers: shape mapping only, no logic ---------------------------
+
+export function estimatePowerDraw(build: BuildSelection): number {
+  const compat: CompatBuild = { cpu: part(build.cpu), gpu: part(build.gpu) };
+  // `assumeDefaults` stays off: in the curated catalog a missing TDP means the slot
+  // is empty, so it should contribute 0W. The Tonima validator flips this on because
+  // scraped listings often omit TDP and under-sizing a PSU is the costlier mistake.
+  return sharedEstimatePowerDraw(compat, { assumeDefaults: false });
 }
 
-function checkCoolerClearance(cooler: P, pcCase: P): CompatResult | null {
-  if (!cooler || !pcCase) return null;
-  if (cooler.radiatorMm) {
-    if (!pcCase.radiatorSupportMm) return null;
-    return pcCase.radiatorSupportMm.includes(cooler.radiatorMm)
-      ? { status: 'compatible', message: `${cooler.radiatorMm}mm radiator mount available` }
-      : {
-          status: 'incompatible',
-          message: `No ${cooler.radiatorMm}mm mount (case takes ${pcCase.radiatorSupportMm.join('/')}mm)`,
-        };
-  }
-  if (!cooler.heightMm || !pcCase.maxCoolerHeightMm) return null;
-  const spare = pcCase.maxCoolerHeightMm - cooler.heightMm;
-  if (spare < 0) {
-    return {
-      status: 'incompatible',
-      message: `${cooler.heightMm}mm cooler exceeds ${pcCase.maxCoolerHeightMm}mm clearance`,
-    };
-  }
-  if (spare < 5) {
-    return { status: 'warning', message: `${spare}mm spare — side panel may touch the cooler` };
-  }
-  return { status: 'compatible', message: `${cooler.heightMm}mm cooler, ${spare}mm spare` };
+function checkPsuHeadroom(wattage: number, draw: number): CompatResult {
+  return (
+    toCompatResult(rulePsuHeadroom(wattage, draw)) ?? {
+      status: 'compatible',
+      message: 'Compatible',
+    }
+  );
 }
 
-function checkPsuConnectors(psu: P, gpu: P, storage: P): CompatResult | null {
-  if (!psu?.pcie8pin) return null;
-  if (storage?.storageInterface === 'sata' && !psu.sataPower) {
-    return { status: 'incompatible', message: 'PSU has no SATA power connector for the drive' };
-  }
-  if (!gpu) {
-    return storage?.storageInterface
-      ? { status: 'compatible', message: 'No PCIe power required' }
-      : null;
-  }
-  if (!gpu.gpuPower) return null; // connector requirement unknown for this GPU
-  const { type, pcie8pin } = gpu.gpuPower;
-  if (type === '12vhpwr') {
-    if (psu.has12vhpwr) return { status: 'compatible', message: 'Native 12VHPWR cable' };
-    return psu.pcie8pin >= pcie8pin
-      ? {
-          status: 'warning',
-          message: `12VHPWR via ${pcie8pin}×8-pin adapter — an ATX 3.0 PSU is safer`,
-        }
-      : {
-          status: 'incompatible',
-          message: `Adapter needs ${pcie8pin}×8-pin, PSU has ${psu.pcie8pin}`,
-        };
-  }
-  return psu.pcie8pin >= pcie8pin
-    ? { status: 'compatible', message: `${pcie8pin}×8-pin available` }
-    : { status: 'incompatible', message: `GPU needs ${pcie8pin}×8-pin, PSU has ${psu.pcie8pin}` };
-}
-
-/** 'YYYY-MM' strings compare lexicographically; a CPU newer than its board is the classic BIOS trap. */
-function checkBios(cpu: P, motherboard: P): CompatResult | null {
-  if (!cpu?.released || !motherboard?.released || cpu.socket !== motherboard.socket) return null;
-  return cpu.released > motherboard.released
-    ? {
-        status: 'warning',
-        message:
-          'CPU is newer than this board — older stock may need a BIOS update (ask the retailer to flash it)',
-      }
-    : { status: 'compatible', message: 'Supported out of the box' };
-}
-
-function checkM2Sata(storage: P, motherboard: P): CompatResult | null {
-  if (!storage?.storageInterface || !motherboard?.m2Slots) return null;
-  const ports = `${motherboard.m2Slots}× M.2 · ${motherboard.sataPorts ?? 0}× SATA`;
-  if (!motherboard.m2SataShared)
-    return { status: 'compatible', message: `${ports}, no shared lanes` };
-  return storage.storageInterface === 'sata'
-    ? { status: 'warning', message: `${motherboard.m2SataShared} — keep the drive on SATA 1–4` }
-    : {
-        status: 'compatible',
-        message: `${motherboard.m2SataShared} — use M.2_1 to keep all SATA ports`,
-      };
-}
+const checkGpuClearance = (gpu: P, pcCase: P) =>
+  toCompatResult(ruleGpuClearance(part(gpu), part(pcCase)));
+const checkCoolerClearance = (cooler: P, pcCase: P) =>
+  toCompatResult(ruleCoolerClearance(part(cooler), part(pcCase)));
+const checkPsuConnectors = (psu: P, gpu: P, storage: P) =>
+  toCompatResult(rulePsuConnectors(part(psu), part(gpu), part(storage)));
+const checkBios = (cpu: P, motherboard: P) =>
+  toCompatResult(ruleBios(part(cpu), part(motherboard)));
+const checkM2Sata = (storage: P, motherboard: P) =>
+  toCompatResult(ruleM2Sata(part(storage), part(motherboard)));
+const checkRamFit = (ram: P, motherboard: P, cpu: P) =>
+  toCompatResult(ruleRamFit(part(ram), part(motherboard), part(cpu)));
+const checkCoolerSocket = (cooler: P, cpu: P) =>
+  toCompatResult(ruleCoolerSocket(part(cooler), part(cpu)));
+const checkPsuFormFactor = (psu: P, pcCase: P) =>
+  toCompatResult(rulePsuFormFactor(part(psu), part(pcCase)));
+const checkPcieLanes = (storage: P, storage2: P, motherboard: P) =>
+  toCompatResult(rulePcieLanes(part(storage), part(storage2), part(motherboard)));
+const checkFrontUsbC = (pcCase: P, motherboard: P) =>
+  toCompatResult(ruleFrontUsbC(part(pcCase), part(motherboard)));
 
 const SEVERITY: Record<CompatStatus, number> = { compatible: 0, warning: 1, incompatible: 2 };
-
-/** DDR sweet spots per platform; faster kits often need manual tuning or fall back to JEDEC. */
-const RAM_SWEET_SPOT: Record<string, number> = {
-  AM5: 6000,
-  AM4: 3600,
-  LGA1700: 6400,
-  LGA1851: 6400,
-};
-
-function checkRamFit(ram: P, motherboard: P, cpu: P): CompatResult | null {
-  if (!ram || !motherboard) return null;
-  if (ram.moduleCount && motherboard.ramSlots && ram.moduleCount > motherboard.ramSlots) {
-    return {
-      status: 'incompatible',
-      message: `${ram.moduleCount} modules but the board has ${motherboard.ramSlots} DIMM slots`,
-    };
-  }
-  if (ram.capacityGb && motherboard.maxRamGb && ram.capacityGb > motherboard.maxRamGb) {
-    return {
-      status: 'incompatible',
-      message: `${ram.capacityGb}GB exceeds the board's ${motherboard.maxRamGb}GB max`,
-    };
-  }
-  const socket = cpu?.socket ?? motherboard.socket;
-  const sweet = socket ? RAM_SWEET_SPOT[socket] : undefined;
-  if (ram.speedMhz && sweet && ram.speedMhz > sweet) {
-    return {
-      status: 'warning',
-      message: `${ram.ramType}-${ram.speedMhz} is above the ${socket} sweet spot (${sweet}) — may need manual tuning`,
-    };
-  }
-  if (!ram.speedMhz && !ram.moduleCount) return null;
-  return {
-    status: 'compatible',
-    message: ram.speedMhz
-      ? `${ram.ramType}-${ram.speedMhz} within platform range`
-      : 'Kit fits the board',
-  };
-}
-
-function checkCoolerSocket(cooler: P, cpu: P): CompatResult | null {
-  if (!cooler?.coolerSockets || !cpu?.socket) return null;
-  return cooler.coolerSockets.includes(cpu.socket)
-    ? { status: 'compatible', message: `${cpu.socket} bracket included` }
-    : {
-        status: 'incompatible',
-        message: `No ${cpu.socket} bracket (supports ${cooler.coolerSockets.join('/')})`,
-      };
-}
-
-function checkPsuFormFactor(psu: P, pcCase: P): CompatResult | null {
-  if (!psu?.psuFormFactor || !pcCase?.psuSupport) return null;
-  return pcCase.psuSupport.includes(psu.psuFormFactor)
-    ? { status: 'compatible', message: `${psu.psuFormFactor} PSU fits` }
-    : {
-        status: 'incompatible',
-        message: `Case takes ${pcCase.psuSupport.join('/')} PSUs, not ${psu.psuFormFactor}`,
-      };
-}
-
-function checkPcieLanes(storage: P, storage2: P, motherboard: P): CompatResult | null {
-  if (!motherboard || (!storage && !storage2)) return null;
-  if (storage2?.storageInterface === 'nvme' && motherboard.m2SharesGpuLanes) {
-    return {
-      status: 'warning',
-      message: `${motherboard.m2SharesGpuLanes} — a 2nd NVMe drive may slow the GPU`,
-    };
-  }
-  const drive = [storage, storage2].find((d) => d?.pcieGen && motherboard.pcieGen);
-  if (drive?.pcieGen && motherboard.pcieGen && drive.pcieGen > motherboard.pcieGen) {
-    return {
-      status: 'warning',
-      message: `Gen${drive.pcieGen} SSD will run at Gen${motherboard.pcieGen} speed on this board`,
-    };
-  }
-  if (!drive && !storage2) return null;
-  return {
-    status: 'compatible',
-    message: drive ? `Gen${drive.pcieGen} SSD fully supported` : 'No lane sharing issues',
-  };
-}
-
-function checkFrontUsbC(pcCase: P, motherboard: P): CompatResult | null {
-  if (pcCase?.frontUsbC === undefined || motherboard?.usbCHeader === undefined) return null;
-  if (!pcCase.frontUsbC) return { status: 'compatible', message: 'Case has no front USB-C port' };
-  return motherboard.usbCHeader
-    ? { status: 'compatible', message: 'Front USB-C header available' }
-    : {
-        status: 'warning',
-        message: 'Case front USB-C port has no header on this board — it will be dead',
-      };
-}
 
 function worst(results: (CompatResult | null)[]): CompatResult {
   return results.reduce<CompatResult>(
     (acc, r) => (r && SEVERITY[r.status] > SEVERITY[acc.status] ? r : acc),
     { status: 'compatible', message: 'Compatible' },
   );
+}
+
+/** True when the shared form-factor rule says the board does not fit the case. */
+function formFactorClash(motherboard: P, pcCase: P): boolean {
+  return ruleFormFactor(part(motherboard), part(pcCase))?.severity === 'error';
 }
 
 /** Checks a candidate against the rest of the build; `slot` is the slot being filled (its current part is ignored). */
@@ -296,14 +250,10 @@ export function checkCompatibility(
           message: `${candidate.ramType} board, ${b.ram.ramType} RAM selected`,
         };
       }
-      if (
-        b.case?.formFactor &&
-        candidate.formFactor &&
-        FORM_FACTOR_SIZE[candidate.formFactor] > FORM_FACTOR_SIZE[b.case.formFactor]
-      ) {
+      if (formFactorClash(candidate, b.case)) {
         return {
           status: 'incompatible',
-          message: `${candidate.formFactor} won't fit ${b.case.formFactor} case`,
+          message: `${candidate.formFactor} won't fit ${b.case?.formFactor} case`,
         };
       }
       results.push(
@@ -345,12 +295,8 @@ export function checkCompatibility(
       break;
     }
     case 'case': {
-      if (
-        b.motherboard?.formFactor &&
-        candidate.formFactor &&
-        FORM_FACTOR_SIZE[b.motherboard.formFactor] > FORM_FACTOR_SIZE[candidate.formFactor]
-      ) {
-        return { status: 'incompatible', message: `${b.motherboard.formFactor} board won't fit` };
+      if (formFactorClash(b.motherboard, candidate)) {
+        return { status: 'incompatible', message: `${b.motherboard?.formFactor} board won't fit` };
       }
       results.push(
         checkGpuClearance(b.gpu, candidate),
@@ -453,28 +399,31 @@ export function getBuildChecks(build: BuildSelection): BuildCheck[] {
         detail: `~${draw}W draw on ${psu.wattage}W PSU`,
       };
 
-  const formFit: BuildCheck =
-    !motherboard?.formFactor || !pcCase?.formFactor
+  const formResult = ruleFormFactor(part(motherboard), part(pcCase));
+  const formFit: BuildCheck = !formResult
+    ? {
+        id: 'form',
+        label: 'Form factor fit (Motherboard ↔ Case)',
+        status: 'pending',
+        detail: 'Select motherboard and case',
+      }
+    : formResult.severity === 'ok'
       ? {
           id: 'form',
           label: 'Form factor fit (Motherboard ↔ Case)',
-          status: 'pending',
-          detail: 'Select motherboard and case',
+          status: 'compatible',
+          detail: `${motherboard?.formFactor} fits ${pcCase?.formFactor} case`,
         }
-      : FORM_FACTOR_SIZE[motherboard.formFactor] <= FORM_FACTOR_SIZE[pcCase.formFactor]
-        ? {
-            id: 'form',
-            label: 'Form factor fit (Motherboard ↔ Case)',
-            status: 'compatible',
-            detail: `${motherboard.formFactor} fits ${pcCase.formFactor} case`,
-          }
-        : {
-            id: 'form',
-            label: 'Form factor fit (Motherboard ↔ Case)',
-            status: 'incompatible',
-            detail: `${motherboard.formFactor} board won't fit ${pcCase.formFactor} case`,
-          };
+      : {
+          id: 'form',
+          label: 'Form factor fit (Motherboard ↔ Case)',
+          status: 'incompatible',
+          detail: `${motherboard?.formFactor} board won't fit ${pcCase?.formFactor} case`,
+        };
 
+  // The shared rule declines to judge a CPU that reports no TDP. Every CPU in the
+  // curated catalog has one, so the builder keeps its long-standing optimistic
+  // reading rather than showing "pending" for a slot the user has actually filled.
   const coolingCheck: BuildCheck = !cpu
     ? { id: 'cooling', label: 'CPU cooling coverage', status: 'pending', detail: 'Select a CPU' }
     : cooling
@@ -567,6 +516,11 @@ export function getBuildChecks(build: BuildSelection): BuildCheck[] {
   ];
 }
 
+/**
+ * Dashboard percentage: the share of applicable checks that pass, warnings counting
+ * half. Deliberately NOT the same metric as the Tonima validator's `score`, which
+ * deducts a flat 15 points per violation with a floor of 60.
+ */
 export function getCompatibilityScore(checks: BuildCheck[]): number {
   const applicable = checks.filter((c) => c.status !== 'pending');
   if (applicable.length === 0) return 100;
