@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { BuildComponentItem } from './BuildPreviewHUD';
+import { useTonimaSession } from '../../store/useTonimaSession';
 import './ChatWorkspace.css';
 
 export interface ChatMessage {
@@ -45,6 +46,8 @@ export interface BuildUpdatePayload {
     priceDelta: number;
     newPartName?: string;
   };
+  budgetStatus?: 'met' | 'over' | 'under';
+  budgetBDT?: number;
 }
 
 interface ChatWorkspaceProps {
@@ -278,6 +281,8 @@ export default function ChatWorkspace({
   className = '',
 }: ChatWorkspaceProps) {
   const { i18n } = useTranslation();
+  const pendingPrompt = useTonimaSession((s) => s.pendingPrompt);
+
   const [sessionId, setSessionId] = useState<string>(
     () => propSessionId || `session-${Date.now()}`,
   );
@@ -356,10 +361,25 @@ export default function ChatWorkspace({
   }, [isProcessing, pinnedToBottom]);
 
   const handleUserSubmit = useCallback(
-    async (userQuery: string) => {
+    async (userQuery: string, options?: { budgetBDT?: number }) => {
       if (!userQuery.trim() || isProcessing) return;
 
-      const queryText = userQuery.trim();
+      let queryText = userQuery.trim();
+      const targetBudget =
+        options?.budgetBDT !== undefined
+          ? options.budgetBDT
+          : useTonimaSession.getState().budgetBDT;
+
+      // Natural language budget injection if not already specified in query
+      if (targetBudget && !/\b(budget|বাজেট|taka|bdt|tk|টাকা|lakh|লাখ|k)\b/i.test(queryText)) {
+        const budgetStr = targetBudget.toLocaleString('en-IN');
+        const budgetSentence =
+          i18n.language === 'bn'
+            ? `(টার্গেট বাজেট: ৳${budgetStr})`
+            : `(Target budget: ৳${budgetStr})`;
+        queryText = `${queryText}\n\n${budgetSentence}`;
+      }
+
       const userMsgId = `usr-${Date.now()}`;
       const botMsgId = `bot-${Date.now()}`;
 
@@ -385,14 +405,25 @@ export default function ChatWorkspace({
       setInputVal('');
       setIsProcessing(true);
       setThinkingStatus('Tonima is analyzing hardware specifications...');
+      useTonimaSession.getState().setStatus('thinking');
 
       // Determine endpoint: use /api/ai/refine if we already have an active build, otherwise /api/ai/build
       const isRefine =
         hasActiveBuild && !/build\s+(me|a)\s+new|start\s+over|reset/i.test(queryText);
       const endpoint = isRefine ? '/api/ai/refine' : '/api/ai/build';
       const bodyPayload = isRefine
-        ? { sessionId, message: queryText, language: i18n.language === 'bn' ? 'bn' : 'en' }
-        : { message: queryText, sessionId, language: i18n.language === 'bn' ? 'bn' : 'en' };
+        ? {
+            sessionId,
+            message: queryText,
+            language: i18n.language === 'bn' ? 'bn' : 'en',
+            budgetBDT: targetBudget || undefined,
+          }
+        : {
+            message: queryText,
+            sessionId,
+            language: i18n.language === 'bn' ? 'bn' : 'en',
+            budgetBDT: targetBudget || undefined,
+          };
 
       try {
         const response = await fetch(endpoint, {
@@ -453,24 +484,50 @@ export default function ChatWorkspace({
                   if (data.sessionId) setSessionId(data.sessionId);
                   if (data.alternatives) currentAlternatives = data.alternatives;
 
-                  // Propagate build payload to update HUD immediately
-                  if (onBuildUpdated && data.parts) {
-                    onBuildUpdated({
-                      parts: data.parts,
-                      totalBDT: data.totalBDT || 0,
-                      validation: data.validation || {
-                        score: 100,
-                        wattage: 420,
-                        psuWattage: 750,
-                        ok: true,
-                        violations: [],
-                      },
-                      alternatives: data.alternatives,
-                      diff: data.diff,
-                    });
+                  const rawParts = Array.isArray(data.parts) ? data.parts : [];
+                  const mappedParts: BuildComponentItem[] = rawParts.map(
+                    (p: Record<string, unknown>) => ({
+                      category: String(p.category || ''),
+                      name: String(p.name || ''),
+                      priceBDT: Number(p.priceBDT || p.price || 0),
+                      retailer: String(p.retailer || 'Star Tech'),
+                      inStock: p.inStock !== undefined ? Boolean(p.inStock) : true,
+                      productId: p.productId
+                        ? String(p.productId)
+                        : p.id
+                          ? String(p.id)
+                          : undefined,
+                      listingId: p.listingId ? String(p.listingId) : undefined,
+                      productUrl: p.productUrl ? String(p.productUrl) : undefined,
+                      priceAsOf: p.priceAsOf ? String(p.priceAsOf) : undefined,
+                      buySignal: p.buySignal as BuildComponentItem['buySignal'],
+                    }),
+                  );
+
+                  const buildPayload: BuildUpdatePayload = {
+                    parts: mappedParts,
+                    totalBDT: typeof data.totalBDT === 'number' ? data.totalBDT : 0,
+                    validation: data.validation || {
+                      score: 100,
+                      wattage: 420,
+                      psuWattage: 750,
+                      ok: true,
+                      violations: [],
+                    },
+                    alternatives: data.alternatives,
+                    diff: data.diff,
+                    budgetStatus: data.budget_status || data.budgetStatus,
+                    budgetBDT: data.budgetBDT || (targetBudget ?? undefined),
+                  };
+
+                  // Propagate build payload to update HUD and session store immediately
+                  if (onBuildUpdated) {
+                    onBuildUpdated(buildPayload);
                   }
+                  useTonimaSession.getState().applyBuildEvent(buildPayload);
                 } else if (currentEvent === 'token') {
                   accumulatedText += data.token || '';
+                  useTonimaSession.getState().setStatus('streaming');
                   setMessages((prev) =>
                     prev.map((msg) =>
                       msg.id === botMsgId ? { ...msg, text: accumulatedText } : msg,
@@ -527,6 +584,7 @@ export default function ChatWorkspace({
       } catch (err: unknown) {
         console.error('[Tonima Chat Error]:', err);
         const errorMessage = err instanceof Error ? err.message : 'Network error';
+        useTonimaSession.getState().setStatus('error');
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === botMsgId
@@ -541,17 +599,35 @@ export default function ChatWorkspace({
       } finally {
         setIsProcessing(false);
         setThinkingStatus('');
+        if (useTonimaSession.getState().activeBuild.status !== 'error') {
+          useTonimaSession.getState().setStatus('ready');
+        }
       }
     },
     [hasActiveBuild, i18n.language, isProcessing, onBuildUpdated, sessionId],
   );
 
-  // Handle incoming initial prompt from Hero
+  // Handle incoming prompt events from Hero or presets via useTonimaSession
+  const lastConsumedPromptId = useRef<string | null>(null);
   useEffect(() => {
-    if (initialPrompt && initialPrompt.trim()) {
-      handleUserSubmit(initialPrompt);
+    if (!pendingPrompt || pendingPrompt.id === lastConsumedPromptId.current) return;
+    lastConsumedPromptId.current = pendingPrompt.id;
+    handleUserSubmit(pendingPrompt.text, { budgetBDT: pendingPrompt.budgetBDT });
+  }, [pendingPrompt]); // eslint-disable-line react-hooks/exhaustive-deps -- guarded by lastConsumedPromptId ref to prevent re-submitting on render/identity flips
+
+  // Backward compatibility for direct initialPrompt prop
+  const initialPromptConsumedRef = useRef(false);
+  useEffect(() => {
+    if (
+      initialPrompt &&
+      initialPrompt.trim() &&
+      !initialPromptConsumedRef.current &&
+      !pendingPrompt
+    ) {
+      initialPromptConsumedRef.current = true;
+      handleUserSubmit(initialPrompt.trim());
     }
-  }, [initialPrompt, handleUserSubmit]);
+  }, [initialPrompt, pendingPrompt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const lastUserMsg = [...messages].reverse().find((m) => m.sender === 'user');
 
@@ -588,6 +664,7 @@ export default function ChatWorkspace({
     setMessages(DEFAULT_MESSAGES);
     setHasActiveBuild(false);
     setSessionId(`session-${Date.now()}`);
+    useTonimaSession.getState().resetSession();
     if (onResetSession) {
       onResetSession();
     }
