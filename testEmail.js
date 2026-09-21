@@ -5,6 +5,7 @@ const testName = "Test User";
 
 console.log("==========================================");
 console.log("Brevo SMTP Welcome Email Integration Test");
+console.log(`Target Web App URL: ${process.env.PUBLIC_APP_URL || "http://localhost:5173"}`);
 console.log("==========================================");
 console.log(`Sending test welcome email to: ${testRecipient}`);
 
