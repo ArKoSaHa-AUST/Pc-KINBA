@@ -1,5 +1,6 @@
 /* ==========================================================================
    Tonima Main Workspace Container (Clean, Solid, Responsive)
+   Single source of truth for Tonima panel heights and grid layout.
    ========================================================================== */
 
 .tonima-workspace-section {
@@ -24,7 +25,12 @@
   }
 }
 
+/* 
+ * Single source of truth for panel height:
+ * Both the chat card and 3D HUD card consume --tonima-panel-height.
+ */
 .tonima-workspace-container {
+  --tonima-panel-height: clamp(620px, calc(100vh - var(--tonima-panel-offset, 140px)), 860px);
   max-width: 1440px;
   margin: 0 auto;
   padding-left: 32px;
@@ -35,6 +41,12 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
   gap: 2rem;
   align-items: start;
+}
+
+/* Enforce identical panel height across both columns */
+.tonima-workspace-container .tonima-chat-card,
+.tonima-workspace-container .tonima-hud-card {
+  height: var(--tonima-panel-height);
 }
 
 @media (max-width: 1100px) {
@@ -51,7 +63,8 @@
     max-width: 100%;
   }
 
-  .tonima-hud-card {
+  .tonima-workspace-container .tonima-chat-card,
+  .tonima-workspace-container .tonima-hud-card {
     height: auto;
     min-height: 540px;
   }
