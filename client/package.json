@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint src",
     "format": "prettier --check src",
+    "test": "vitest run",
     "preview": "vite preview",
     "prebuild": "tsc -p ../packages/compat-rules/tsconfig.json"
   },
