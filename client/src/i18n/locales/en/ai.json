@@ -26,5 +26,15 @@
   "launchArchitect": "Launch Architect",
   "budgetLabel": "Target Budget (BDT ৳)",
   "stage1Title": "Stage 1: Initiation & Prompt Selection",
-  "stage1Desc": "Select a quick preset below or enter custom performance & aesthetic criteria."
+  "stage1Desc": "Select a quick preset below or enter custom performance & aesthetic criteria.",
+  "pageTitle": "Tonima AI Assistant - PC Kinba | Next-Gen AI PC Architect",
+  "sentToTonima": "Sent to Tonima ↓",
+  "statusPlanning": "Tonima is planning your build...",
+  "statusStreaming": "Tonima is calculating component metrics...",
+  "statusReady": "Build ready: ৳{{total}}, {{count}} parts",
+  "statusError": "Error processing build configuration.",
+  "featuresMatrixBadge": "3D Spatial Intelligence Matrix",
+  "featuresHeadingPrefix": "Next-Gen Neural Hardware",
+  "featuresHeadingGradient": "Architectural Capabilities",
+  "featuresSubheading": "Real-time validation algorithms, live multi-retailer aggregation across Bangladesh, and interactive 3D component breakdown."
 }
