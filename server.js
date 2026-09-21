@@ -9,7 +9,8 @@ import path from "path";
 import { execFileSync } from "child_process";
 import rateLimit from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
-import { sendWelcomeEmail, sendPriceAlertConfirmationEmail, sendPriceDropAlertEmail } from "./mailer.js";
+import { sendWelcomeEmail, sendPriceAlertConfirmationEmail, sendPriceDropAlertEmail, verifyMailerConfig } from "./mailer.js";
+import { createConcurrencyLimiter, generateCorrelationId, isAlreadyDelivered, recordDeliveryAttempt, getDeliveryHealthStats, maskEmail } from "./lib/mailQueue.js";
 import { extractAttributes, generateFingerprint, isSameProductVariant, group5StoreOffers } from "./lib/normalizer.js";
 import { getGroqSuggestions } from "./lib/groq.js";
 import { buildProductAlternatives, deriveCategory, getCategoryFallbackImage } from "./lib/alternatives.js";
@@ -1409,6 +1410,148 @@ app.get("/api/user/price-alerts", apiLimiter, async (req, res) => {
   return res.json({ success: true, alerts });
 });
 
+// 4b. Resend price drop alert email for an existing alert
+app.post("/api/price-alerts/:id/resend", commandLimiter, async (req, res) => {
+  const alertId = (req.params.id || "").trim();
+  const email = (req.body?.email || req.query?.email || "").trim().toLowerCase();
+  const userId = (req.body?.userId || req.query?.userId || "").trim();
+
+  if (!alertId) {
+    return res.status(400).json({ error: "Alert ID is required" });
+  }
+
+  try {
+    let callerUser = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      const { data } = await supabase.auth.getUser(token);
+      if (data?.user) callerUser = data.user;
+    }
+
+    const { data: alert, error: fetchErr } = await supabase
+      .from("price_alerts")
+      .select("*")
+      .eq("id", alertId)
+      .maybeSingle();
+
+    if (fetchErr || !alert) {
+      return res.status(404).json({ error: "Price alert not found" });
+    }
+
+    const isOwner =
+      (callerUser && (callerUser.id === alert.user_id || callerUser.email?.toLowerCase() === alert.user_email?.toLowerCase())) ||
+      (email && email === alert.user_email?.toLowerCase()) ||
+      (userId && userId === alert.user_id);
+
+    if (!isOwner) {
+      return res.status(403).json({ error: "Unauthorized to resend notification for this alert" });
+    }
+
+    const freshCorrelationId = generateCorrelationId({
+      kind: "price_drop_resend",
+      recipient: alert.user_email,
+      eventId: Date.now(),
+      alertId: alert.id
+    });
+
+    const emailPayload = {
+      rawEmail: alert.user_email,
+      rawName: alert.user_name || "PC Builder",
+      productTitle: alert.product_title || "Component",
+      oldPrice: alert.initial_price || alert.current_price,
+      newPrice: alert.current_price,
+      storeName: "Tracked Store",
+      productId: alert.product_id,
+      correlationId: freshCorrelationId
+    };
+
+    const sendResult = await sendPriceDropAlertEmail(emailPayload);
+    const now = new Date().toISOString();
+
+    if (sendResult.ok) {
+      await supabase
+        .from("price_alerts")
+        .update({
+          last_notification_status: "sent",
+          last_notification_at: now,
+          last_notification_error: null,
+          failed_notification_count: 0,
+          updated_at: now
+        })
+        .eq("id", alert.id);
+
+      await recordDeliveryAttempt(supabase, {
+        kind: "price_drop_resend",
+        recipient: alert.user_email,
+        userId: alert.user_id,
+        alertId: alert.id,
+        eventId: null,
+        correlationId: freshCorrelationId,
+        status: "sent",
+        attempts: sendResult.attempts,
+        lastError: null,
+        messageId: sendResult.messageId
+      });
+
+      return res.json({
+        success: true,
+        message: `Price drop notification resent to ${maskEmail(alert.user_email)}`,
+        result: sendResult
+      });
+    } else {
+      const statusStr = "failed_" + (sendResult.classification || "transient");
+      await supabase
+        .from("price_alerts")
+        .update({
+          last_notification_status: statusStr,
+          last_notification_at: now,
+          last_notification_error: sendResult.error || "Delivery failed",
+          failed_notification_count: (alert.failed_notification_count || 0) + 1,
+          updated_at: now
+        })
+        .eq("id", alert.id);
+
+      await recordDeliveryAttempt(supabase, {
+        kind: "price_drop_resend",
+        recipient: alert.user_email,
+        userId: alert.user_id,
+        alertId: alert.id,
+        eventId: null,
+        correlationId: freshCorrelationId,
+        status: statusStr,
+        attempts: sendResult.attempts,
+        lastError: sendResult.error || "Delivery failed",
+        messageId: null
+      });
+
+      return res.status(502).json({
+        success: false,
+        error: `Failed to deliver email: ${sendResult.error}`,
+        result: sendResult
+      });
+    }
+  } catch (err) {
+    console.error("[Price Alert Resend Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to resend price alert notification" });
+  }
+});
+
+// 4c. Delivery health status over the last 24 hours and 7 days
+app.get("/api/price-alerts/delivery-health", apiLimiter, async (req, res) => {
+  try {
+    const stats = await getDeliveryHealthStats(supabase);
+    return res.json({
+      success: true,
+      stats,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error("[Delivery Health Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to load delivery health stats" });
+  }
+});
+
 // ==============================================================================
 // Price History (populated by DB trigger on listings) & Price-Drop Processing
 // ==============================================================================
@@ -1487,11 +1630,13 @@ app.get("/api/product/:id/price-history", apiLimiter, async (req, res) => {
 
 
 
+const MAX_EVENT_RETRIES = 5;
+
 /**
  * Drains price_drop_events (enqueued by a DB trigger on price_history): emails price-alert
  * subscribers, notifies wishlist owners in-app (+ email unless opted out), marks events done.
  * Requires SUPABASE_SERVICE_ROLE_KEY — the queue and wishlists are not readable by anon.
- * @returns {Promise<number>} Number of notifications (email + in-app) produced.
+ * @returns {Promise<{ sent: number, failed: number, skipped: number, inApp: number, events: number }>}
  */
 async function processPriceDropEvents() {
   const { data: events, error } = await supabase
@@ -1500,7 +1645,10 @@ async function processPriceDropEvents() {
     .is("processed_at", null)
     .order("id", { ascending: true })
     .limit(200);
-  if (error || !events?.length) return 0;
+
+  if (error || !events?.length) {
+    return { sent: 0, failed: 0, skipped: 0, inApp: 0, events: 0 };
+  }
 
   const listingIds = [...new Set(events.map(e => e.listing_id))];
   const productIds = [...new Set(events.map(e => e.product_id).filter(Boolean))];
@@ -1523,28 +1671,126 @@ async function processPriceDropEvents() {
   const now = new Date().toISOString();
   const notifications = [];
   const seen = new Set();
-  let count = 0;
 
-  const email = (payload) =>
-    sendPriceDropAlertEmail(payload)
-      .then(() => { count++; })
-      .catch(err => console.error("[Price Drop Email Error]:", sanitizeLog(err.message)));
+  let sentCount = 0;
+  let failedCount = 0;
+  let skippedCount = 0;
+  let inAppCount = 0;
+
+  const eventTransientFailures = new Map();
+  for (const ev of events) {
+    eventTransientFailures.set(ev.id, 0);
+  }
+
+  const limit = createConcurrencyLimiter(5);
+  const tasks = [];
 
   for (const ev of events) {
     const productTitle = titleById.get(ev.listing_id) || "Tracked component";
     const dropPct = Math.round(((ev.old_price - ev.new_price) / ev.old_price) * 100);
-    const base = { productTitle, oldPrice: ev.old_price, newPrice: ev.new_price, storeName: ev.retailer, productId: ev.listing_id };
+    const base = {
+      productTitle,
+      oldPrice: ev.old_price,
+      newPrice: ev.new_price,
+      storeName: ev.retailer,
+      productId: ev.listing_id
+    };
 
-    for (const alert of (alerts || []).filter(a => a.product_id === ev.listing_id)) {
+    // 1. Process active price alerts for this listing
+    const matchingAlerts = (alerts || []).filter(a => a.product_id === ev.listing_id);
+    for (const alert of matchingAlerts) {
       const hitTarget = alert.target_price != null && ev.new_price <= Number(alert.target_price);
       if (!alert.notify_on_any_change && !hitTarget) continue;
-      await email({ ...base, rawEmail: alert.user_email, rawName: alert.user_name || "PC Builder" });
-      await supabase
-        .from("price_alerts")
-        .update({ current_price: ev.new_price, status: hitTarget ? "triggered" : "active", updated_at: now })
-        .eq("id", alert.id);
+
+      const correlationId = generateCorrelationId({
+        kind: "price_drop",
+        recipient: alert.user_email,
+        eventId: ev.id,
+        alertId: alert.id
+      });
+
+      tasks.push(
+        limit(async () => {
+          const alreadyDelivered = await isAlreadyDelivered(supabase, correlationId);
+          if (alreadyDelivered) {
+            skippedCount++;
+            return;
+          }
+
+          const res = await sendPriceDropAlertEmail({
+            ...base,
+            rawEmail: alert.user_email,
+            rawName: alert.user_name || "PC Builder",
+            correlationId
+          });
+
+          if (res.ok) {
+            sentCount++;
+            await supabase
+              .from("price_alerts")
+              .update({
+                current_price: ev.new_price,
+                status: hitTarget ? "triggered" : "active",
+                last_notification_status: "sent",
+                last_notification_at: now,
+                last_notification_error: null,
+                failed_notification_count: 0,
+                updated_at: now
+              })
+              .eq("id", alert.id);
+
+            await recordDeliveryAttempt(supabase, {
+              kind: "price_drop",
+              recipient: alert.user_email,
+              userId: alert.user_id,
+              alertId: alert.id,
+              eventId: ev.id,
+              correlationId,
+              status: "sent",
+              attempts: res.attempts,
+              lastError: null,
+              messageId: res.messageId
+            });
+          } else {
+            failedCount++;
+            const classification = res.classification || "transient";
+            if (classification === "transient") {
+              const prev = eventTransientFailures.get(ev.id) || 0;
+              eventTransientFailures.set(ev.id, prev + 1);
+            }
+            const statusStr = "failed_" + classification;
+
+            await supabase
+              .from("price_alerts")
+              .update({
+                current_price: ev.new_price,
+                status: "active",
+                last_notification_status: statusStr,
+                last_notification_at: now,
+                last_notification_error: res.error || "Delivery failed",
+                failed_notification_count: (alert.failed_notification_count || 0) + 1,
+                updated_at: now
+              })
+              .eq("id", alert.id);
+
+            await recordDeliveryAttempt(supabase, {
+              kind: "price_drop",
+              recipient: alert.user_email,
+              userId: alert.user_id,
+              alertId: alert.id,
+              eventId: ev.id,
+              correlationId,
+              status: statusStr,
+              attempts: res.attempts,
+              lastError: res.error || "Delivery failed",
+              messageId: null
+            });
+          }
+        })
+      );
     }
 
+    // 2. Process wishlist notifications
     for (const wish of (wishes || []).filter(w => w.product_id === ev.product_id)) {
       const key = `${wish.user_id}:${ev.product_id}`;
       if (seen.has(key)) continue;
@@ -1560,27 +1806,132 @@ async function processPriceDropEvents() {
 
       const profile = profileById.get(wish.user_id);
       if (profile?.email && profile.notification_prefs?.emailPriceDrops !== false) {
-        await email({ ...base, rawEmail: profile.email, rawName: profile.full_name || "PC Builder" });
+        const wishCorrelationId = generateCorrelationId({
+          kind: "price_drop_wishlist",
+          recipient: profile.email,
+          eventId: ev.id,
+          alertId: null
+        });
+
+        tasks.push(
+          limit(async () => {
+            const alreadyDelivered = await isAlreadyDelivered(supabase, wishCorrelationId);
+            if (alreadyDelivered) {
+              skippedCount++;
+              return;
+            }
+
+            const res = await sendPriceDropAlertEmail({
+              ...base,
+              rawEmail: profile.email,
+              rawName: profile.full_name || "PC Builder",
+              correlationId: wishCorrelationId
+            });
+
+            if (res.ok) {
+              sentCount++;
+              await recordDeliveryAttempt(supabase, {
+                kind: "price_drop_wishlist",
+                recipient: profile.email,
+                userId: wish.user_id,
+                alertId: null,
+                eventId: ev.id,
+                correlationId: wishCorrelationId,
+                status: "sent",
+                attempts: res.attempts,
+                lastError: null,
+                messageId: res.messageId
+              });
+            } else {
+              failedCount++;
+              const classification = res.classification || "transient";
+              if (classification === "transient") {
+                const prev = eventTransientFailures.get(ev.id) || 0;
+                eventTransientFailures.set(ev.id, prev + 1);
+              }
+
+              await recordDeliveryAttempt(supabase, {
+                kind: "price_drop_wishlist",
+                recipient: profile.email,
+                userId: wish.user_id,
+                alertId: null,
+                eventId: ev.id,
+                correlationId: wishCorrelationId,
+                status: "failed_" + classification,
+                attempts: res.attempts,
+                lastError: res.error || "Delivery failed",
+                messageId: null
+              });
+            }
+          })
+        );
       }
     }
   }
 
+  // Execute all bounded concurrency email dispatches
+  await Promise.all(tasks);
+
+  // In-app notifications
   if (notifications.length) {
     const { error: notifErr } = await supabase.from("notifications").insert(notifications);
-    if (notifErr) console.error("[Notifications Insert Error]:", sanitizeLog(notifErr.message));
-    else count += notifications.length;
+    if (notifErr) {
+      console.error("[Notifications Insert Error]:", sanitizeLog(notifErr.message));
+    } else {
+      inAppCount = notifications.length;
+    }
   }
-  await supabase.from("price_drop_events").update({ processed_at: now }).in("id", events.map(e => e.id));
 
-  if (count) console.log(`[Price Drop Events] Processed ${events.length} event(s), sent ${count} notification(s).`);
-  return count;
+  // 3. Drain events responsibly with retry capping
+  for (const ev of events) {
+    const transientFailures = eventTransientFailures.get(ev.id) || 0;
+    const retries = ev.retry_count || 0;
+
+    if (transientFailures === 0) {
+      // All deliveries succeeded, were deduplicated, or failed permanently
+      await supabase
+        .from("price_drop_events")
+        .update({ processed_at: now })
+        .eq("id", ev.id);
+    } else if (retries + 1 >= MAX_EVENT_RETRIES) {
+      console.warn(
+        `[Price Drop Events] Event ID ${ev.id} exceeded MAX_EVENT_RETRIES (${MAX_EVENT_RETRIES}). Marking processed to unblock queue.`
+      );
+      await supabase
+        .from("price_drop_events")
+        .update({ processed_at: now, retry_count: retries + 1 })
+        .eq("id", ev.id);
+    } else {
+      console.info(
+        `[Price Drop Events] Event ID ${ev.id} had transient delivery failures. Retrying on next drain (retry_count: ${retries + 1}).`
+      );
+      await supabase
+        .from("price_drop_events")
+        .update({ retry_count: retries + 1 })
+        .eq("id", ev.id);
+    }
+  }
+
+  if (sentCount || failedCount || skippedCount || inAppCount) {
+    console.log(
+      `[Price Drop Events] Processed ${events.length} event(s): sent=${sentCount}, failed=${failedCount}, skipped=${skippedCount}, inApp=${inAppCount}.`
+    );
+  }
+
+  return {
+    sent: sentCount,
+    failed: failedCount,
+    skipped: skippedCount,
+    inApp: inAppCount,
+    events: events.length
+  };
 }
 
 // 6. Manual / cron trigger to drain the price-drop event queue
 app.post("/api/price-alerts/process", commandLimiter, async (req, res) => {
   try {
-    const notified = await processPriceDropEvents();
-    return res.json({ success: true, notified });
+    const stats = await processPriceDropEvents();
+    return res.json({ success: true, ...stats });
   } catch (err) {
     console.error("[Price Alerts Process Error]:", sanitizeLog(err.message));
     return res.status(500).json({ error: "Failed to process price alerts" });
@@ -2386,8 +2737,9 @@ let server = null;
 if (process.env.NODE_ENV !== "test") {
   server = app.listen(PORT, () => {
     console.log(`🚀 PC Kinba Backend Server running on http://localhost:${PORT}`);
+    verifyMailerConfig().catch((err) => console.warn("[Mailer Startup Warning]:", sanitizeLog(err.message)));
   });
 }
 
-export { app, server, detectSearchIntent, getQueryVariations, sanitizeCliArg, sanitizeLog };
+export { app, server, supabase, detectSearchIntent, getQueryVariations, sanitizeCliArg, sanitizeLog, processPriceDropEvents };
 
