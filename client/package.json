@@ -57,7 +57,7 @@
     "oxlint": "^1.71.0",
     "pg": "^8.23.0",
     "postcss": "^8.5.26",
-    "prettier": "^3.4.2",
+    "prettier": "^3.9.8",
     "tailwindcss": "^4.3.2",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.17.0",
