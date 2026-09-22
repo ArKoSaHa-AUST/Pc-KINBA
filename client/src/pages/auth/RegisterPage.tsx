@@ -8,6 +8,8 @@ import { useAuth } from '../../auth/useAuth';
 import { authErrorMessage } from '../../auth/errorMessage';
 import { TermsModal } from '../../components/auth/TermsModal';
 import { calculatePasswordStrength } from '../../utils/passwordStrength';
+import { meetsPasswordPolicy } from '../../utils/passwordPolicy';
+import { PasswordStrengthMeter } from '../../components/auth/PasswordStrengthMeter';
 
 export default function RegisterPage() {
   const { t } = useTranslation('auth');
@@ -27,8 +29,9 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
 
-  // Password strength engine
-  const strength = calculatePasswordStrength(password);
+  // Password entropy & guessability engine
+  const userInputs = [name.trim(), email.split('@')[0].trim()].filter(Boolean);
+  const strength = calculatePasswordStrength(password, userInputs);
 
   // 3D Parallax Tilt Physics for Auth Card
   const x = useMotionValue(0);
@@ -54,7 +57,7 @@ export default function RegisterPage() {
   // Step Navigators
   const canGoToStep2 = name.trim().length >= 2 && email.includes('@');
   const canGoToStep3 =
-    strength.score >= 2 && password === confirmPassword && confirmPassword.length > 0;
+    meetsPasswordPolicy(strength) && password === confirmPassword && confirmPassword.length > 0;
 
   const handleNext = () => {
     if (step === 1 && canGoToStep2) setStep(2);
@@ -258,62 +261,12 @@ export default function RegisterPage() {
                     revealToggle
                     revealLabel={t('togglePassword')}
                     value={password}
+                    aria-describedby={password ? 'register-password-feedback' : undefined}
                     onChange={(e) => setPassword(e.target.value)}
                   />
 
-                  {/* 4-Tier Visual Password Strength Meter */}
-                  {password.length > 0 && (
-                    <div className="p-3 rounded-xl bg-glass border border-border flex flex-col gap-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-text-muted">
-                          {t('register.strength', { defaultValue: 'Password Strength' })}:
-                        </span>
-                        <span className="font-bold" style={{ color: strength.color }}>
-                          {strength.label}
-                        </span>
-                      </div>
-
-                      <div className="w-full h-2 rounded-full bg-border overflow-hidden">
-                        <div
-                          className="h-full transition-all duration-400 rounded-full"
-                          style={{
-                            width: `${(strength.score / 4) * 100}%`,
-                            backgroundColor: strength.color,
-                          }}
-                        />
-                      </div>
-
-                      {/* Entropy Checklist */}
-                      <div className="grid grid-cols-2 gap-1.5 mt-1 text-[11px]">
-                        <span
-                          className={`flex items-center gap-1 ${strength.hasMinLength ? 'text-green' : 'text-text-muted'}`}
-                        >
-                          <CheckCircle2 className="w-3 h-3" />{' '}
-                          {t('register.strengthMinLength', { defaultValue: '8+ chars' })}
-                        </span>
-                        <span
-                          className={`flex items-center gap-1 ${strength.hasUppercase ? 'text-green' : 'text-text-muted'}`}
-                        >
-                          <CheckCircle2 className="w-3 h-3" />{' '}
-                          {t('register.strengthUppercase', {
-                            defaultValue: 'Uppercase (A-Z)',
-                          })}
-                        </span>
-                        <span
-                          className={`flex items-center gap-1 ${strength.hasNumber ? 'text-green' : 'text-text-muted'}`}
-                        >
-                          <CheckCircle2 className="w-3 h-3" />{' '}
-                          {t('register.strengthNumber', { defaultValue: 'Number (0-9)' })}
-                        </span>
-                        <span
-                          className={`flex items-center gap-1 ${strength.hasSymbol ? 'text-green' : 'text-text-muted'}`}
-                        >
-                          <CheckCircle2 className="w-3 h-3" />{' '}
-                          {t('register.strengthSymbol', { defaultValue: 'Symbol (!@#$)' })}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                  {/* Entropy-Based Password Strength Meter */}
+                  <PasswordStrengthMeter strength={strength} id="register-password-feedback" />
 
                   <Input
                     type="password"

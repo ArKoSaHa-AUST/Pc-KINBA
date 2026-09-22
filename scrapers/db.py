@@ -111,5 +111,85 @@ def upsert_listings(listings: List[Dict[str, Any]]):
     except Exception as e:
         print(f"[Supabase Batch Upsert Error]: {e}")
 
+
+# ===========================================================================
+# Scraper Health & Run Telemetry Persistence
+# ===========================================================================
+
+def save_scraper_runs(runs: List[Dict[str, Any]], client=None) -> bool:
+    """
+    Persists batch of ScrapeResult records into scraper_runs table.
+    """
+    sb = client or supabase_client
+    if not sb or not runs:
+        return False
+
+    try:
+        sb.table("scraper_runs").insert(runs).execute()
+        return True
+    except Exception as e:
+        print(f"[Supabase Save Scraper Runs Warning]: {e}")
+        return False
+
+
+def update_scraper_health(health_record: Dict[str, Any], client=None) -> bool:
+    """
+    Upserts single store status and rolling baseline into scraper_health table.
+    """
+    sb = client or supabase_client
+    if not sb or not health_record:
+        return False
+
+    try:
+        sb.table("scraper_health").upsert(health_record, on_conflict="store_id").execute()
+        return True
+    except Exception as e:
+        print(f"[Supabase Update Scraper Health Warning]: {e}")
+        return False
+
+
+def get_scraper_health(store_id: Optional[str] = None, client=None) -> List[Dict[str, Any]]:
+    """
+    Fetches scraper_health records (for all stores or a specific store).
+    """
+    sb = client or supabase_client
+    if not sb:
+        return []
+
+    try:
+        query = sb.table("scraper_health").select("*")
+        if store_id:
+            query = query.eq("store_id", store_id)
+        res = query.execute()
+        return res.data or []
+    except Exception as e:
+        print(f"[Supabase Get Scraper Health Warning]: {e}")
+        return []
+
+
+def get_recent_runs_for_store(store_id: str, limit: int = 20, client=None) -> List[Dict[str, Any]]:
+    """
+    Retrieves recent successful runs for a store to compute rolling medians.
+    """
+    sb = client or supabase_client
+    if not sb:
+        return []
+
+    try:
+        res = (
+            sb.table("scraper_runs")
+            .select("item_count, ok, failure_reason, created_at")
+            .eq("store_id", store_id)
+            .eq("ok", True)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return res.data or []
+    except Exception as e:
+        print(f"[Supabase Recent Runs Warning]: {e}")
+        return []
+
+
 if __name__ == "__main__":
     print("[DB Handler] Supabase database handler active.")

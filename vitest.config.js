@@ -12,6 +12,7 @@ export default defineConfig({
     include: [
       'tests/**/*.test.js',
       'tests/**/*.test.ts',
+      'client/src/**/*.test.ts',
       // Unit tests for the shared compatibility-rules package.
       'packages/*/src/**/*.test.ts'
     ],
