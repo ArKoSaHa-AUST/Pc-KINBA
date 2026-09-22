@@ -1,21 +1,25 @@
 import { motion } from 'framer-motion';
+import { ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './Comparison.css';
 
 const gpus = [
-  { name: 'RTX 4060 Ti', vram: '8GB GDDR6', pwr: '160W', price: '$399', fps: 110, score: 75 },
+  { name: 'RTX 4060 Ti', vram: '8GB GDDR6', pwr: '160W', price: '৳48,500', fps: 110, score: 75 },
   {
     name: 'RTX 4070',
     vram: '12GB GDDR6X',
     pwr: '200W',
-    price: '$599',
+    price: '৳72,000',
     fps: 145,
     score: 88,
     highlight: true,
   },
-  { name: 'RTX 5060', vram: '12GB GDDR7', pwr: '175W', price: '$449', fps: 135, score: 92 },
+  { name: 'RTX 5060', vram: '12GB GDDR7', pwr: '175W', price: '৳54,000', fps: 135, score: 92 },
 ];
 
 export default function Comparison() {
+  const navigate = useNavigate();
+
   return (
     <section className="section compare-section" id="compare">
       <div className="container">
@@ -44,7 +48,9 @@ export default function Comparison() {
               {gpus.map((gpu, i) => (
                 <motion.tr
                   key={i}
-                  className={gpu.highlight ? 'highlight-row' : ''}
+                  className={`${gpu.highlight ? 'highlight-row' : ''} cursor-pointer`}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate('/compare')}
                   initial={{ opacity: 0, x: -20 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
@@ -73,6 +79,16 @@ export default function Comparison() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '2.5rem' }}>
+          <button
+            className="button-secondary hero-btn"
+            onClick={() => navigate('/compare')}
+            type="button"
+          >
+            Launch Full Comparison Tool <ChevronRight size={18} />
+          </button>
         </div>
       </div>
     </section>

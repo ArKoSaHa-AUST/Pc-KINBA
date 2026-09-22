@@ -1,10 +1,13 @@
 import { describe, it, expect, afterAll } from "vitest";
+import fs from "fs";
+import path from "path";
 import { parseIntentRegex, parseIntent } from "../../lib/ai/intent.js";
 import { PURPOSE_BUDGET_WEIGHTS, allocateSubBudgets, getBudgetCeiling, BUDGET_TOLERANCE } from "../../lib/ai/budget.js";
 import { optimizePlanAlgorithmically, planBuild, enforceBudgetCeiling, buildCandidateLookup } from "../../lib/ai/planner.js";
 import { applyRefinement } from "../../lib/ai/refiner.js";
+import { retrieveCandidates, normalizeCategoryKey, SOURCING_LISTED, SOURCING_REFERENCE } from "../../lib/ai/retriever.js";
 import { generateTemplateExplanation, verifyExplainerText, streamExplanation } from "../../lib/ai/explainer.js";
-import { persistMessageToDb, persistSessionToDb } from "../../lib/ai/orchestrator.js";
+import { persistMessageToDb, persistSessionToDb, runRefineOrchestrator, ACTIVE_SESSIONS } from "../../lib/ai/orchestrator.js";
 import { captureEvidence, closeBrowser } from "../helpers/visualEvidence.js";
 
 describe("Backend > Tonima AI PC Architect Pipeline (lib/ai/)", () => {
@@ -250,6 +253,228 @@ describe("Backend > Tonima AI PC Architect Pipeline (lib/ai/)", () => {
     expect(enforced.build.total_bdt).toBeLessThanOrEqual(70000);
     expect(enforced.swaps.length).toBeGreaterThan(0);
     expect(enforced.fits).toBe(true);
+  });
+
+  // AI-CAT-001: accessory categories must not be swallowed by the part they attach to
+  it("AI-CAT-001: 'CPU Cooler' categorises as a cooler, not as a CPU", async () => {
+    expect(normalizeCategoryKey("CPU Cooler")).toBe("cooler");
+    expect(normalizeCategoryKey("CPU Air Cooler")).toBe("cooler");
+    expect(normalizeCategoryKey("Liquid Cooler")).toBe("cooler");
+    expect(normalizeCategoryKey("Casings")).toBe("case");
+
+    // The real part categories still resolve.
+    expect(normalizeCategoryKey("CPU")).toBe("cpu");
+    expect(normalizeCategoryKey("Processor")).toBe("cpu");
+    expect(normalizeCategoryKey("Graphics Card")).toBe("gpu");
+    expect(normalizeCategoryKey("Motherboard")).toBe("motherboard");
+  });
+
+  // AI-SOURCE-001: a buyable part outranks a hardcoded reference specimen
+  it("AI-SOURCE-001: A real listed part outranks a reference part that sits nearer the sub-budget", async () => {
+    // Gaming @ 150k puts the case sub-budget target at 7,500. The built-in reference
+    // cases sit at 3,200 and 9,800 — both nearer the target than this real one, so a
+    // price-distance-only ranking would have put a non-existent part first.
+    const products = [
+      {
+        id: "prod-case-real",
+        name: "Lian Li Lancool 216 ATX Mid Tower Casing",
+        price: 15000,
+        discount_price: null,
+        categories: { id: "c1", name: "Casings", slug: "case" },
+        brands: { id: "b1", name: "Lian Li" }
+      }
+    ];
+    const listings = [
+      {
+        id: "listing-1",
+        product_id: "prod-case-real",
+        price: 15000,
+        retailer: "Star Tech",
+        product_url: "https://www.startech.com.bd/lancool-216",
+        last_scraped_at: new Date().toISOString()
+      }
+    ];
+
+    const tables = { products, product_specs: [], listings };
+    const supabaseStub = {
+      from(table) {
+        const rows = tables[table] || [];
+        const chain = {
+          select: () => chain,
+          limit: () => Promise.resolve({ data: rows }),
+          in: () => chain,
+          gt: () => Promise.resolve({ data: rows }),
+          then: (resolve) => resolve({ data: rows })
+        };
+        return chain;
+      }
+    };
+
+    const candidates = await retrieveCandidates(
+      { purpose: "gaming", budget_bdt: 150000, constraints: {} },
+      supabaseStub
+    );
+
+    const cases = candidates.case;
+
+    // The buyable part is first despite being furthest from the target price.
+    expect(cases[0].id).toBe("prod-case-real");
+    expect(cases[0].sourcing).toBe(SOURCING_LISTED);
+    expect(cases[0].best_listing_id).toBe("listing-1");
+
+    // A real case exists, so no reference specimen is offered as an option at all — not
+    // ranked behind, simply not present. Ranking alone was not enough: both the LLM
+    // planner prompt and the deterministic optimizer build their own ranking of whatever
+    // list they receive, oblivious to `sourcing`, so a reference part anywhere in the
+    // list could still be picked over a real one (this is exactly how "Revenger Base RGB
+    // Mid-Tower Micro-ATX Casing" — a specimen no store sells — kept being recommended).
+    const references = cases.filter((c) => c.sourcing === SOURCING_REFERENCE);
+    expect(references).toHaveLength(0);
+  });
+
+  // AI-SOURCE-002: a category the live catalog has nothing for is left empty, never filled
+  // with an invented product. This replaces a prior version of this test that asserted
+  // the opposite (a hardcoded "reference part" filling the gap) — that generator produced
+  // the exact non-purchasable parts ("Revenger Base RGB Mid-Tower Micro-ATX Casing",
+  // "Corsair CV550 550W") users kept seeing recommended and unable to resolve in the PC
+  // Builder, across three separate reports, and has been removed entirely.
+  it("AI-SOURCE-002: A category with no real candidates stays empty rather than inventing a product", async () => {
+    const tables = { products: [], product_specs: [], listings: [] };
+    const supabaseStub = {
+      from(table) {
+        const rows = tables[table] || [];
+        const chain = {
+          select: () => chain,
+          limit: () => Promise.resolve({ data: rows }),
+          in: () => chain,
+          gt: () => Promise.resolve({ data: rows }),
+          then: (resolve) => resolve({ data: rows })
+        };
+        return chain;
+      }
+    };
+
+    const candidates = await retrieveCandidates(
+      { purpose: "gaming", budget_bdt: 150000, constraints: {} },
+      supabaseStub
+    );
+
+    for (const list of Object.values(candidates)) {
+      expect(list).toHaveLength(0);
+      expect(list.some((c) => c.sourcing === SOURCING_REFERENCE)).toBe(false);
+    }
+  });
+
+  // AI-SOURCE-002b: guards the exact two products reported as still being recommended —
+  // this asserts they cannot appear in a live retrieval result under any category or
+  // budget/purpose combination, by grepping the source for their literal names.
+  it("AI-SOURCE-002b: the retriever source contains none of the previously-reported fake product names", () => {
+    const source = fs.readFileSync(path.join(process.cwd(), "lib/ai/retriever.js"), "utf-8");
+    expect(source).not.toContain("Revenger Base RGB Mid-Tower Micro-ATX Casing");
+    expect(source).not.toContain("Corsair CV550");
+    expect(source).not.toContain("case-revenger-base");
+    expect(source).not.toContain("getFallbackCandidates");
+    expect(source).not.toContain("referenceCandidatesFor");
+  });
+
+  // AI-SOURCE-003: the deterministic optimizer must not pick a reference part over a real one
+  it("AI-SOURCE-003: optimizePlanAlgorithmically prefers a real case even when a reference part sits nearer the sub-budget", async () => {
+    const { optimizePlanAlgorithmically, buildCandidateLookup } = await import("../../lib/ai/planner.js");
+
+    // Reproduces the reported bug directly: a real case is available, but a reference
+    // specimen (no listing, no product row) sits closer to the ~7,500 BDT case
+    // sub-budget for a 150k gaming build and used to win on price-fit alone.
+    const candidatesMap = {
+      cpu: [{ id: "cpu-1", name: "Ryzen 5 5600", best_price: 13000, category: "cpu", specs: {}, bench: { socket: "AM4" }, sourcing: SOURCING_LISTED }],
+      motherboard: [{ id: "mobo-1", name: "B450M", best_price: 8000, category: "motherboard", specs: {}, bench: { socket: "AM4" }, sourcing: SOURCING_LISTED }],
+      ram: [{ id: "ram-1", name: "16GB DDR4", best_price: 4500, category: "ram", specs: {}, bench: {}, sourcing: SOURCING_LISTED }],
+      gpu: [{ id: "gpu-1", name: "RX 6600", best_price: 26000, category: "gpu", specs: {}, bench: {}, sourcing: SOURCING_LISTED }],
+      storage: [{ id: "ssd-1", name: "1TB NVMe", best_price: 7000, category: "storage", specs: {}, bench: {}, sourcing: SOURCING_LISTED }],
+      psu: [{ id: "psu-1", name: "550W PSU", best_price: 4500, category: "psu", specs: { wattage: "550" }, bench: {}, sourcing: SOURCING_LISTED }],
+      cooler: [],
+      case: [
+        {
+          id: "case-reference-fake",
+          name: "Revenger Base RGB Mid-Tower Micro-ATX Casing",
+          category: "case",
+          best_price: 3200,
+          best_retailer: "Reference spec",
+          best_listing_id: "",
+          specs: { form_factor: "mATX" },
+          bench: {},
+          sourcing: SOURCING_REFERENCE
+        },
+        {
+          id: "case-real",
+          name: "NZXT H5 Flow",
+          category: "case",
+          best_price: 9800,
+          best_retailer: "Star Tech",
+          best_listing_id: "listing-real-case",
+          specs: { form_factor: "mATX" },
+          bench: {},
+          sourcing: SOURCING_LISTED
+        }
+      ]
+    };
+
+    const candidateLookup = buildCandidateLookup(candidatesMap);
+    const result = optimizePlanAlgorithmically(
+      { budget_bdt: 70000, purpose: "gaming", constraints: {} },
+      candidatesMap,
+      candidateLookup
+    );
+
+    expect(result.parts.case).toBe("case-real");
+  });
+
+  // AI-ROUTE-001: an existing build must not turn every later message into a part swap
+  it("AI-ROUTE-001: A greeting on a live build session answers as a greeting and leaves the build untouched", async () => {
+    const sessionId = "session-route-001";
+    const build = {
+      parts: { cpu: "cpu-1", gpu: "gpu-base", ram: "ram-1" },
+      total_bdt: 67000
+    };
+    const candidateLookup = {
+      "cpu-1": { id: "cpu-1", name: "Ryzen 5 5600", best_price: 13000, best_retailer: "Star Tech", specs: {}, bench: {} },
+      "gpu-base": { id: "gpu-base", name: "RX 6600 8GB", best_price: 26000, best_retailer: "Star Tech", specs: {}, bench: {} },
+      "ram-1": { id: "ram-1", name: "16GB DDR4", best_price: 4500, best_retailer: "Tech Land", specs: {}, bench: {} }
+    };
+
+    ACTIVE_SESSIONS.set(sessionId, {
+      id: sessionId,
+      user_id: null,
+      request: { type: "build", budget_bdt: 70000, purpose: "gaming", constraints: {}, include_peripherals: false, language: "en" },
+      build,
+      candidateLookup,
+      validation: { score: 100, wattage: 300, psuWattage: 550, ok: true, violations: [] },
+      partsList: [],
+      updated_at: Date.now(),
+      lastAccessed: Date.now()
+    });
+
+    const events = [];
+    for await (const ev of runRefineOrchestrator(sessionId, "hi", { language: "en" }, null)) {
+      events.push(ev);
+    }
+
+    const eventTypes = events.map((e) => e.event);
+
+    // No build event: saying hello must not re-spec the machine.
+    expect(eventTypes).not.toContain("build");
+    expect(eventTypes).toContain("token");
+
+    const done = events.find((e) => e.event === "done");
+    expect(done).toBeDefined();
+    expect(done.data.type).toBe("greeting");
+
+    const greeting = events.filter((e) => e.event === "token").map((e) => e.data.token).join("");
+    expect(greeting).toMatch(/Tonima AI/i);
+
+    // The stored build is byte-for-byte the one we started with.
+    expect(ACTIVE_SESSIONS.get(sessionId).build).toEqual(build);
+
+    ACTIVE_SESSIONS.delete(sessionId);
   });
 
   // Task C & G: AI-PERSIST-001

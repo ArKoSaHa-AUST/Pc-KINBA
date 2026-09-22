@@ -1,6 +1,8 @@
 .ai-section {
   position: relative;
   overflow: hidden;
+  padding-top: 44px;
+  padding-bottom: 44px;
 }
 
 .ai-container {
@@ -10,6 +12,23 @@
   align-items: center;
 }
 
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  margin-bottom: 1.25rem;
+  width: fit-content;
+}
+
 .inline-icon {
   margin-right: 0.5rem;
   vertical-align: middle;
@@ -17,6 +36,7 @@
 
 .ai-text .section-subtitle {
   margin-left: 0;
+  margin-bottom: 2rem;
 }
 
 .ai-mockup {
@@ -27,7 +47,7 @@
 .chat-interface {
   width: 100%;
   max-width: 450px;
-  height: 500px;
+  height: 520px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -79,8 +99,8 @@
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  overflow-y: auto;
+  gap: 1.25rem;
+  overflow-y: hidden;
 }
 
 .message {

@@ -1,4 +1,19 @@
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+
+const PRODUCT_ROUTES: Record<string, string> = {
+  pcBuilder: '/pc-builder',
+  aiAssistant: '/ai-assistant',
+  compareGpus: '/compare',
+  compareCpus: '/compare',
+};
+
+const RESOURCE_ROUTES: Record<string, string> = {
+  buildGuides: '/pc-builder/library',
+  compatibilityDb: '/components',
+  blog: '/',
+  helpCenter: '/ai-assistant',
+};
 
 export default function Footer() {
   const { t } = useTranslation('common');
@@ -13,12 +28,15 @@ export default function Footer() {
       <div className="max-w-[1440px] mx-auto px-6 py-6 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 mb-6">
           <div className="lg:col-span-1 space-y-6">
-            <h3 className="font-bold text-2xl tracking-tight text-text-primary group cursor-pointer flex items-center gap-2 h-8">
+            <Link
+              to="/"
+              className="font-bold text-2xl tracking-tight text-text-primary group cursor-pointer flex items-center gap-2 h-8"
+            >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-purple flex items-center justify-center transform group-hover:rotate-12 transition-transform shadow-[0_0_15px_rgba(0,229,255,0.3)]">
                 <span className="font-black text-white text-sm">PC</span>
               </div>
               <span className="group-hover:text-accent transition-colors">{t('brand')}</span>
-            </h3>
+            </Link>
             <p className="text-text-muted text-sm leading-relaxed max-w-xs">
               {t('footer.description')}
             </p>
@@ -31,9 +49,12 @@ export default function Footer() {
             <ul className="space-y-4 text-sm text-text-muted">
               {productLinks.map((link) => (
                 <li key={link}>
-                  <a href="#" className="hover:text-accent transition-colors">
+                  <Link
+                    to={PRODUCT_ROUTES[link] || '/'}
+                    className="hover:text-accent transition-colors"
+                  >
                     {t(`footer.links.${link}`)}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -46,9 +67,12 @@ export default function Footer() {
             <ul className="space-y-4 text-sm text-text-muted">
               {resourceLinks.map((link) => (
                 <li key={link}>
-                  <a href="#" className="hover:text-accent transition-colors">
+                  <Link
+                    to={RESOURCE_ROUTES[link] || '/'}
+                    className="hover:text-accent transition-colors"
+                  >
                     {t(`footer.links.${link}`)}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

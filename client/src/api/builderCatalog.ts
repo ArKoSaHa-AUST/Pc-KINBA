@@ -109,6 +109,30 @@ function socketOf(p: LiveProduct): string | undefined {
   if (/lga ?1851|core ultra/i.test(n)) return 'LGA1851';
   if (/lga ?1700|i[3579]-1[234]\d{3}/i.test(n)) return 'LGA1700';
   if (/lga ?1200|i[3579]-1[01]\d{3}/i.test(n)) return 'LGA1200';
+  // Chipset implies the socket for boards whose title omits it (e.g. "B650M PG Lightning").
+  if (/\b[abx](620|650|670|840|870)\b/i.test(n)) return 'AM5';
+  if (/\b[abx](320|350|420|450|470|520|550|570)\b/i.test(n)) return 'AM4';
+  return undefined;
+}
+
+/**
+ * Memory generation a motherboard accepts.
+ *
+ * Read from the spec or the title where stated, otherwise inferred from the socket —
+ * AM5 and LGA1851 are DDR5-only platforms and AM4 is DDR4-only, so the board's memory
+ * type is not really unknown. LGA1700 is deliberately left undefined: it ships in both
+ * DDR4 and DDR5 variants, and guessing there would trade one wrong answer for another.
+ */
+function moboRamTypeOf(p: LiveProduct): 'DDR4' | 'DDR5' | undefined {
+  const stated = p.specs.memory_type ?? match(p.name, /(ddr[45])/i);
+  if (stated) {
+    const upper = stated.toUpperCase();
+    if (upper.includes('DDR5')) return 'DDR5';
+    if (upper.includes('DDR4')) return 'DDR4';
+  }
+  const socket = socketOf(p);
+  if (socket === 'AM5' || socket === 'LGA1851') return 'DDR5';
+  if (socket === 'AM4' || socket === 'LGA1200') return 'DDR4';
   return undefined;
 }
 
@@ -167,13 +191,7 @@ function toBuilderProduct(p: LiveProduct, priceRank: number): BuilderProduct | n
     {
       cpu: [socketOf(p), s.cores].filter(Boolean).join(' · '),
       gpu: [s.vram, s.memory_type].filter(Boolean).join(' '),
-      motherboard: [
-        socketOf(p),
-        s.memory_type ?? match(p.name, /(ddr[45])/i)?.toUpperCase(),
-        formFactorOf(p),
-      ]
-        .filter(Boolean)
-        .join(' · '),
+      motherboard: [socketOf(p), moboRamTypeOf(p), formFactorOf(p)].filter(Boolean).join(' · '),
       ram: [s.memory_type, s.capacity, s.speed].filter(Boolean).join(' · '),
       storage: [s.capacity, s.form_factor].filter(Boolean).join(' · '),
       psu: [s.wattage, s.efficiency].filter(Boolean).join(' · '),
@@ -203,10 +221,12 @@ function toBuilderProduct(p: LiveProduct, priceRank: number): BuilderProduct | n
     tdp: t?.[2] ?? (p.category === 'gpu' ? 150 : p.category === 'cpu' ? 65 : undefined),
     socket: p.category === 'cpu' || p.category === 'motherboard' ? socketOf(p) : undefined,
     ramType:
-      p.category === 'ram' || p.category === 'motherboard'
-        ? ((s.memory_type ?? match(p.name, /(ddr[45])/i)?.toUpperCase()) as
-            'DDR4' | 'DDR5' | undefined)
-        : undefined,
+      p.category === 'motherboard'
+        ? moboRamTypeOf(p)
+        : p.category === 'ram'
+          ? ((s.memory_type ?? match(p.name, /(ddr[45])/i)?.toUpperCase()) as
+              'DDR4' | 'DDR5' | undefined)
+          : undefined,
     formFactor: p.category === 'motherboard' || p.category === 'case' ? formFactorOf(p) : undefined,
     wattage:
       p.category === 'psu'

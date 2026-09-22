@@ -6,6 +6,7 @@ import {
   RotateCcw,
   Sparkles,
   Mic,
+  MicOff,
   Paperclip,
   CornerDownLeft,
   ArrowDownUp,
@@ -18,6 +19,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { BuildComponentItem } from './BuildPreviewHUD';
 import { useTonimaSession } from '../../store/useTonimaSession';
+import { useSpeechToText } from '../../hooks/useSpeechToText';
 import './ChatWorkspace.css';
 
 export interface ChatMessage {
@@ -47,7 +49,9 @@ export interface BuildUpdatePayload {
     newPartName?: string;
   };
   budgetStatus?: 'met' | 'over' | 'under';
-  budgetBDT?: number;
+  budgetBDT?: number | null;
+  /** Agent purpose behind the build ('gaming' | 'ai_ml' | ...), used by the builder handoff. */
+  purpose?: string | null;
 }
 
 interface ChatWorkspaceProps {
@@ -225,6 +229,77 @@ function FormattedMessageContent({ text, isUser }: { text: string; isUser: boole
   );
 }
 
+/**
+ * Chat transcript lives in sessionStorage: it survives navigating to the PC Builder and
+ * back and a page reload, and is dropped when the tab closes (leaving the site) or when
+ * the user hits Reset. It is deliberately NOT localStorage — a new tab is a new chat.
+ */
+const TONIMA_CHAT_KEY = 'pc-kinba.tonima-chat';
+const TONIMA_CHAT_VERSION = 1;
+
+interface PersistedChat {
+  version: number;
+  sessionId: string;
+  messages: ChatMessage[];
+  hasActiveBuild: boolean;
+}
+
+function loadPersistedChat(): PersistedChat | null {
+  try {
+    const raw = sessionStorage.getItem(TONIMA_CHAT_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as PersistedChat;
+    if (!data || data.version !== TONIMA_CHAT_VERSION) return null;
+    if (!Array.isArray(data.messages) || data.messages.length === 0) return null;
+    return data;
+  } catch (err) {
+    console.warn('[Tonima Chat] Session restore failed:', err);
+    return null;
+  }
+}
+
+function savePersistedChat(snapshot: PersistedChat): void {
+  try {
+    sessionStorage.setItem(TONIMA_CHAT_KEY, JSON.stringify(snapshot));
+  } catch (err) {
+    console.warn('[Tonima Chat] Session save failed:', err);
+  }
+}
+
+function clearPersistedChat(): void {
+  try {
+    sessionStorage.removeItem(TONIMA_CHAT_KEY);
+  } catch {
+    // Ignore storage deletion errors
+  }
+}
+
+/** Mirrors the greeting branch of the server-side intent parser (lib/ai/intent.js). */
+const GREETING_RE =
+  /^(hi|hello|hey|greetings|howdy|hola|yo|assalamu\s*alaikum|salam|kemon\s*acho|kemon\s*achen|thanks|thank\s*you|ok|okay|good\s*(morning|afternoon|evening|night))(?:\s+tonima)?[\s!.,?]*$/i;
+
+/** Message shapes that a target budget is actually relevant to. */
+const HARDWARE_INTENT_RE =
+  /\b(build|rig|setup|pc|computer|config|configuration|workstation|machine|upgrade|downgrade|swap|replace|gaming|gamer|editing|render|streaming|office|cpu|gpu|ram|psu|motherboard|storage|cooler)\b|পিসি|বিল্ড|সেটআপ|কম্পিউটার|বানাও|বানিয়ে|আপগ্রেড/i;
+
+/** Text that already names a budget, so a second one must not be appended. */
+const BUDGET_MENTION_RE = /\b(budget|taka|bdt|tk|lakh|lac|k)\b|৳|বাজেট|টাকা|লাখ|হাজার/i;
+
+/**
+ * Whether to append the session's target budget to an outgoing message.
+ *
+ * Previously every message got the budget stapled on, so typing "hi" reached the agent
+ * as "hi (Target budget: ৳1,50,000)" — which the intent parser correctly read as a
+ * build request, so Tonima answered a greeting with a full ৳1.5 lakh machine.
+ */
+function shouldAttachBudget(text: string, budget: number | null): boolean {
+  if (!budget || budget <= 0) return false;
+  const trimmed = text.trim();
+  if (!trimmed || GREETING_RE.test(trimmed)) return false;
+  if (BUDGET_MENTION_RE.test(trimmed)) return false;
+  return HARDWARE_INTENT_RE.test(trimmed);
+}
+
 const DEFAULT_MESSAGES: ChatMessage[] = [
   {
     id: 'msg-1',
@@ -283,14 +358,27 @@ export default function ChatWorkspace({
   const { i18n } = useTranslation();
   const pendingPrompt = useTonimaSession((s) => s.pendingPrompt);
 
+  // Restored once, on mount: the transcript this tab was in the middle of.
+  const [restoredChat] = useState<PersistedChat | null>(() => loadPersistedChat());
+
   const [sessionId, setSessionId] = useState<string>(
-    () => propSessionId || `session-${Date.now()}`,
+    () => propSessionId || restoredChat?.sessionId || `session-${Date.now()}`,
   );
-  const [messages, setMessages] = useState<ChatMessage[]>(DEFAULT_MESSAGES);
+  const [messages, setMessages] = useState<ChatMessage[]>(
+    () => restoredChat?.messages ?? DEFAULT_MESSAGES,
+  );
   const [inputVal, setInputVal] = useState('');
+  const { isListening: isVoiceActive, toggleListening: toggleVoiceInput } = useSpeechToText({
+    lang: i18n.language === 'bn' ? 'bn-BD' : 'en-US',
+    // Appends rather than replaces: unlike the hero's one-shot prompt field, this input
+    // is meant to be dictated into mid-conversation without losing whatever was already
+    // typed.
+    onResult: (transcript) =>
+      setInputVal((prev) => (prev.trim() ? `${prev.trim()} ${transcript}` : transcript)),
+  });
   const [isProcessing, setIsProcessing] = useState(false);
   const [thinkingStatus, setThinkingStatus] = useState<string>('');
-  const [hasActiveBuild, setHasActiveBuild] = useState(false);
+  const [hasActiveBuild, setHasActiveBuild] = useState(() => restoredChat?.hasActiveBuild ?? false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
@@ -334,6 +422,32 @@ export default function ChatWorkspace({
     }
   }, []);
 
+  // Persist the transcript so it is still here after a trip to the PC Builder page.
+  // Writes are skipped mid-stream (one write per token would be wasteful) and flushed
+  // on unmount, so a turn that finishes right before navigation is not lost.
+  const chatSnapshotRef = useRef<PersistedChat>({
+    version: TONIMA_CHAT_VERSION,
+    sessionId,
+    messages,
+    hasActiveBuild,
+  });
+  useEffect(() => {
+    chatSnapshotRef.current = {
+      version: TONIMA_CHAT_VERSION,
+      sessionId,
+      messages,
+      hasActiveBuild,
+    };
+    if (isProcessing) return;
+    savePersistedChat(chatSnapshotRef.current);
+  }, [messages, sessionId, hasActiveBuild, isProcessing]);
+
+  useEffect(() => {
+    return () => {
+      savePersistedChat(chatSnapshotRef.current);
+    };
+  }, []);
+
   const prevMsgCountRef = useRef(messages.length);
   useEffect(() => {
     if (messages.length > prevMsgCountRef.current) {
@@ -370,9 +484,10 @@ export default function ChatWorkspace({
           ? options.budgetBDT
           : useTonimaSession.getState().budgetBDT;
 
-      // Natural language budget injection if not already specified in query
-      if (targetBudget && !/\b(budget|বাজেট|taka|bdt|tk|টাকা|lakh|লাখ|k)\b/i.test(queryText)) {
-        const budgetStr = targetBudget.toLocaleString('en-IN');
+      // Natural-language budget injection, but only on messages a budget belongs on.
+      // A greeting or a general hardware question goes to the agent untouched.
+      if (shouldAttachBudget(queryText, targetBudget)) {
+        const budgetStr = (targetBudget as number).toLocaleString('en-IN');
         const budgetSentence =
           i18n.language === 'bn'
             ? `(টার্গেট বাজেট: ৳${budgetStr})`
@@ -517,7 +632,10 @@ export default function ChatWorkspace({
                     alternatives: data.alternatives,
                     diff: data.diff,
                     budgetStatus: data.budget_status || data.budgetStatus,
-                    budgetBDT: data.budgetBDT || (targetBudget ?? undefined),
+                    // The agent reports the budget it actually planned against — which is
+                    // the budget stated in the message, not whatever the slider last held.
+                    budgetBDT: data.budgetBDT ?? targetBudget ?? null,
+                    purpose: data.purpose ?? null,
                   };
 
                   // Propagate build payload to update HUD and session store immediately
@@ -527,7 +645,12 @@ export default function ChatWorkspace({
                   useTonimaSession.getState().applyBuildEvent(buildPayload);
                 } else if (currentEvent === 'token') {
                   accumulatedText += data.token || '';
-                  useTonimaSession.getState().setStatus('streaming');
+                  // Flip the status once, not once per token: the session store persists
+                  // itself on every write, and a sessionStorage write per token would
+                  // stutter the stream.
+                  if (useTonimaSession.getState().activeBuild.status !== 'streaming') {
+                    useTonimaSession.getState().setStatus('streaming');
+                  }
                   setMessages((prev) =>
                     prev.map((msg) =>
                       msg.id === botMsgId ? { ...msg, text: accumulatedText } : msg,
@@ -661,9 +784,20 @@ export default function ChatWorkspace({
   const isRailOpen = hasActiveBuild && (isRailHovered || isRailPinned);
 
   const handleClear = () => {
+    const freshSessionId = `session-${Date.now()}`;
     setMessages(DEFAULT_MESSAGES);
     setHasActiveBuild(false);
-    setSessionId(`session-${Date.now()}`);
+    setSessionId(freshSessionId);
+    setInputVal('');
+    // Reset is the one action that is meant to destroy the transcript. Drop the stored
+    // copy too, or the old conversation reappears on the next visit to the page.
+    clearPersistedChat();
+    chatSnapshotRef.current = {
+      version: TONIMA_CHAT_VERSION,
+      sessionId: freshSessionId,
+      messages: DEFAULT_MESSAGES,
+      hasActiveBuild: false,
+    };
     useTonimaSession.getState().resetSession();
     if (onResetSession) {
       onResetSession();
@@ -881,11 +1015,18 @@ export default function ChatWorkspace({
 
             <button
               type="button"
-              className="tonima-input-btn"
-              title="Voice input"
+              className={`tonima-input-btn ${isVoiceActive ? 'is-listening' : ''}`}
+              title={isVoiceActive ? 'Listening… click to stop' : 'Voice input'}
               aria-label="Voice input"
+              aria-pressed={isVoiceActive}
+              onClick={toggleVoiceInput}
+              disabled={isProcessing}
             >
-              <Mic className="w-4 h-4" />
+              {isVoiceActive ? (
+                <Mic className="w-4 h-4 animate-pulse text-accent" />
+              ) : (
+                <MicOff className="w-4 h-4" />
+              )}
             </button>
 
             <button

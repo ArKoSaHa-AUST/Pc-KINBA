@@ -1,5 +1,5 @@
 .brands-section {
-  padding: 4rem 0;
+  padding: 2.75rem 0;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   background: var(--fill-subtle);
@@ -8,10 +8,10 @@
 
 .brands-title {
   text-align: center;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.1em;
   color: var(--text-secondary);
-  margin-bottom: 3rem;
+  margin-bottom: 1.6rem;
   font-weight: 600;
 }
 
@@ -44,7 +44,7 @@
 
 .brands-track {
   display: flex;
-  gap: 4rem;
+  gap: 4.5rem;
   animation: scroll-marquee 30s linear infinite;
   white-space: nowrap;
 }

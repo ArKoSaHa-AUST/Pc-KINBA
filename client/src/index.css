@@ -328,24 +328,24 @@ h4,
   padding: 0 32px;
 }
 
-/* Section Paddings (Desktop: 120px, Tablet: 80px, Mobile: 60px) */
+/* Section Paddings (Desktop: 84px, Tablet: 58px, Mobile: 44px) */
 .section {
-  padding-top: 120px;
-  padding-bottom: 120px;
+  padding-top: 84px;
+  padding-bottom: 84px;
   position: relative;
 }
 
 @media (max-width: 1024px) {
   .section {
-    padding-top: 80px;
-    padding-bottom: 80px;
+    padding-top: 58px;
+    padding-bottom: 58px;
   }
 }
 
 @media (max-width: 640px) {
   .section {
-    padding-top: 60px;
-    padding-bottom: 60px;
+    padding-top: 44px;
+    padding-bottom: 44px;
   }
 
   h1,

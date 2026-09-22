@@ -44,11 +44,8 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
   };
 
   return (
-    <section
-      id="product-reviews"
-      style={{ marginTop: '40px' }}
-      className="relative w-full z-10 scroll-mt-28"
-    >
+    <section id="product-reviews" className="relative w-full z-10 scroll-mt-28 mt-20">
+
       <div className="container max-w-[1440px] mx-auto px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
           <div className="lg:col-span-4 lg:col-start-1">

@@ -10,6 +10,7 @@ import {
   toBuilderPurpose,
   saveTonimaHandoff,
   loadTonimaHandoff,
+  resolveHandoffParts,
   TONIMA_HANDOFF_KEY,
   type TonimaHandoff,
 } from '../../store/tonimaHandoff';
@@ -159,6 +160,7 @@ vi.mock('../../hooks/useBuilderCatalog', () => ({
 describe('Tonima AI Handoff & Wiring Test Suite (TonimaHandoff.test.tsx)', () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     useTonimaSession.setState({
       pendingPrompt: null,
       activeBuild: { ...INITIAL_BUILD_STATE },
@@ -642,5 +644,158 @@ describe('Tonima AI Handoff & Wiring Test Suite (TonimaHandoff.test.tsx)', () =>
     expect(confirmSpy).toHaveBeenCalled();
     // Because user answered false, previous draft CPU remains
     expect(screen.getAllByText('Intel Core i5-13600K').length).toBeGreaterThan(0);
+  });
+
+  // UI-MATCH-001: Retailer wording differs from the catalog wording but names the same part
+  it('UI-MATCH-001: A differently worded GPU name still resolves to the catalog product', () => {
+    const { selection, resolved, unresolved } = resolveHandoffParts(
+      [
+        {
+          category: 'GPU',
+          name: 'Gigabyte GeForce RTX 4070 SUPER WINDFORCE OC 12G',
+          priceBDT: 72000,
+          retailer: 'Star Tech',
+        },
+      ],
+      mockCatalogMap,
+      (slot) => MOCK_CATALOG_PRODUCTS.filter((p) => p.category === slot),
+    );
+
+    expect(unresolved).toHaveLength(0);
+    expect(resolved).toHaveLength(1);
+    expect(selection.gpu?.id).toBe('prod-gpu-1');
+  });
+
+  // UI-MATCH-002: A near-miss model number is a different part, not a match
+  it('UI-MATCH-002: A different model number does not resolve to a similar catalog product', () => {
+    const { selection, unresolved } = resolveHandoffParts(
+      [
+        {
+          category: 'GPU',
+          name: 'RTX 4060 8GB',
+          priceBDT: 38000,
+          retailer: 'Ryans',
+        },
+        {
+          category: 'CPU',
+          name: 'Intel Core i5-12400F',
+          priceBDT: 16000,
+          retailer: 'Ryans',
+        },
+      ],
+      mockCatalogMap,
+      (slot) => MOCK_CATALOG_PRODUCTS.filter((p) => p.category === slot),
+    );
+
+    expect(selection.gpu).toBeUndefined();
+    expect(selection.cpu).toBeUndefined();
+    expect(unresolved).toHaveLength(2);
+  });
+
+  // UI-MATCH-003: productId from the agent is the fast path and wins over name guessing
+  it('UI-MATCH-003: A productId resolves exactly even when the name does not match', () => {
+    const { selection, resolved } = resolveHandoffParts(
+      [
+        {
+          productId: 'prod-cooling-1',
+          category: 'Cooler',
+          name: 'Some Completely Different Cooler Name',
+          priceBDT: 7500,
+          retailer: 'Tech Land',
+        },
+      ],
+      mockCatalogMap,
+      (slot) => MOCK_CATALOG_PRODUCTS.filter((p) => p.category === slot),
+    );
+
+    expect(resolved).toHaveLength(1);
+    expect(selection.cooling?.id).toBe('prod-cooling-1');
+  });
+
+  // UI-HANDOFF-006: The handoff carries the purpose Tonima planned against
+  it('UI-HANDOFF-006: The builder handoff carries the agent purpose, not a hardcoded Gaming', () => {
+    useTonimaSession.setState((state) => ({
+      activeBuild: { ...state.activeBuild, purpose: 'ai_ml' },
+    }));
+
+    render(
+      <MemoryRouter>
+        <BuildPreviewHUD
+          components={[
+            {
+              category: 'CPU',
+              name: 'Intel Core i5-13600K',
+              priceBDT: 32000,
+              retailer: 'Star Tech',
+              inStock: true,
+              productId: 'prod-cpu-1',
+            },
+          ]}
+          totalPrice={32000}
+        />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /PC Builder/i }));
+
+    const handoff = loadTonimaHandoff();
+    expect(handoff?.purpose).toBe('ai_ml');
+    expect(toBuilderPurpose(handoff?.purpose)).toBe('AI/ML Workstation');
+  });
+
+  // UI-BUDGET-001: No budget is invented when the user has not named one
+  it('UI-BUDGET-001: A greeting carries no target budget and no budget is defaulted', async () => {
+    useTonimaSession.setState({ budgetBDT: null });
+
+    let capturedBody: { budgetBDT?: number; message?: string } | null = null;
+    globalThis.fetch = vi.fn().mockImplementation(async (_url, opts) => {
+      if (opts?.body) capturedBody = JSON.parse(opts.body as string);
+      return {
+        ok: true,
+        body: { getReader: () => ({ read: async () => ({ done: true, value: undefined }) }) },
+      } as unknown as Response;
+    });
+
+    render(<ChatWorkspace />);
+
+    await act(async () => {
+      useTonimaSession.getState().dispatchPrompt({
+        id: 'prompt-greeting',
+        text: 'hi',
+        source: 'chat',
+      });
+    });
+
+    const body = capturedBody as { budgetBDT?: number; message?: string } | null;
+    expect(body?.message).toBe('hi');
+    expect(body?.budgetBDT).toBeUndefined();
+  });
+
+  // UI-BUDGET-002: A set budget is still not stapled onto a greeting
+  it('UI-BUDGET-002: A greeting carries no target budget even when a budget is set', async () => {
+    useTonimaSession.setState({ budgetBDT: 150000 });
+
+    let capturedBody: { budgetBDT?: number; message?: string } | null = null;
+    globalThis.fetch = vi.fn().mockImplementation(async (_url, opts) => {
+      if (opts?.body) capturedBody = JSON.parse(opts.body as string);
+      return {
+        ok: true,
+        body: { getReader: () => ({ read: async () => ({ done: true, value: undefined }) }) },
+      } as unknown as Response;
+    });
+
+    render(<ChatWorkspace />);
+
+    await act(async () => {
+      useTonimaSession.getState().dispatchPrompt({
+        id: 'prompt-greeting-2',
+        text: 'hello',
+        source: 'chat',
+      });
+    });
+
+    const body = capturedBody as { budgetBDT?: number; message?: string } | null;
+    expect(body?.message).toBe('hello');
+    expect(body?.message).not.toContain('Target budget');
   });
 });

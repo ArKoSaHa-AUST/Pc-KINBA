@@ -134,11 +134,15 @@ export default function BuildPreviewHUD({
   }, [targetPrice]);
 
   const handleExportToBuilder = () => {
+    if (components.length === 0) return;
+
     const handoffPayload: TonimaHandoff = {
       version: TONIMA_HANDOFF_VERSION,
       sessionId: storeBuild.sessionId,
       createdAt: new Date().toISOString(),
-      purpose: 'Gaming',
+      // The purpose Tonima actually planned against — an AI/ML rig arrived in the
+      // builder labelled "Gaming" while this was hardcoded.
+      purpose: storeBuild.purpose ?? 'gaming',
       budgetBDT: sessionBudget,
       totalBDT: targetPrice,
       parts: components.map((c) => ({
@@ -153,16 +157,14 @@ export default function BuildPreviewHUD({
 
     saveTonimaHandoff(handoffPayload);
 
-    // Collect IDs for direct builder URL param hydration
+    // The handoff payload above is what actually assembles the build; the ?parts= ids are
+    // only a convenience for sharing/refresh, so listing ids (which the builder catalog
+    // does not key on) are left out rather than producing a URL that resolves to nothing.
     const partIds = components
-      .map((c) => c.productId || c.listingId)
+      .map((c) => c.productId)
       .filter((id): id is string => !!id);
 
-    if (partIds.length > 0) {
-      navigate(`/pc-builder?parts=${partIds.join(',')}`);
-    } else {
-      navigate('/pc-builder');
-    }
+    navigate(partIds.length > 0 ? `/pc-builder?parts=${partIds.join(',')}` : '/pc-builder');
   };
 
   const handleDownloadPDF = () => {
@@ -251,7 +253,12 @@ export default function BuildPreviewHUD({
         </div>
 
         {/* Main Viewport Content Area */}
-        <div className="tonima-hud-content">
+        {/*
+          data-lenis-prevent: the AI Assistant page runs Lenis smooth scroll, which
+          captures wheel events document-wide. Without this the parts list could only be
+          scrolled by dragging its scrollbar — the wheel scrolled the page behind it.
+        */}
+        <div className="tonima-hud-content" data-lenis-prevent>
           <AnimatePresence>
             {activeTab === '3d' && (
               <motion.div
@@ -618,7 +625,10 @@ export default function BuildPreviewHUD({
                 BD Stores (৳ BDT)
               </p>
 
-              <div className="max-h-60 overflow-y-auto space-y-1.5 pr-2 mb-4 text-xs">
+              <div
+                className="max-h-60 overflow-y-auto space-y-1.5 pr-2 mb-4 text-xs"
+                data-lenis-prevent
+              >
                 {components.map((part, idx) => (
                   <div
                     key={idx}

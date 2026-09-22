@@ -3,16 +3,21 @@
    ========================================================================== */
 
 .tonima-hud-card-container {
+  /* Layout.tsx's Navbar is fixed at h-[80px]; sticking any higher tucks the card's top
+     edge under it. 80px sits it flush against the navbar's bottom edge. Independent of
+     --tonima-panel-height (see TonimaWorkspace.css) — the card can be, and is, taller
+     than "100vh - 80px"; its own tab content scrolls internally when stuck. */
   position: sticky;
-  top: 96px;
+  top: 80px;
   width: 100%;
-  max-width: 420px;
+  max-width: 430px;
   min-width: 0;
   z-index: 20;
 }
 
 .tonima-hud-card {
-  height: clamp(580px, calc(100vh - 140px), 740px);
+  /* Falls back to the same figure TonimaWorkspace.css sets, so the two never disagree. */
+  height: var(--tonima-panel-height, min(calc(100vh - 24px), 1440px));
   width: 100%;
   background: var(--glass-bg);
   backdrop-filter: blur(24px);
@@ -78,9 +83,18 @@
   box-shadow: 0 0 12px var(--glass-glow);
 }
 
-/* Scrollable Tab Viewport */
+/*
+ * 3D chassis viewport. Fluid rather than a fixed 330px so the 3D tab (viewport + gauge)
+ * fits the panel without an inner scrollbar on shorter screens.
+ */
+.tonima-chassis-viewport {
+  height: clamp(230px, 31vh, 380px);
+}
+
+/* Tab Viewport — scrolls only as a safety net; at panel height the content fits. */
 .tonima-hud-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 1rem;
   display: flex;

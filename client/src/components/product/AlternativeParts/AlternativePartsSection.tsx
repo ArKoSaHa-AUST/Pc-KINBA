@@ -127,11 +127,8 @@ export default function AlternativePartsSection({ product }: AlternativePartsSec
   const displayedProducts = filteredProducts.slice(0, visibleCount);
 
   return (
-    <section
-      id="alternative-parts"
-      style={{ marginTop: '220px' }}
-      className="relative w-full z-10 scroll-mt-28"
-    >
+    <section id="alternative-parts" className="relative w-full z-10 scroll-mt-28 mt-20">
+
       <div className="container max-w-[1440px] mx-auto px-6 lg:px-8">
         {/* Section Header */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">

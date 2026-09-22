@@ -229,6 +229,7 @@ export default function WriteReviewModal({
                 overscrollBehavior: 'contain',
                 touchAction: 'pan-y',
               }}
+              data-lenis-prevent
             >
               <WriteReviewForm
                 productId={productId}
