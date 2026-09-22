@@ -2597,6 +2597,60 @@ app.post("/api/upload/imagekit", authActionLimiter, async (req, res) => {
   }
 });
 
+// 7.5. Admin Scraper Health Telemetry Endpoint
+app.get("/api/admin/scraper-health", async (req, res) => {
+  try {
+    const adminKey = process.env.ADMIN_API_KEY;
+    const providedKey = req.headers["x-admin-key"] || req.headers["authorization"]?.replace(/^Bearer\s+/i, "") || req.query.key;
+
+    if (adminKey && providedKey !== adminKey) {
+      return res.status(401).json({ error: "Unauthorized: Invalid admin credentials" });
+    }
+
+    // 1. Fetch scraper_health table
+    const { data: healthData, error: healthErr } = await supabase
+      .from("scraper_health")
+      .select("*")
+      .order("store_id", { ascending: true });
+
+    if (healthErr) {
+      console.warn("[Admin Health] Error fetching scraper_health:", sanitizeLog(healthErr.message));
+    }
+
+    // 2. Fetch scraper_runs from the last 24 hours
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: runsData, error: runsErr } = await supabase
+      .from("scraper_runs")
+      .select("*")
+      .gte("created_at", since24h)
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (runsErr) {
+      console.warn("[Admin Health] Error fetching scraper_runs:", sanitizeLog(runsErr.message));
+    }
+
+    // Group runs by store_id
+    const runsByStore = {};
+    (runsData || []).forEach((run) => {
+      if (!runsByStore[run.store_id]) {
+        runsByStore[run.store_id] = [];
+      }
+      runsByStore[run.store_id].push(run);
+    });
+
+    return res.json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      health: healthData || [],
+      recent_runs_24h: runsByStore
+    });
+  } catch (err) {
+    console.error("[Admin Scraper Health Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to retrieve scraper health status", details: err.message });
+  }
+});
+
 // 8. Tonima AI Build Agent Endpoints (Multi-Model SSE Architecture)
 /**
  * AI Assistant Endpoint: Stream PC Build configuration using team of models
