@@ -8,7 +8,7 @@ COPY package*.json ./
 COPY packages/ ./packages/
 COPY client/package*.json ./client/
 
-# Install dependencies
+# Install all dependencies (including build tools)
 RUN npm ci
 RUN cd client && npm ci
 
@@ -25,7 +25,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3001
 
-# Optional: Install Python & curl for scrapers / healthcanary / container healthcheck
+# Install Python & curl for scrapers / healthcanary / container healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
@@ -36,7 +36,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy root and workspace package files and install production dependencies
 COPY package*.json ./
 COPY packages/ ./packages/
-RUN npm ci --omit=dev && npm run build:packages
+RUN npm ci --omit=dev --ignore-scripts
+
+# Copy pre-built compatibility rules dist from builder
+COPY --from=builder /app/packages/compat-rules/dist ./packages/compat-rules/dist
 
 # Copy backend server files, helper libraries, scrapers, and the built client SPA
 COPY server.js mailer.js ./
