@@ -183,10 +183,10 @@ export const PerformanceRadarChart: React.FC<PerformanceRadarChartProps> = ({ sl
   }
 
   return (
-    <div className="w-full rounded-3xl bg-glass border border-border backdrop-blur-2xl p-6 sm:p-8 shadow-2xl overflow-hidden relative">
+    <div className="w-full rounded-3xl bg-glass border border-border backdrop-blur-2xl p-6 sm:p-8 shadow-2xl overflow-hidden relative print:shadow-none">
       {/* Background ambient lighting */}
-      <div className="absolute -top-10 -right-10 w-72 h-72 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-purple/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-10 -right-10 w-72 h-72 bg-accent/10 rounded-full blur-3xl pointer-events-none print:hidden" />
+      <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-purple/10 rounded-full blur-3xl pointer-events-none print:hidden" />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 relative z-10">
@@ -292,8 +292,8 @@ export const PerformanceRadarChart: React.FC<PerformanceRadarChartProps> = ({ sl
                       y={labelPt.y}
                       textAnchor="middle"
                       dominantBaseline="central"
-                      className={`text-[11px] font-bold tracking-wide transition-all ${
-                        isHovered ? 'fill-accent scale-110 font-extrabold' : 'fill-text-secondary'
+                      className={`text-[11px] font-bold tracking-wide transition-colors ${
+                        isHovered ? 'fill-accent font-extrabold' : 'fill-text-secondary'
                       }`}
                     >
                       {isBn ? axis.nameBn || axis.name : axis.name}

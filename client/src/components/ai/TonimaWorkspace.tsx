@@ -37,6 +37,9 @@ export default function TonimaWorkspace({
         validation: payload.validation,
         alternatives: payload.alternatives,
         diff: payload.diff,
+        budgetStatus: payload.budgetStatus,
+        budgetBDT: payload.budgetBDT,
+        purpose: payload.purpose,
       });
     },
     [applyBuildEvent],

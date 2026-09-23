@@ -131,7 +131,7 @@ export default function PCBuilderPage() {
       // Honest toast reporting
       if (unresolved.length === 0 && resolved.length > 0) {
         toast({
-          message: `Tonima’s build loaded — ${resolved.length} of ${handoff.parts.length} parts matched.`,
+          message: `Tonima’s build loaded: ${resolved.length} of ${handoff.parts.length} parts matched.`,
           variant: 'success',
         });
       } else if (resolved.length > 0) {
@@ -216,14 +216,14 @@ export default function PCBuilderPage() {
 
   const handleClearAll = useCallback(() => {
     setBuild({});
-    toast({ message: 'Cleared all parts — starting fresh.', variant: 'info' });
+    toast({ message: 'Cleared all parts, starting fresh.', variant: 'info' });
   }, [toast]);
 
   const handleApplyPreset = useCallback(
     (preset: BuildPreset) => {
       setBuild(resolvePreset(preset, catalog.products, catalog.byId));
       setPurpose(preset.purpose);
-      toast({ message: `Loaded “${preset.name}” — customise any part below.`, variant: 'success' });
+      toast({ message: `Loaded “${preset.name}”: customise any part below.`, variant: 'success' });
       handleStartBuilding();
     },
     [catalog, toast, handleStartBuilding],
@@ -235,7 +235,7 @@ export default function PCBuilderPage() {
     setBuild(next);
     toast({
       message: added
-        ? `Filled ${added} slot${added > 1 ? 's' : ''} for ${purpose} — ${formatTaka(totalPriceOf(next))} total.`
+        ? `Filled ${added} slot${added > 1 ? 's' : ''} for ${purpose}: ${formatTaka(totalPriceOf(next))} total.`
         : 'Every core slot is already filled.',
       variant: added ? 'success' : 'info',
     });
@@ -291,7 +291,7 @@ export default function PCBuilderPage() {
             Choose Your <span className="gradient-text">Components</span>
           </h2>
           <p className="builder-section-subtitle">
-            Pick parts across 8 hardware categories — compatibility is checked in real time.
+            Pick parts across 8 hardware categories; compatibility is checked in real time.
             {catalog.isLive && ' Prices are the lowest live offer across Bangladeshi retailers.'}
           </p>
           <BuildLibraryTeaser catalog={catalog} onApplyPreset={handleApplyPreset} />
@@ -301,7 +301,7 @@ export default function PCBuilderPage() {
             <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-semibold text-accent">
                 <Bot className="w-4 h-4 text-accent" />
-                <span>Assembled by Tonima AI — Real-time compatibility & pricing applied</span>
+                <span>Assembled by Tonima AI · Real-time compatibility & pricing applied</span>
               </div>
               <button
                 type="button"
@@ -379,7 +379,7 @@ export default function PCBuilderPage() {
             Live <span className="gradient-text">3D Assembly</span>
           </h2>
           <p className="builder-section-subtitle">
-            Watch your rig come together — drag to orbit, explode the view, click any part to
+            Watch your rig come together: drag to orbit, explode the view, click any part to
             configure it.
           </p>
           <Suspense fallback={<div className="assembly-viewport-placeholder" />}>
@@ -395,7 +395,7 @@ export default function PCBuilderPage() {
             Build <span className="gradient-text">Summary</span>
           </h2>
           <p className="builder-section-subtitle">
-            Price, power, performance and compatibility — updated live as you pick parts.
+            Price, power, performance and compatibility, all updated live as you pick parts.
           </p>
           <BuildSummary
             build={build}

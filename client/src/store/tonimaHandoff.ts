@@ -85,6 +85,96 @@ function normalizeName(name: string): string {
 }
 
 /**
+ * Words that say what kind of part something is rather than which part it is. They are
+ * dropped before comparison so "Cooler Master Hyper 212" and "DeepCool AK400 Cooler"
+ * do not look similar merely because both end in "cooler".
+ */
+const DESCRIPTOR_TOKENS = new Set([
+  'the',
+  'with',
+  'and',
+  'for',
+  'pc',
+  'desktop',
+  'gaming',
+  'gamer',
+  'edition',
+  'series',
+  'retail',
+  'box',
+  'boxed',
+  'bulk',
+  'processor',
+  'cpu',
+  'graphics',
+  'card',
+  'gpu',
+  'memory',
+  'module',
+  'kit',
+  'ram',
+  'cooler',
+  'cooling',
+  'fan',
+  'power',
+  'supply',
+  'psu',
+  'unit',
+  'casing',
+  'case',
+  'chassis',
+  'ssd',
+  'hdd',
+  'drive',
+  'motherboard',
+  'mainboard',
+  'internal',
+  'new',
+]);
+
+function tokenizeName(name: string): string[] {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter((token) => token.length > 1 && !DESCRIPTOR_TOKENS.has(token));
+}
+
+/**
+ * Similarity of two product names, 0 (no relation) to 1 (same part).
+ *
+ * Retailer listings and catalog entries rarely spell a part the same way — the agent may
+ * return "RTX 4070 Super 12GB" for a catalog row called "Gigabyte GeForce RTX 4070 SUPER
+ * WINDFORCE OC 12G" — so plain substring matching finds nothing. Worse, substring
+ * matching happily pairs "RTX 4060" with "RTX 4060 Ti". Token overlap fixes the first
+ * problem; requiring the model identifiers to agree fixes the second.
+ */
+function nameSimilarity(targetName: string, candidateName: string): number {
+  const target = tokenizeName(targetName);
+  const candidate = tokenizeName(candidateName);
+  if (target.length === 0 || candidate.length === 0) return 0;
+
+  const candidateSet = new Set(candidate);
+  const shared = target.filter((token) => candidateSet.has(token));
+  if (shared.length === 0) return 0;
+
+  // A token with a run of three or more digits is a model identifier (4070, 13600k,
+  // 12400f, 750w) rather than a family name like "i5" or "DDR5". Every one of them has
+  // to appear on the other side, or these are two different parts that merely share a
+  // brand — an RTX 4060 must never be accepted as an RTX 4070.
+  const targetModelTokens = target.filter((token) => /\d{3,}/.test(token));
+  if (!targetModelTokens.every((token) => candidateSet.has(token))) {
+    return 0;
+  }
+
+  return shared.length / Math.min(target.length, candidate.length);
+}
+
+/** Below this, two names are treated as different parts. */
+const NAME_MATCH_THRESHOLD = 0.5;
+
+/**
  * Resolves handoff parts against the builder catalog.
  */
 export function resolveHandoffParts(
@@ -129,7 +219,7 @@ export function resolveHandoffParts(
       matchedProduct = catalogById.get(part.listingId);
     }
 
-    // (c) Normalized name match in candidates for this slot
+    // (c) Name match against the candidates for this slot
     if (!matchedProduct) {
       const candidates: BuilderProduct[] = forSlot
         ? forSlot(rawSlot)
@@ -139,13 +229,19 @@ export function resolveHandoffParts(
       // Try exact normalized match
       matchedProduct = candidates.find((c) => normalizeName(c.name) === targetNorm);
 
-      // Try inclusion match if not found
+      // Otherwise take the best token-overlap match above the threshold
       if (!matchedProduct) {
-        matchedProduct = candidates.find(
-          (c) =>
-            normalizeName(c.name).includes(targetNorm) ||
-            targetNorm.includes(normalizeName(c.name)),
-        );
+        let bestScore = 0;
+        for (const candidate of candidates) {
+          const score = nameSimilarity(part.name, candidate.name);
+          if (score > bestScore) {
+            bestScore = score;
+            matchedProduct = candidate;
+          }
+        }
+        if (bestScore < NAME_MATCH_THRESHOLD) {
+          matchedProduct = undefined;
+        }
       }
     }
 

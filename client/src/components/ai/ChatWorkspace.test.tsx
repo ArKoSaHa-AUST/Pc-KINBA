@@ -14,6 +14,10 @@ vi.mock('react-i18next', () => ({
 
 describe('Tonima AI Chat Workspace UI (ChatWorkspace.test.tsx)', () => {
   beforeEach(() => {
+    // The transcript now persists in sessionStorage for the life of the tab, so each
+    // test starts from a genuinely empty one.
+    sessionStorage.clear();
+    localStorage.clear();
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
     // Mock scrollTo on Element prototype
@@ -314,5 +318,89 @@ describe('Tonima AI Chat Workspace UI (ChatWorkspace.test.tsx)', () => {
     const scroller = container.querySelector('.tonima-table-scroller');
     expect(scroller).toBeDefined();
     expect(scroller).toHaveAttribute('data-lenis-prevent-wheel');
+  });
+
+  it('UI-CHAT-010: The transcript survives unmounting and remounting the workspace', async () => {
+    const first = render(<ChatWorkspace />);
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    const form = first.container.querySelector('form') as HTMLFormElement;
+
+    fireEvent.change(input, { target: { value: 'Suggest a quiet CPU cooler' } });
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+
+    expect(screen.getByText('Suggest a quiet CPU cooler')).toBeDefined();
+
+    // Leaving the page and coming back
+    first.unmount();
+    render(<ChatWorkspace />);
+
+    expect(screen.getByText('Suggest a quiet CPU cooler')).toBeDefined();
+  });
+
+  it('UI-CHAT-011: Reset clears the transcript and it does not come back on remount', async () => {
+    const first = render(<ChatWorkspace />);
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    const form = first.container.querySelector('form') as HTMLFormElement;
+
+    fireEvent.change(input, { target: { value: 'Suggest a quiet CPU cooler' } });
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Reset/i }));
+    });
+
+    expect(screen.queryByText('Suggest a quiet CPU cooler')).toBeNull();
+
+    first.unmount();
+    render(<ChatWorkspace />);
+
+    expect(screen.queryByText('Suggest a quiet CPU cooler')).toBeNull();
+  });
+
+  // UI-VOICE-005: the mic button in the chat input bar previously had no onClick at all.
+  it('UI-VOICE-005: Clicking the mic button starts speech recognition and dictates into the input', () => {
+    const startSpy = vi.fn();
+    let instance: {
+      onresult: ((event: unknown) => void) | null;
+      onerror: (() => void) | null;
+      onend: (() => void) | null;
+    } | null = null;
+
+    class MockSpeechRecognition {
+      lang = '';
+      interimResults = false;
+      maxAlternatives = 1;
+      onresult: ((event: unknown) => void) | null = null;
+      onerror: (() => void) | null = null;
+      onend: (() => void) | null = null;
+      start = startSpy;
+      stop = vi.fn();
+      constructor() {
+        // eslint-disable-next-line @typescript-eslint/no-this-alias -- the constructed instance is captured for the test to inspect.
+        instance = this;
+      }
+    }
+    (window as unknown as { SpeechRecognition: unknown }).SpeechRecognition = MockSpeechRecognition;
+
+    render(<ChatWorkspace />);
+    const micButton = screen.getByRole('button', { name: /voice input/i });
+
+    fireEvent.click(micButton);
+    expect(startSpy).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      instance?.onresult?.({
+        results: { 0: { 0: { transcript: 'build a gaming pc' } } },
+      });
+    });
+
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    expect(input.value).toBe('build a gaming pc');
+
+    delete (window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition;
   });
 });

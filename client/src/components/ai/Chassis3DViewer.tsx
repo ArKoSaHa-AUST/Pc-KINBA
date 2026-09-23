@@ -47,7 +47,7 @@ export class Chassis3DErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="relative w-full h-[330px] bg-bg-secondary/60 rounded-2xl border border-glass-border flex flex-col items-center justify-center p-4 text-center">
+        <div className="tonima-chassis-viewport relative w-full bg-bg-secondary/60 rounded-2xl border border-glass-border flex flex-col items-center justify-center p-4 text-center">
           <AlertTriangle className="w-8 h-8 text-warning mb-2" />
           <p className="text-xs font-bold text-text-primary">3D Viewport Offline</p>
           <p className="text-[11px] text-text-muted mt-1 max-w-xs">
@@ -396,7 +396,7 @@ export default function Chassis3DViewer({
 
   return (
     <div
-      className={`relative w-full h-[330px] bg-bg-secondary/60 rounded-2xl overflow-hidden border border-glass-border flex flex-col ${className}`}
+      className={`tonima-chassis-viewport relative w-full bg-bg-secondary/60 rounded-2xl overflow-hidden border border-glass-border flex flex-col ${className}`}
     >
       {/* HUD Controls Bar */}
       <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">

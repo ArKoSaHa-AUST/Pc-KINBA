@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, ArrowRight, SlidersHorizontal, Check, Cpu } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import HolographicCore from './HolographicCore';
 import { useTonimaSession } from '../../store/useTonimaSession';
+import { useSpeechToText } from '../../hooks/useSpeechToText';
 import './TonimaHero.css';
 
 interface TonimaHeroProps {
@@ -11,16 +12,42 @@ interface TonimaHeroProps {
 }
 
 export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
-  const { t } = useTranslation('ai');
+  const { t, i18n } = useTranslation('ai');
   const dispatchPrompt = useTonimaSession((s) => s.dispatchPrompt);
   const sessionBudget = useTonimaSession((s) => s.budgetBDT);
   const setSessionBudget = useTonimaSession((s) => s.setBudget);
 
   const [promptText, setPromptText] = useState('');
-  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const { isListening: isVoiceActive, toggleListening: toggleVoiceMode } = useSpeechToText({
+    lang: i18n.language === 'bn' ? 'bn-BD' : 'en-US',
+    onResult: (transcript) => setPromptText(transcript),
+  });
   const [showBudgetSlider, setShowBudgetSlider] = useState(false);
   const [showSentConfirmation, setShowSentConfirmation] = useState(false);
+  // 150000 is only the slider's resting position. `budgetChosen` tracks whether the user
+  // has actually committed to a budget (moved the slider or picked a preset); until then
+  // no target is sent, so Tonima is not told to plan a 1.5 lakh machine the user never
+  // asked for.
   const [budgetBDT, setBudgetBDT] = useState<number>(() => sessionBudget || 150000);
+  const [budgetChosen, setBudgetChosen] = useState<boolean>(() => (sessionBudget ?? 0) > 0);
+
+  // Auto-growing prompt field: a single-line <input> clipped anything past its width, so a
+  // long build description was only ever partly visible. A <textarea> that resizes to its
+  // content — up to a cap, past which it scrolls internally — shows the whole prompt.
+  const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  useLayoutEffect(() => {
+    const el = promptTextareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const scrollH = el.scrollHeight;
+    if (scrollH > 240) {
+      el.style.height = '240px';
+      el.style.overflowY = 'auto';
+    } else {
+      el.style.height = `${scrollH}px`;
+      el.style.overflowY = 'hidden';
+    }
+  }, [promptText]);
 
   const presets = [
     {
@@ -58,6 +85,7 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
 
   const handlePresetClick = (query: string, presetBudget: number) => {
     setBudgetBDT(presetBudget);
+    setBudgetChosen(true);
     setSessionBudget(presetBudget);
     const promptId = `prompt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     dispatchPrompt({
@@ -74,99 +102,28 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitPrompt = useCallback(() => {
     if (!promptText.trim()) return;
     const query = promptText.trim();
     const promptId = `prompt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     dispatchPrompt({
       id: promptId,
       text: query,
-      budgetBDT,
+      budgetBDT: budgetChosen ? budgetBDT : undefined,
       source: 'hero',
     });
     setPromptText('');
     setShowSentConfirmation(true);
     setTimeout(() => setShowSentConfirmation(false), 2500);
     if (onLaunchPrompt) {
-      onLaunchPrompt(query, budgetBDT);
+      onLaunchPrompt(query, budgetChosen ? budgetBDT : undefined);
     }
+  }, [promptText, budgetChosen, budgetBDT, dispatchPrompt, onLaunchPrompt]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitPrompt();
   };
-
-  const toggleVoiceMode = useCallback(() => {
-    if (isVoiceActive) {
-      setIsVoiceActive(false);
-      return;
-    }
-
-    // Check browser SpeechRecognition support
-    interface ISpeechRecognitionEvent {
-      results: {
-        [index: number]: {
-          [index: number]: {
-            transcript: string;
-          };
-        };
-      };
-    }
-
-    interface ISpeechRecognition {
-      lang: string;
-      interimResults: boolean;
-      maxAlternatives: number;
-      onresult: ((event: ISpeechRecognitionEvent) => void) | null;
-      onerror: (() => void) | null;
-      onend: (() => void) | null;
-      start: () => void;
-    }
-
-    interface SpeechRecognitionConstructor {
-      new (): ISpeechRecognition;
-    }
-
-    const SpeechRecognitionClass =
-      (window as unknown as { SpeechRecognition?: SpeechRecognitionConstructor })
-        .SpeechRecognition ||
-      (window as unknown as { webkitSpeechRecognition?: SpeechRecognitionConstructor })
-        .webkitSpeechRecognition;
-
-    if (SpeechRecognitionClass) {
-      try {
-        const recognition = new SpeechRecognitionClass();
-        recognition.lang = 'en-US';
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-
-        setIsVoiceActive(true);
-
-        recognition.onresult = (event: ISpeechRecognitionEvent) => {
-          const transcript = event.results[0][0].transcript;
-          if (transcript) {
-            setPromptText(transcript);
-          }
-          setIsVoiceActive(false);
-        };
-
-        recognition.onerror = () => {
-          setIsVoiceActive(false);
-        };
-
-        recognition.onend = () => {
-          setIsVoiceActive(false);
-        };
-
-        recognition.start();
-      } catch {
-        // Fallback to simulated audio reactive pulse
-        setIsVoiceActive(true);
-        setTimeout(() => setIsVoiceActive(false), 4000);
-      }
-    } else {
-      // Graceful simulated listening pulse
-      setIsVoiceActive(true);
-      setTimeout(() => setIsVoiceActive(false), 4000);
-    }
-  }, [isVoiceActive]);
 
   return (
     <section className="tonima-hero-section" id="tonima-hero">
@@ -183,7 +140,7 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
         >
           {/* Main Headline */}
           <h1 className="ai-hero-headline">
-            {t('heroTitlePrefix', { defaultValue: 'Meet Tonima —' })} <br />
+            {t('heroTitlePrefix', { defaultValue: 'Meet Tonima' })} <br />
             <span className="gradient-accent">
               {t('heroTitleGradient', { defaultValue: 'Your Next-Gen' })}
             </span>{' '}
@@ -202,8 +159,9 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
           {/* Stage 1: Prompt Launcher Box */}
           <form className="tonima-prompt-box" onSubmit={handleSubmit}>
             <div className="tonima-prompt-input-row">
-              <input
-                type="text"
+              <textarea
+                ref={promptTextareaRef}
+                rows={1}
                 className="tonima-prompt-input"
                 placeholder={t('promptPlaceholder', {
                   defaultValue:
@@ -211,7 +169,16 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
                 })}
                 value={promptText}
                 onChange={(e) => setPromptText(e.target.value)}
+                onKeyDown={(e) => {
+                  // Enter submits, matching the old single-line input; Shift+Enter still
+                  // inserts a newline for a longer, multi-line requirement description.
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    submitPrompt();
+                  }
+                }}
                 aria-label="PC Requirement Prompt"
+                data-lenis-prevent
               />
 
               {/* Voice prompt trigger */}
@@ -329,6 +296,7 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
                     onChange={(e) => {
                       const val = Number(e.target.value);
                       setBudgetBDT(val);
+                      setBudgetChosen(true);
                       setSessionBudget(val);
                     }}
                     className="w-full accent-accent cursor-pointer"

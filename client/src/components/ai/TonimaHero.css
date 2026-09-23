@@ -145,7 +145,9 @@
 
 .tonima-prompt-input-row {
   display: flex;
-  align-items: center;
+  /* flex-end, not center: as the textarea grows past one line, its buttons should stay
+     pinned to the last line's baseline rather than drifting to the vertical middle. */
+  align-items: flex-end;
   gap: 0.75rem;
 }
 
@@ -155,8 +157,23 @@
   border: none;
   color: var(--text-primary);
   font-size: 1rem;
+  line-height: 1.5;
   outline: none;
   font-family: inherit;
+  /* Auto-grows via JS (height set to scrollHeight on change); resize handle and native
+     scrollbar are unwanted and hidden cleanly. */
+  resize: none;
+  overflow-y: hidden;
+  max-height: 240px;
+  padding: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tonima-prompt-input::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .tonima-prompt-input::placeholder {

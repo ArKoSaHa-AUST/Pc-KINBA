@@ -1,5 +1,25 @@
+.builder-section {
+  padding-top: 44px;
+  padding-bottom: 44px;
+}
+
 .builder-header {
-  margin-bottom: 4rem;
+  margin-bottom: 2.5rem;
+}
+
+.builder-header .section-title {
+  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
+}
+
+.builder-header .section-subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .text-center {
@@ -9,22 +29,22 @@
 .builder-dashboard {
   display: grid;
   grid-template-columns: 300px 1fr;
-  gap: 2rem;
-  padding: 2rem;
+  gap: 2.5rem;
+  padding: 2.25rem;
   background: var(--glass-bg);
   border: 1px solid var(--border);
   border-radius: 24px;
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  min-height: 600px;
+  min-height: auto;
 }
 
 .dashboard-sidebar {
   border-right: 1px solid var(--border);
-  padding-right: 2rem;
+  padding-right: 2.25rem;
   display: flex;
   flex-direction: column;
-  gap: 3rem;
+  gap: 2rem;
 }
 
 .budget-slider label,
@@ -43,7 +63,7 @@
   background: var(--fill-muted);
   border-radius: 3px;
   position: relative;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .slider-fill {

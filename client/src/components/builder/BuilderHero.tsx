@@ -100,14 +100,14 @@ export default function BuilderHero({
             Build Your Dream <span className="gradient-text">Rig</span>
           </h1>
           <p className="builder-hero-subtitle">
-            Select components, visualize in 3D, and optimize with AI — all in real time.
+            Select components, visualize in 3D, and optimize with AI, all in real time.
           </p>
 
           <div className="builder-budget glass-card">
             <div className="builder-budget-header">
               <span className="builder-budget-label">Budget</span>
               <span className="builder-budget-value gradient-text-alt">
-                {formatTaka(minBudget)} — {formatTaka(maxBudget)}
+                {formatTaka(minBudget)} to {formatTaka(maxBudget)}
               </span>
             </div>
             <div className="builder-budget-track">

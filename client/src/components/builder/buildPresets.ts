@@ -18,7 +18,7 @@ export const BUILD_PRESETS: BuildPreset[] = [
     id: 'budget-gaming',
     name: 'Budget Gaming',
     purpose: 'Gaming',
-    tagline: 'Smooth 1080p esports and AAA on medium — the best value entry point.',
+    tagline: 'Smooth 1080p esports and AAA on medium: the best value entry point.',
     parts: {
       cpu: { q: 'Ryzen 5 5600', fallback: 'cpu-r5-5600' },
       motherboard: { q: 'B550M', fallback: 'mobo-b550m' },
@@ -34,7 +34,7 @@ export const BUILD_PRESETS: BuildPreset[] = [
     id: 'office-pc',
     name: 'Office & Productivity',
     purpose: 'Office/Productivity',
-    tagline: 'Quiet, efficient and GPU-free — integrated graphics handle office work.',
+    tagline: 'Quiet, efficient and GPU-free: integrated graphics handle office work.',
     parts: {
       cpu: { q: 'i5-14600K', fallback: 'cpu-i5-14600k' },
       motherboard: { q: 'B760M DDR4', fallback: 'mobo-b760m' },

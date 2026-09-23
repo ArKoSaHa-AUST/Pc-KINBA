@@ -44,7 +44,7 @@ export default function FilterMobileDrawer({
         </div>
 
         {/* Scrollable Filter Content */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4" data-lenis-prevent>
           <FilterSidebar
             availableBrands={availableBrands}
             availableRetailers={availableRetailers}

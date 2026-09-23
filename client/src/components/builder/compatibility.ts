@@ -11,6 +11,8 @@
 import {
   estimatePowerDraw as sharedEstimatePowerDraw,
   ruleBios,
+  ruleSocketMatch,
+  ruleMemoryType,
   ruleCoolerClearance,
   ruleCoolerSocket,
   ruleFormFactor,
@@ -208,6 +210,26 @@ function formFactorClash(motherboard: P, pcCase: P): boolean {
   return ruleFormFactor(part(motherboard), part(pcCase))?.severity === 'error';
 }
 
+/**
+ * The hard platform blocks, answered by the shared rules rather than re-compared here.
+ *
+ * These used to be inline `a.socket !== b.socket` / `a.ramType !== b.ramType` tests. When
+ * a catalog product had no parsed socket or memory type — common for boards whose title
+ * does not spell out "DDR5" — `undefined` compared unequal to everything, so the builder
+ * declared a healthy build incompatible and printed it: "undefined board, DDR5 RAM
+ * selected". The shared rules return null when either side is unknown, which is the
+ * honest answer: unknown is not a conflict.
+ */
+function checkSocket(cpu: P, motherboard: P): CompatResult | null {
+  const result = ruleSocketMatch(part(cpu), part(motherboard));
+  return result?.severity === 'error' ? toCompatResult(result) : null;
+}
+
+function checkMemoryType(ram: P, motherboard: P): CompatResult | null {
+  const result = ruleMemoryType(part(ram), part(motherboard));
+  return result?.severity === 'error' ? toCompatResult(result) : null;
+}
+
 /** Checks a candidate against the rest of the build; `slot` is the slot being filled (its current part is ignored). */
 export function checkCompatibility(
   candidate: BuilderProduct,
@@ -220,9 +242,8 @@ export function checkCompatibility(
 
   switch (candidate.category) {
     case 'cpu': {
-      if (b.motherboard && b.motherboard.socket !== candidate.socket) {
-        return { status: 'incompatible', message: `Socket ${candidate.socket} ≠ motherboard` };
-      }
+      const socketClash = checkSocket(candidate, b.motherboard);
+      if (socketClash) return socketClash;
       results.push(checkBios(candidate, b.motherboard), checkCoolerSocket(b.cooling, candidate));
       if (b.psu?.wattage)
         results.push(checkPsuHeadroom(b.psu.wattage, estimatePowerDraw({ ...b, cpu: candidate })));
@@ -238,18 +259,10 @@ export function checkCompatibility(
       break;
     }
     case 'motherboard': {
-      if (b.cpu && b.cpu.socket !== candidate.socket) {
-        return {
-          status: 'incompatible',
-          message: `Socket ${candidate.socket} ≠ CPU (${b.cpu.socket})`,
-        };
-      }
-      if (b.ram && b.ram.ramType !== candidate.ramType) {
-        return {
-          status: 'incompatible',
-          message: `${candidate.ramType} board, ${b.ram.ramType} RAM selected`,
-        };
-      }
+      const socketClash = checkSocket(b.cpu, candidate);
+      if (socketClash) return socketClash;
+      const memoryClash = checkMemoryType(b.ram, candidate);
+      if (memoryClash) return memoryClash;
       if (formFactorClash(candidate, b.case)) {
         return {
           status: 'incompatible',
@@ -266,12 +279,8 @@ export function checkCompatibility(
       break;
     }
     case 'ram': {
-      if (b.motherboard && b.motherboard.ramType !== candidate.ramType) {
-        return {
-          status: 'incompatible',
-          message: `${candidate.ramType} RAM, board needs ${b.motherboard.ramType}`,
-        };
-      }
+      const memoryClash = checkMemoryType(candidate, b.motherboard);
+      if (memoryClash) return memoryClash;
       results.push(checkRamFit(candidate, b.motherboard, b.cpu));
       break;
     }

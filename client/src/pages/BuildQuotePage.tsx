@@ -153,7 +153,7 @@ export default function BuildQuotePage() {
             {retailers.size
               ? `${retailers.size} Bangladeshi retailer${retailers.size > 1 ? 's' : ''} (${[...retailers].join(', ')})`
               : 'Bangladeshi retailers'}
-            ; parts without a live listing show a reference price. Retail prices change daily —
+            ; parts without a live listing show a reference price. Retail prices change daily;
             confirm stock and price with the shop before paying. Warranty terms are set by the
             selling retailer.
           </p>

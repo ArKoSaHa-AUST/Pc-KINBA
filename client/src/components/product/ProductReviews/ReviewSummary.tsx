@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { ThumbsUp, Star } from 'lucide-react';
+import { ThumbsUp } from 'lucide-react';
+import StarRating from './StarRating';
 import RatingBreakdown from './RatingBreakdown';
 import ReviewStats from './ReviewStats';
 import type { ReviewStatsData } from './dummyData';
@@ -13,22 +14,6 @@ export default function ReviewSummary({ stats, loading = false }: ReviewSummaryP
   const total = stats?.totalReviews ?? 0;
   const rating = stats?.averageRating ?? 0;
   const recommend = stats?.recommendPercent ?? (total > 0 ? 100 : 0);
-
-  // Render stars based on rating
-  const renderStars = (score: number) => {
-    return [1, 2, 3, 4, 5].map((star) => (
-      <Star
-        key={star}
-        className={`w-5 h-5 ${
-          score >= star
-            ? 'text-cyan-400 fill-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]'
-            : score >= star - 0.5
-              ? 'text-cyan-400 fill-cyan-400/50'
-              : 'text-gray-600'
-        }`}
-      />
-    ));
-  };
 
   return (
     <motion.div
@@ -61,7 +46,9 @@ export default function ReviewSummary({ stats, loading = false }: ReviewSummaryP
             <span className="text-xs sm:text-sm text-gray-500 font-bold mt-1">out of 5</span>
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-1 mb-2">{renderStars(rating)}</div>
+            <div className="flex items-center gap-1 mb-2">
+              <StarRating rating={rating} size="md" />
+            </div>
             <p className="text-xs sm:text-sm text-gray-400">
               {total > 0
                 ? rating >= 4

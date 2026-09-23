@@ -60,9 +60,9 @@ const VRAM_FIT: Record<VramFit, { tone: string; label: string }> = {
 };
 
 const PERF_NOTE: Record<PerfMode, string> = {
-  gaming: 'Indicative — tier-based estimate, not a measured benchmark.',
-  creator: 'Indicative — time vs. a flagship reference (1.0×), lower is better.',
-  ml: 'Indicative — VRAM needed for quantised local inference / training.',
+  gaming: 'Indicative: tier-based estimate, not a measured benchmark.',
+  creator: 'Indicative: time vs. a flagship reference (1.0×), lower is better.',
+  ml: 'Indicative: VRAM needed for quantised local inference / training.',
 };
 
 const CHECK_ICONS = {
@@ -222,7 +222,7 @@ export default function BuildSummary({
                         )}
                       </div>
                       <span className={`fps-value ${index > 0 ? renderTone(index) : ''}`}>
-                        {index > 0 ? `${index}×` : '—'}
+                        {index > 0 ? `${index}×` : ''}
                       </span>
                     </div>
                   );
@@ -288,7 +288,7 @@ export default function BuildSummary({
               {counts.compatible} passed × 1 pt + {counts.warning} warning
               {counts.warning === 1 ? '' : 's'} × ½ pt + {counts.incompatible} failed × 0 pt, over{' '}
               {applicable} applicable check{applicable === 1 ? '' : 's'}
-              {counts.pending > 0 && ` (${counts.pending} not counted yet — parts missing)`}.
+              {counts.pending > 0 && ` (${counts.pending} not counted yet, parts missing)`}.
               Warnings such as a needed BIOS update or a power adapter cost half a point; a hard
               incompatibility costs the full point. Hover a check for its detail.
             </p>

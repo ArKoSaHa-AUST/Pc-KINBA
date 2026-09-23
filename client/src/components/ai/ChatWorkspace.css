@@ -11,7 +11,7 @@
 
 .tonima-chat-card {
   width: 100%;
-  height: var(--tonima-panel-height, clamp(620px, calc(100vh - 140px), 860px));
+  height: var(--tonima-panel-height, min(calc(100vh - 24px), 1440px));
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -516,6 +516,17 @@
 
 .tonima-input-btn:focus-visible {
   outline: 2px solid var(--accent);
+}
+
+.tonima-input-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tonima-input-btn.is-listening {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: 0 0 10px var(--glass-glow);
 }
 
 .tonima-send-btn {

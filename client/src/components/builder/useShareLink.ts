@@ -21,7 +21,7 @@ export function useShareLink(build: BuildSelection, purpose?: string) {
       await navigator.clipboard.writeText(url);
       toast({ message, variant: 'success' });
     } catch {
-      toast({ message: 'Could not copy the link — clipboard unavailable.', variant: 'danger' });
+      toast({ message: 'Could not copy the link: clipboard unavailable.', variant: 'danger' });
     }
   }, [build, purpose, toast]);
 }

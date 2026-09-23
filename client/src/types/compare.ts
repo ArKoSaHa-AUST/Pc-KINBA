@@ -1,4 +1,5 @@
-export type ComponentCategory = 'gpu' | 'cpu' | 'motherboard' | 'ram' | 'storage' | 'psu' | 'case';
+export type ComponentCategory =
+  'gpu' | 'cpu' | 'motherboard' | 'ram' | 'storage' | 'psu' | 'case' | 'other';
 
 export interface RetailerPriceInfo {
   retailerName: string;
@@ -50,6 +51,9 @@ export interface CompareProduct {
   primarySource: string;
   priceLastSynced: string;
   specs: Record<string, string | number | boolean | null>;
+  /** FK into the curated products catalog, when this product (usually a live/scraped
+   * pick) is linked to a catalog record that may carry additional specs/retailers. */
+  catalogProductId?: string | null;
 }
 
 export interface SlotState {

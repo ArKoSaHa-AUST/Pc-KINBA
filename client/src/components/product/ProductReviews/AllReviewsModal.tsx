@@ -307,6 +307,7 @@ export default function AllReviewsModal({
               onScroll={handleScroll}
               className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 sm:p-8 space-y-8 custom-scrollbar relative"
               style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
+              data-lenis-prevent
             >
               {/* Search and Sort */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

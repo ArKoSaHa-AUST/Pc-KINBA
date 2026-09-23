@@ -9,6 +9,7 @@ import {
   Sparkles,
   CheckCircle2,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './Features.css';
 
 interface FeatureItem {
@@ -20,6 +21,7 @@ interface FeatureItem {
   gradient: string;
   iconBg: string;
   iconColor: string;
+  link: string;
   tags?: string[];
   visual?: React.ReactNode;
 }
@@ -34,6 +36,7 @@ const features: FeatureItem[] = [
     gradient: 'from-purple/10 via-transparent to-accent/5',
     iconBg: 'bg-purple/15 border-purple/30 text-purple',
     iconColor: 'text-purple',
+    link: '/ai-assistant',
     tags: ['Interactive Assistant', 'Bottleneck Elimination', 'Auto Value Pick'],
   },
   {
@@ -45,6 +48,7 @@ const features: FeatureItem[] = [
     gradient: 'from-success/10 via-transparent to-transparent',
     iconBg: 'bg-success/15 border-success/30 text-success',
     iconColor: 'text-success',
+    link: '/pc-builder',
   },
   {
     icon: <Layers size={26} />,
@@ -55,6 +59,7 @@ const features: FeatureItem[] = [
     gradient: 'from-accent/10 via-transparent to-transparent',
     iconBg: 'bg-accent/15 border-accent/30 text-accent',
     iconColor: 'text-accent',
+    link: '/pc-builder',
   },
   {
     icon: <Cpu size={26} />,
@@ -65,6 +70,7 @@ const features: FeatureItem[] = [
     gradient: 'from-purple/10 via-transparent to-transparent',
     iconBg: 'bg-purple/15 border-purple/30 text-purple',
     iconColor: 'text-purple',
+    link: '/compare',
   },
   {
     icon: <Activity size={26} />,
@@ -75,6 +81,7 @@ const features: FeatureItem[] = [
     gradient: 'from-warning/10 via-transparent to-transparent',
     iconBg: 'bg-warning/15 border-warning/30 text-warning',
     iconColor: 'text-warning',
+    link: '/components',
   },
   {
     icon: <Zap size={28} />,
@@ -85,6 +92,7 @@ const features: FeatureItem[] = [
     gradient: 'from-accent/10 via-transparent to-purple/5',
     iconBg: 'bg-accent/15 border-accent/30 text-accent',
     iconColor: 'text-accent',
+    link: '/pc-builder',
     tags: ['1080p / 1440p / 4K Tiers', 'Thermal & Wattage Headroom'],
   },
 ];
@@ -102,14 +110,16 @@ const cardVariants: Variants = {
 };
 
 export default function Features() {
+  const navigate = useNavigate();
+
   return (
-    <section className="section features-section py-20 relative overflow-hidden" id="features">
+    <section className="section features-section relative overflow-hidden" id="features">
       {/* Subtle background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-accent/5 rounded-full blur-[140px] pointer-events-none" />
 
       <div className="container mx-auto px-4 max-w-7xl relative z-10">
         <motion.div
-          className="features-header text-center mb-12 sm:mb-16"
+          className="features-header text-center mb-12 sm:mb-14"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-100px' }}
@@ -119,7 +129,7 @@ export default function Features() {
             <Sparkles className="w-3.5 h-3.5" />
             <span>INTELLIGENT ARCHITECTURE</span>
           </div>
-          <h2 className="section-title text-3xl sm:text-5xl font-black text-text-primary tracking-tight mb-4">
+          <h2 className="section-title text-3xl sm:text-5xl font-black text-text-primary tracking-tight mb-5">
             Why Build With <span className="gradient-text">PC-KINBA?</span>
           </h2>
           <p className="section-subtitle text-base sm:text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
@@ -129,7 +139,7 @@ export default function Features() {
         </motion.div>
 
         {/* 4-Column Balanced Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {features.map((feature, i) => (
             <motion.div
               key={i}
@@ -139,7 +149,15 @@ export default function Features() {
               whileInView="visible"
               viewport={{ once: true, margin: '-50px' }}
               whileHover={{ y: -6, transition: { duration: 0.25 } }}
-              className={`group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl bg-bg-surface/80 backdrop-blur-md border border-border hover:border-accent/40 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.3)] hover:shadow-[0_15px_40px_rgba(0,0,0,0.5)] overflow-hidden ${feature.colSpan}`}
+              onClick={() => navigate(feature.link)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  navigate(feature.link);
+                }
+              }}
+              className={`group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl bg-bg-surface/80 backdrop-blur-md border border-border hover:border-accent/40 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.3)] hover:shadow-[0_15px_40px_rgba(0,0,0,0.5)] overflow-hidden cursor-pointer ${feature.colSpan}`}
             >
               {/* Subtle top corner gradient wash */}
               <div

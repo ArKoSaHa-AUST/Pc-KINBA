@@ -104,7 +104,7 @@ export default function AIRecommendation() {
                 </div>
                 <p className="text-white text-lg lg:text-xl leading-relaxed font-medium">
                   The RTX 5060 Ti offers a substantial leap in 1080p and 1440p gaming performance.
-                  Based on current market data, performance benchmarks, and user sentiment — it's an{' '}
+                  Based on current market data, performance benchmarks, and user sentiment, it's an{' '}
                   <span className="text-cyan-400">excellent value proposition</span> for mainstream
                   gamers.
                 </p>

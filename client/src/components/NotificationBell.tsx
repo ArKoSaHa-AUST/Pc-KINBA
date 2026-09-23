@@ -81,6 +81,7 @@ export default function NotificationBell() {
             transition={{ duration: 0.15 }}
             role="menu"
             className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto rounded-2xl border border-border bg-bg-surface shadow-2xl z-50 p-2"
+            data-lenis-prevent
           >
             <p className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-text-muted">
               Price drop alerts
