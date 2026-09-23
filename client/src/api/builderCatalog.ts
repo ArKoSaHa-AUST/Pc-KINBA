@@ -166,9 +166,14 @@ export function enrichProduct(p: BuilderProduct): BuilderProduct {
     out.psuFormFactor ??= /\bsfx/i.test(n) ? 'SFX' : 'ATX';
   }
   if (p.category === 'cooling' && !p.coolerSockets) {
-    const sockets = ['AM5', 'AM4', 'LGA1700', 'LGA1851', 'LGA1200'].filter((s) =>
-      new RegExp(s.replace('LGA', 'LGA ?'), 'i').test(n),
-    );
+    const COOLER_SOCKET_PATTERNS: [string, RegExp][] = [
+      ['AM5', /\bam5\b/i],
+      ['AM4', /\bam4\b/i],
+      ['LGA1700', /\blga\s?1700\b/i],
+      ['LGA1851', /\blga\s?1851\b/i],
+      ['LGA1200', /\blga\s?1200\b/i],
+    ];
+    const sockets = COOLER_SOCKET_PATTERNS.filter(([, re]) => re.test(n)).map(([s]) => s);
     if (sockets.length) out.coolerSockets = sockets;
   }
   return out;
