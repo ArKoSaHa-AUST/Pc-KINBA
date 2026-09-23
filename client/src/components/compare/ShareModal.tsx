@@ -8,9 +8,48 @@ interface ShareModalProps {
   onCopiedToast: () => void;
 }
 
+const LOCAL_HOSTNAMES = ['localhost', '127.0.0.1', '::1'];
+
 export const ShareModal = ({ isOpen, onClose, onCopiedToast }: ShareModalProps) => {
   const [copied, setCopied] = useState<boolean>(false);
-  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const [qrFailed, setQrFailed] = useState<boolean>(false);
+  const [lanUrl, setLanUrl] = useState<string | null>(null);
+  const localUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const isLocalHost =
+    typeof window !== 'undefined' && LOCAL_HOSTNAMES.includes(window.location.hostname);
+
+  // Swap `localhost` for this machine's LAN IP while developing, so the QR code / link
+  // actually opens from another device (e.g. a phone) on the same WiFi — "localhost" on
+  // that device would otherwise resolve to itself, not this machine.
+  useEffect(() => {
+    if (!isOpen || !isLocalHost) return;
+    let cancelled = false;
+    fetch('/api/lan-ip')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.ip) return;
+        const url = new URL(window.location.href);
+        url.hostname = data.ip;
+        setLanUrl(url.toString());
+      })
+      .catch(() => {
+        /* stay on the localhost URL if this fails */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, isLocalHost]);
+
+  const currentUrl = lanUrl || localUrl;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&margin=8&data=${encodeURIComponent(currentUrl)}`;
+
+  useEffect(() => {
+    setQrFailed(false);
+  }, [currentUrl]);
+
+  useEffect(() => {
+    if (isOpen) setLanUrl(null);
+  }, [isOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -74,35 +113,31 @@ export const ShareModal = ({ isOpen, onClose, onCopiedToast }: ShareModalProps) 
 
           {/* QR Code Card */}
           <div className="w-full p-4 rounded-2xl bg-fill-subtle border border-border flex flex-col items-center justify-center mb-5">
-            <div className="p-3 bg-white rounded-xl shadow-inner mb-2">
-              <svg viewBox="0 0 100 100" className="w-32 h-32">
-                {/* SVG QR Code Pattern Representation */}
-                <rect width="100" height="100" fill="#ffffff" />
-                <rect x="10" y="10" width="24" height="24" fill="#050816" />
-                <rect x="14" y="14" width="16" height="16" fill="#ffffff" />
-                <rect x="18" y="18" width="8" height="8" fill="#050816" />
-
-                <rect x="66" y="10" width="24" height="24" fill="#050816" />
-                <rect x="70" y="14" width="16" height="16" fill="#ffffff" />
-                <rect x="74" y="18" width="8" height="8" fill="#050816" />
-
-                <rect x="10" y="66" width="24" height="24" fill="#050816" />
-                <rect x="14" y="70" width="16" height="16" fill="#ffffff" />
-                <rect x="18" y="74" width="8" height="8" fill="#050816" />
-
-                <rect x="42" y="14" width="16" height="6" fill="#050816" />
-                <rect x="42" y="26" width="8" height="18" fill="#050816" />
-                <rect x="56" y="30" width="14" height="6" fill="#050816" />
-                <rect x="42" y="52" width="16" height="8" fill="#050816" />
-                <rect x="68" y="52" width="18" height="16" fill="#050816" />
-                <rect x="42" y="70" width="16" height="16" fill="#050816" />
-                <rect x="68" y="76" width="18" height="12" fill="#050816" />
-              </svg>
+            <div className="p-3 bg-white rounded-xl shadow-inner mb-2 w-[152px] h-[152px] flex items-center justify-center">
+              {qrFailed ? (
+                <QrCode className="w-16 h-16 text-slate-300" />
+              ) : (
+                <img
+                  src={qrCodeUrl}
+                  alt={`QR code linking to ${currentUrl}`}
+                  className="w-32 h-32"
+                  onError={() => setQrFailed(true)}
+                />
+              )}
             </div>
             <div className="flex items-center gap-1 text-[11px] text-text-muted font-semibold">
               <QrCode className="w-3.5 h-3.5 text-accent" />
-              <span>Scan with mobile camera</span>
+              <span>
+                {qrFailed ? 'QR code unavailable, use the link below' : 'Scan with mobile camera'}
+              </span>
             </div>
+            {isLocalHost && (
+              <div className="mt-1.5 text-[10px] text-text-muted text-center leading-relaxed">
+                {lanUrl
+                  ? 'Using this device’s network address, which works on other devices on the same WiFi.'
+                  : 'Using localhost, which only opens on this device until the network address loads.'}
+              </div>
+            )}
           </div>
 
           {/* Copy Link Input Bar */}

@@ -61,7 +61,7 @@ const METRICS: Metric[] = [
   ...GAME_BENCHMARKS.map<Metric>((game) => ({
     label: `${game.title} · 1440p`,
     value: (b) => estimateFps(b, game, '1440p'),
-    format: (n) => (n ? `${n} fps` : '—'),
+    format: (n) => (n ? `${n} fps` : ''),
     higherIsBetter: true,
   })),
 ];
@@ -69,7 +69,7 @@ const METRICS: Metric[] = [
 /** How A stands against B: positive means A has more; colour says whether that's better. */
 function Delta({ a, b, metric }: { a: number; b: number; metric: Metric }) {
   const diff = a - b;
-  if (!diff || !a || !b) return <span className="compare-delta">—</span>;
+  if (!diff || !a || !b) return <span className="compare-delta" />;
   const better = metric.higherIsBetter ? diff > 0 : diff < 0;
   return (
     <span className={`compare-delta ${better ? 'is-good' : 'is-bad'}`}>
@@ -169,7 +169,7 @@ export default function BuildComparePage() {
                 Compare <span className="gradient-text">Builds</span>
               </h1>
               <p className="builder-section-subtitle">
-                Parts, price, compatibility, power and estimated FPS — side by side. Choose a
+                Parts, price, compatibility, power, and estimated FPS, side by side. Choose a
                 template, a community build or one of your saved builds for either column.
               </p>
             </div>
@@ -220,12 +220,8 @@ export default function BuildComparePage() {
                   return (
                     <tr key={metric.label} className="compare-metric-row">
                       <td className="parts-table-category">{metric.label}</td>
-                      <td className="parts-table-price">
-                        {a.ids.length ? metric.format(va) : '—'}
-                      </td>
-                      <td className="parts-table-price">
-                        {b.ids.length ? metric.format(vb) : '—'}
-                      </td>
+                      <td className="parts-table-price">{a.ids.length ? metric.format(va) : ''}</td>
+                      <td className="parts-table-price">{b.ids.length ? metric.format(vb) : ''}</td>
                       <td className="compare-delta-col">
                         {ready && <Delta a={va} b={vb} metric={metric} />}
                       </td>

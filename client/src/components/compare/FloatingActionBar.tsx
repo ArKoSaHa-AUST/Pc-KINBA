@@ -41,7 +41,7 @@ export const FloatingActionBar = ({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 30, scale: 0.95 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[95vw] sm:max-w-none"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[95vw] sm:max-w-none print:hidden"
         >
           <div className="flex items-center gap-1.5 sm:gap-2 p-2 rounded-2xl bg-glass backdrop-blur-2xl border border-border shadow-[0_10px_35px_rgba(0,0,0,0.2)] text-text-primary">
             {/* Diff Toggle */}

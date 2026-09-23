@@ -964,7 +964,7 @@ export const MOCK_COMPONENTS: ProductComponent[] = [
     bulletSpecs: [
       '6x 6mm AGHP (Anti-Gravity Heat Pipe) Technology',
       'Dual fin-stack heatsink with 2x TL-C12C-S PWM ARGB Fans',
-      'TDP capacity up to 265W — matches 240mm AIO performance at a fraction of the cost',
+      'TDP capacity up to 265W, matching 240mm AIO performance at a fraction of the cost',
       'Solid copper base with nickel plating for AM5 and LGA1700',
     ],
     specs: {

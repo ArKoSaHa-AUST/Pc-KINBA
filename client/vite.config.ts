@@ -15,6 +15,10 @@ export default defineConfig({
     },
   },
   server: {
+    // Listen on all network interfaces (not just localhost) so the Compare page's
+    // Share-link QR code, which points at this machine's LAN IP, is actually reachable
+    // from another device (e.g. a phone) on the same WiFi.
+    host: true,
     proxy: {
       // Forward API calls to the backend during local `vite` dev.
       '/api': {

@@ -1,9 +1,11 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import './Hero.css';
 
 export default function Hero() {
+  const navigate = useNavigate();
   const { scrollY } = useScroll();
   const y1 = useTransform(scrollY, [0, 1000], [0, 200]);
   const opacity = useTransform(scrollY, [0, 300], [1, 0]);
@@ -32,10 +34,20 @@ export default function Hero() {
           <p className="hero-subtitle">{t('hero.subtitle')}</p>
 
           <div className="hero-actions">
-            <button className="button-primary hero-btn">
+            <button
+              className="button-primary hero-btn"
+              onClick={() => navigate('/pc-builder')}
+              type="button"
+            >
               {t('hero.buildCta')} <ChevronRight size={18} />
             </button>
-            <button className="button-secondary hero-btn">{t('hero.exploreCta')}</button>
+            <button
+              className="button-secondary hero-btn"
+              onClick={() => navigate('/components')}
+              type="button"
+            >
+              {t('hero.exploreCta')}
+            </button>
           </div>
         </motion.div>
 

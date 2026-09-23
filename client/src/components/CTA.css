@@ -1,9 +1,9 @@
 .cta-section {
-  padding: 4rem 0 8rem;
+  padding: 3.5rem 0 5rem;
 }
 
 .cta-card {
-  padding: 6rem 2rem;
+  padding: 4.5rem 2.5rem;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -31,15 +31,15 @@
 }
 
 .cta-title {
-  font-size: 4rem;
+  font-size: clamp(2.5rem, 4vw, 3.5rem);
   line-height: 1.1;
   margin-bottom: 1.5rem;
 }
 
 .cta-subtitle {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   color: var(--text-secondary);
-  margin-bottom: 3rem;
+  margin-bottom: 2.5rem;
   max-width: 600px;
 }
 

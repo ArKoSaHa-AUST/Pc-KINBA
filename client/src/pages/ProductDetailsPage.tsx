@@ -28,11 +28,14 @@ export default function ProductDetailsPage() {
   return (
     <div className="bg-bg-primary text-text-primary min-h-screen relative overflow-hidden pb-32">
       <ProductHero product={product} loading={loading} />
-      {/* 200px Empty Space between Live Price Comparison / Price History and Product Reviews */}
-      <div style={{ height: '200px' }} className="w-full pointer-events-none aria-hidden" />
+      {/*
+        Each section below owns its own top spacing (see ProductReviews/index.tsx and
+        AlternativePartsSection.tsx) — no dead spacer divs here. There used to be two,
+        200px and 220px, stacked ON TOP of those sections' own margins (which were
+        themselves 40px and 220px), for up to 440px of unexplained empty space between
+        content the user actually came to read.
+      */}
       <ProductReviews productId={id} product={product} />
-      {/* 220px Empty Space between Product Reviews and Alternative Parts */}
-      <div style={{ height: '220px' }} className="w-full pointer-events-none aria-hidden" />
       <AlternativePartsSection product={product} />
     </div>
   );

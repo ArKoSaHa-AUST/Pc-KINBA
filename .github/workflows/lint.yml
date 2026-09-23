@@ -26,6 +26,12 @@ jobs:
         working-directory: client
         run: npm ci
 
+      # The builder imports types from the shared compatibility package, which is
+      # published as a dist/ build. tsc needs it on disk before it can resolve them.
+      - name: Build Shared Compatibility Package
+        working-directory: client
+        run: npx tsc -p ../packages/compat-rules/tsconfig.json
+
       - name: Verify Prettier Code Style
         working-directory: client
         run: npm run format

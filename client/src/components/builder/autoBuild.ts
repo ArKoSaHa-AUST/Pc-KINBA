@@ -1,63 +1,42 @@
-import type { BuildPurpose } from './buildConfig';
+import { budgetSplitFor, builderPurposeToCanonical, type BudgetSlot } from '@pc-kinba/compat-rules';
+import { BUILD_PURPOSES, type BuildPurpose } from './buildConfig';
 import type { BuilderProduct, ComponentCategory } from './builderCatalog';
 import { checkCompatibility, totalPriceOf, type BuildSelection } from './compatibility';
 
 export type CoreSlot =
   'cpu' | 'gpu' | 'motherboard' | 'ram' | 'storage' | 'psu' | 'case' | 'cooling';
 
-/** Share of the total budget each slot should get, per purpose (sums to 1). */
-export const BUDGET_SPLIT: Record<BuildPurpose, Record<CoreSlot, number>> = {
-  Gaming: {
-    cpu: 0.2,
-    gpu: 0.4,
-    motherboard: 0.11,
-    ram: 0.07,
-    storage: 0.07,
-    psu: 0.06,
-    case: 0.05,
-    cooling: 0.04,
-  },
-  'Content Creation': {
-    cpu: 0.25,
-    gpu: 0.3,
-    motherboard: 0.11,
-    ram: 0.1,
-    storage: 0.1,
-    psu: 0.05,
-    case: 0.05,
-    cooling: 0.04,
-  },
-  'Office/Productivity': {
-    cpu: 0.35,
-    gpu: 0,
-    motherboard: 0.2,
-    ram: 0.12,
-    storage: 0.15,
-    psu: 0.08,
-    case: 0.1,
-    cooling: 0,
-  },
-  Streaming: {
-    cpu: 0.22,
-    gpu: 0.35,
-    motherboard: 0.11,
-    ram: 0.09,
-    storage: 0.07,
-    psu: 0.06,
-    case: 0.05,
-    cooling: 0.05,
-  },
-  'AI/ML Workstation': {
-    cpu: 0.17,
-    gpu: 0.45,
-    motherboard: 0.1,
-    ram: 0.09,
-    storage: 0.07,
-    psu: 0.05,
-    case: 0.04,
-    cooling: 0.03,
-  },
+/** The builder calls the cooler slot 'cooling'; the shared table calls it 'cooler'. */
+const CORE_SLOT_FOR_BUDGET_SLOT: Record<BudgetSlot, CoreSlot> = {
+  cpu: 'cpu',
+  gpu: 'gpu',
+  motherboard: 'motherboard',
+  ram: 'ram',
+  storage: 'storage',
+  psu: 'psu',
+  case: 'case',
+  cooler: 'cooling',
 };
+
+/**
+ * Share of the total budget each slot should get, per purpose (sums to 1).
+ *
+ * Derived from the single shared table in `@pc-kinba/compat-rules`. This used to be
+ * a hand-maintained copy of `PURPOSE_BUDGET_WEIGHTS` in lib/ai/budget.js -- the two
+ * were byte-identical and nothing kept them that way.
+ */
+export const BUDGET_SPLIT: Record<BuildPurpose, Record<CoreSlot, number>> = Object.fromEntries(
+  BUILD_PURPOSES.map((purpose) => {
+    const shared = budgetSplitFor(builderPurposeToCanonical(purpose));
+    const split = Object.fromEntries(
+      (Object.entries(shared) as Array<[BudgetSlot, number]>).map(([slot, weight]) => [
+        CORE_SLOT_FOR_BUDGET_SLOT[slot],
+        weight,
+      ]),
+    ) as Record<CoreSlot, number>;
+    return [purpose, split];
+  }),
+) as Record<BuildPurpose, Record<CoreSlot, number>>;
 
 /** Fill order: platform first so later picks can be checked against socket / RAM type / power. */
 const FILL_ORDER: CoreSlot[] = [

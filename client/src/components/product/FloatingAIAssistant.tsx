@@ -42,7 +42,10 @@ export default function FloatingAIAssistant() {
             </div>
 
             {/* Chat Area */}
-            <div className="flex-1 p-5 h-[350px] overflow-y-auto flex flex-col gap-5 text-sm hide-scrollbar bg-black/20">
+            <div
+              className="flex-1 p-5 h-[350px] overflow-y-auto flex flex-col gap-5 text-sm hide-scrollbar bg-black/20"
+              data-lenis-prevent
+            >
               <div className="bg-gray-800/80 backdrop-blur-md border border-white/5 rounded-[20px] rounded-tl-sm p-4 max-w-[85%] text-gray-200 shadow-sm leading-relaxed">
                 Hi! I noticed you're looking at the RTX 5060 Ti. Need help deciding if it fits your
                 build?

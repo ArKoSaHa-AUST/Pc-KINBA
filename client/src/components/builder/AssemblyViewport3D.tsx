@@ -104,7 +104,7 @@ export default function AssemblyViewport3D({ build, onOpenCategory }: AssemblyVi
           ) : (
             <>
               <strong>{hoveredMeta.label}</strong>
-              <span>Empty slot — click to select</span>
+              <span>Empty slot, click to select</span>
             </>
           )
         ) : (

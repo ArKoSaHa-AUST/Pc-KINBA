@@ -29,7 +29,11 @@ export default function WriteReviewForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (rating === 0 || !title.trim() || !content.trim()) return;
+    if (rating === 0) {
+      setErrorMessage('Please select a star rating.');
+      return;
+    }
+    if (!title.trim() || !content.trim()) return;
 
     if (!user) {
       setErrorMessage('Please log in to submit your product review.');
@@ -205,15 +209,42 @@ export default function WriteReviewForm({
 
               {/* Rating */}
               <div>
-                <label className="block text-xs sm:text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
-                  Overall Rating *
-                </label>
-                <StarRating rating={rating} interactive onRatingChange={setRating} size="xl" />
-                {rating === 0 && (
-                  <p className="text-rose-400 text-xs mt-2 font-medium">
-                    Please select a star rating.
-                  </p>
-                )}
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-400 uppercase tracking-wider">
+                    Overall Rating *
+                  </label>
+                  {rating > 0 && (
+                    <span className="text-sm font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded-lg border border-cyan-500/20 shadow-[0_0_10px_rgba(34,211,238,0.2)]">
+                      {rating.toFixed(1)} / 5.0
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-4">
+                  <StarRating rating={rating} interactive onRatingChange={setRating} size="xl" />
+                  {rating > 0 && (
+                    <span className="text-xs text-gray-400 font-medium">
+                      {rating === 5
+                        ? 'Masterpiece / Outstanding (5.0)'
+                        : rating >= 4.5
+                          ? 'Exceptional (4.5)'
+                          : rating >= 4
+                            ? 'Great / Recommended (4.0)'
+                            : rating >= 3.5
+                              ? 'Very Good (3.5)'
+                              : rating >= 3
+                                ? 'Good (3.0)'
+                                : rating >= 2.5
+                                  ? 'Average / Decent (2.5)'
+                                  : rating >= 2
+                                    ? 'Below Average (2.0)'
+                                    : rating >= 1.5
+                                      ? 'Poor (1.5)'
+                                      : rating >= 1
+                                        ? 'Very Poor (1.0)'
+                                        : 'Terrible (0.5)'}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Title */}

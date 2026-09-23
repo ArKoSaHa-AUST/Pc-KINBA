@@ -1,0 +1,68 @@
+name: Compatibility Rule Parity
+
+# The hardware compatibility rules live in exactly one place
+# (packages/compat-rules). The React builder and the Tonima AI validator are thin
+# adapters over it. This job is the guard that stops them drifting apart again:
+# it fails if either adapter reaches a different verdict from the shared engine,
+# or if rule logic reappears outside the package.
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'packages/compat-rules/**'
+      - 'lib/ai/validator.js'
+      - 'lib/ai/budget.js'
+      - 'lib/ai/planner.js'
+      - 'client/src/components/builder/compatibility.ts'
+      - 'client/src/components/builder/autoBuild.ts'
+      - 'tests/fixtures/compatibility_fixtures.json'
+      - 'tests/shared/**'
+      - '.github/workflows/compat-parity.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'packages/compat-rules/**'
+      - 'lib/ai/validator.js'
+      - 'lib/ai/budget.js'
+      - 'lib/ai/planner.js'
+      - 'client/src/components/builder/compatibility.ts'
+      - 'client/src/components/builder/autoBuild.ts'
+      - 'tests/fixtures/compatibility_fixtures.json'
+      - 'tests/shared/**'
+      - '.github/workflows/compat-parity.yml'
+  workflow_call:
+
+jobs:
+  parity:
+    name: Shared rules, both adapters
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Shared Compatibility Package
+        run: npm run build:packages
+
+      - name: Type-check Shared Package
+        working-directory: packages/compat-rules
+        run: npx tsc -p tsconfig.json --noEmit
+
+      - name: Run Parity Suite
+        run: npx vitest run tests/shared packages/compat-rules
+
+      - name: Run Compatibility Consumers
+        run: npx vitest run tests/backend/compatibility_parity.test.js tests/frontend/store_compatibility.test.ts
+
+      - name: Guard Against Rule Logic Leaking Back Into the Adapters
+        run: node scripts/check-no-duplicate-rules.mjs

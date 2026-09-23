@@ -1,6 +1,15 @@
+.compare-section {
+  padding-top: 44px;
+}
+
+.compare-section .features-header {
+  margin-bottom: 2.75rem;
+  text-align: center;
+}
+
 .compare-table-container {
   overflow-x: auto;
-  padding: 1rem;
+  padding: 1.25rem;
 }
 
 .compare-table {
@@ -10,32 +19,24 @@
 }
 
 .compare-table th {
-  padding: 1.5rem 1rem;
+  padding: 1.25rem 1.25rem;
   color: var(--text-secondary);
   font-weight: 500;
   border-bottom: 1px solid var(--glass-border);
 }
 
 .compare-table td {
-  padding: 1.5rem 1rem;
+  padding: 1.25rem 1.25rem;
   border-bottom: 1px solid var(--glass-border);
   vertical-align: middle;
 }
 
 .highlight-row {
-  background: rgba(124, 58, 237, 0.05);
-  position: relative;
+  background: rgba(124, 58, 237, 0.08);
 }
 
-.highlight-row::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--purple);
-  border-radius: 0 4px 4px 0;
+.highlight-row td:first-child {
+  border-left: 4px solid var(--purple);
 }
 
 .font-bold {

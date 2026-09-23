@@ -97,7 +97,10 @@ export default function CompareDrawer() {
 
       {/* Full Comparison Matrix Modal */}
       {isCompareModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+          data-lenis-prevent
+        >
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/85 backdrop-blur-md"
@@ -143,7 +146,10 @@ export default function CompareDrawer() {
             </div>
 
             {/* Scrollable Table Area */}
-            <div className="flex-1 overflow-x-auto overflow-y-auto p-6 scrollbar-thin">
+            <div
+              className="flex-1 overflow-x-auto overflow-y-auto p-6 scrollbar-thin"
+              data-lenis-prevent
+            >
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
                   <tr>
@@ -228,7 +234,7 @@ export default function CompareDrawer() {
 
                   {/* Dynamic Technical Specs */}
                   {allSpecKeys.map((key) => {
-                    const values = compareList.map((item) => item.specs[key] || '—');
+                    const values = compareList.map((item) => item.specs[key] || '');
                     const hasDifference = new Set(values).size > 1;
 
                     return (

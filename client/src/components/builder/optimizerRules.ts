@@ -104,7 +104,7 @@ function missingParts({ build, budget, purpose, catalog }: OptimizerContext): Su
       add(
         'cooling',
         cooler,
-        `Add a CPU cooler — the ${cpu.name} runs at ${cpu.tdp}W. The ${cooler.name} is a solid fit.`,
+        `Add a CPU cooler: the ${cpu.name} runs at ${cpu.tdp}W. The ${cooler.name} is a solid fit.`,
       );
     }
   }
@@ -143,7 +143,7 @@ function missingParts({ build, budget, purpose, catalog }: OptimizerContext): Su
     add(
       c.id,
       pick,
-      `Almost there — ${missing.length} slot${missing.length > 1 ? 's' : ''} left. Add a ${c.label}: the ${pick.name} (${formatTaka(pick.price)}) ${
+      `Almost there: ${missing.length} slot${missing.length > 1 ? 's' : ''} left. Add a ${c.label}: the ${pick.name} (${formatTaka(pick.price)}) ${
         pick.price <= remaining ? 'fits your remaining budget' : 'is the cheapest compatible pick'
       }.`,
     );
@@ -173,7 +173,7 @@ function sameForLess({ build, catalog }: OptimizerContext): Suggestion[] {
       suggestion: {
         id: `value-${alt.id}`,
         kind: 'value',
-        message: `Same performance for ${formatTaka(saves)} less — ${alt.name} instead of ${from.name}.`,
+        message: `Same performance for ${formatTaka(saves)} less: ${alt.name} instead of ${from.name}.`,
         apply: { slot, product: alt },
       },
     });

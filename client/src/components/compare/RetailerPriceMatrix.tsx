@@ -45,7 +45,7 @@ export const RetailerPriceMatrix = ({
   ];
 
   return (
-    <div className="w-full rounded-3xl bg-glass border border-border backdrop-blur-2xl p-6 sm:p-8 shadow-2xl overflow-hidden relative">
+    <div className="w-full rounded-3xl bg-glass border border-border backdrop-blur-2xl p-6 sm:p-8 shadow-2xl overflow-hidden relative print:shadow-none">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-border pb-5">
         <div>
@@ -71,7 +71,7 @@ export const RetailerPriceMatrix = ({
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-fill-subtle hover:bg-fill-muted border border-border hover:border-accent/40 text-text-primary hover:text-accent transition-all disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-fill-subtle hover:bg-fill-muted border border-border hover:border-accent/40 text-text-primary hover:text-accent transition-all disabled:opacity-50 cursor-pointer print:hidden"
             title="Refresh Live Retailer Prices"
           >
             <RefreshCw
@@ -88,7 +88,7 @@ export const RetailerPriceMatrix = ({
           <thead>
             <tr className="border-b border-border text-xs uppercase font-bold text-text-muted">
               <th className="py-3 px-4 w-[240px]">Verified Retailer</th>
-              {slots.slice(0, 3).map((prod, idx) => (
+              {slots.map((prod, idx) => (
                 <th key={idx} className="py-3 px-4">
                   {prod ? (
                     <div className="flex items-center gap-2">
@@ -106,7 +106,10 @@ export const RetailerPriceMatrix = ({
           </thead>
           <tbody className="divide-y divide-border text-sm">
             {retailersList.map((retailer) => (
-              <tr key={retailer.slug} className="hover:bg-fill-subtle transition-colors">
+              <tr
+                key={retailer.slug}
+                className="hover:bg-fill-subtle transition-colors print:break-inside-avoid"
+              >
                 {/* Retailer Info */}
                 <td className="py-4 px-4 align-top">
                   <div className="flex items-center gap-2.5">
@@ -121,15 +124,13 @@ export const RetailerPriceMatrix = ({
                 </td>
 
                 {/* Product Slot Retailer Prices */}
-                {slots.slice(0, 3).map((prod, pIdx) => {
+                {slots.map((prod, pIdx) => {
                   if (!prod) {
                     return (
                       <td
                         key={pIdx}
                         className="py-4 px-4 text-xs font-mono text-text-muted/30 align-top"
-                      >
-                        —
-                      </td>
+                      />
                     );
                   }
 

@@ -28,7 +28,10 @@ export default function ProductQuickViewModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+      data-lenis-prevent
+    >
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity"
@@ -99,7 +102,10 @@ export default function ProductQuickViewModal() {
         </div>
 
         {/* Right: Info, Tabs & Actions */}
-        <div className="w-full md:w-1/2 p-6 flex flex-col justify-between overflow-y-auto max-h-[80vh] md:max-h-[90vh]">
+        <div
+          className="w-full md:w-1/2 p-6 flex flex-col justify-between overflow-y-auto max-h-[80vh] md:max-h-[90vh]"
+          data-lenis-prevent
+        >
           <div>
             {/* Header info */}
             <div className="flex items-center gap-2 mb-2">

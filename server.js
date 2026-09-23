@@ -6,10 +6,13 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
+import os from "os";
 import { execFileSync } from "child_process";
 import rateLimit from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
-import { sendWelcomeEmail, sendPriceAlertConfirmationEmail, sendPriceDropAlertEmail } from "./mailer.js";
+import { sendWelcomeEmail, sendPriceAlertConfirmationEmail, sendPriceDropAlertEmail, verifyMailerConfig } from "./mailer.js";
+import { createConcurrencyLimiter, generateCorrelationId, isAlreadyDelivered, recordDeliveryAttempt, getDeliveryHealthStats, maskEmail } from "./lib/mailQueue.js";
 import { extractAttributes, generateFingerprint, isSameProductVariant, group5StoreOffers } from "./lib/normalizer.js";
 import { getGroqSuggestions } from "./lib/groq.js";
 import { buildProductAlternatives, deriveCategory, getCategoryFallbackImage } from "./lib/alternatives.js";
@@ -18,6 +21,14 @@ import { deriveBuySignal } from "./lib/priceInsights.js";
 import { runBuildOrchestrator, runRefineOrchestrator, ACTIVE_SESSIONS } from "./lib/ai/orchestrator.js";
 
 dotenv.config();
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[Unhandled Rejection]:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[Uncaught Exception]:", err);
+});
 
 const PYTHON_BIN = process.env.PYTHON_BIN || (
   process.platform === "win32" 
@@ -446,6 +457,40 @@ app.get("/", (req, res) => {
   });
 });
 
+// Local-network IP of this machine — used by the Compare page's Share modal so a QR code /
+// link generated while developing on `localhost` can actually be opened from another device
+// (e.g. a phone) on the same WiFi, where "localhost" would otherwise resolve to that device
+// itself rather than this machine.
+// Dev machines commonly have several adapters at once (real WiFi, real Ethernet, plus
+// virtual ones from VPNs, VirtualBox, Docker, WSL, Hyper-V) whose IPs aren't reachable
+// from another device on the same WiFi. A phone joins over WiFi, so a Wi-Fi-named adapter
+// is the most reliable pick when present; otherwise prefer any adapter not matching known
+// virtual-adapter naming, and only fall back to whatever's left if nothing else qualifies.
+const WIFI_ADAPTER_NAME_PATTERN = /wi-?fi|wlan|airport/i;
+const VIRTUAL_ADAPTER_NAME_PATTERN =
+  /virtualbox|vmware|hyper-v|veth|docker|wsl|loopback|tailscale|tap|tun|zerotier/i;
+
+app.get("/api/lan-ip", (req, res) => {
+  try {
+    const interfaces = os.networkInterfaces();
+    const candidates = [];
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name] || []) {
+        if (iface.family === "IPv4" && !iface.internal) {
+          candidates.push({ name, address: iface.address });
+        }
+      }
+    }
+    const wifi = candidates.find((c) => WIFI_ADAPTER_NAME_PATTERN.test(c.name));
+    const nonVirtual = candidates.find((c) => !VIRTUAL_ADAPTER_NAME_PATTERN.test(c.name));
+    const pick = wifi || nonVirtual || candidates[0] || null;
+    return res.json({ ip: pick ? pick.address : null });
+  } catch (err) {
+    console.error("[GET /api/lan-ip Error]:", sanitizeLog(err.message));
+    return res.json({ ip: null });
+  }
+});
+
 // Feature 1: Multi-Retailer Search Autosuggest Endpoint (StarTech, Ryans, Techland, Skyland, etc.)
 app.get("/api/search/suggest", apiLimiter, async (req, res) => {
   const query = (req.query.q || "").toString().trim();
@@ -606,18 +651,19 @@ app.get("/api/search", apiLimiter, async (req, res) => {
   if (results.length < 2) {
     console.log(`[Auto-Scraper] Insufficient DB results (${results.length}) for query "${sanitizeLog(query)}". Triggering live scraper on 12 retailers...`);
     try {
-      const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
-      const runScriptPath = path.join(process.cwd(), "scrapers/run_scrapers.py");
-      const safeQuery = sanitizeCliArg(query);
-      
-      execFileSync(pythonPath, [runScriptPath, "--query", safeQuery], {
-        timeout: 45000,
-        stdio: "inherit",
-        env: { ...process.env, PYTHONPATH: "." }
-      });
+      if (fs.existsSync(PYTHON_BIN)) {
+        const runScriptPath = path.join(process.cwd(), "scrapers/run_scrapers.py");
+        const safeQuery = sanitizeCliArg(query);
+        
+        execFileSync(PYTHON_BIN, [runScriptPath, "--query", safeQuery], {
+          timeout: 45000,
+          stdio: "inherit",
+          env: { ...process.env, PYTHONPATH: "." }
+        });
 
-      results = await searchSupabaseListings(query, category);
-      processPriceDropEvents().catch(err => console.error("[Price Drop Events Error]:", sanitizeLog(err.message)));
+        results = await searchSupabaseListings(query, category);
+        processPriceDropEvents().catch(err => console.error("[Price Drop Events Error]:", sanitizeLog(err.message)));
+      }
     } catch (err) {
       console.error("[Auto-Scraper Error]:", sanitizeLog(err.message));
     }
@@ -642,11 +688,14 @@ app.get("/api/search/live", commandLimiter, async (req, res) => {
   console.log(`[API Live Search] Running parallel Google web search & live scraper for: "${sanitizeLog(query)}"`);
 
   try {
-    const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
+    if (!fs.existsSync(PYTHON_BIN)) {
+      return res.status(503).json({ error: "Live scraper environment not configured on server" });
+    }
+
     const scriptPath = path.join(process.cwd(), "scrapers/parallel_engine.py");
     const safeQuery = sanitizeCliArg(query);
 
-    const stdout = execFileSync(pythonPath, [scriptPath, safeQuery], {
+    const stdout = execFileSync(PYTHON_BIN, [scriptPath, safeQuery], {
       timeout: 30000,
       encoding: "utf-8",
       env: { ...process.env, PYTHONPATH: "." }
@@ -665,6 +714,75 @@ app.get("/api/search/live", commandLimiter, async (req, res) => {
   }
 });
 
+/**
+ * Resolves a listing-shaped item (title, brand, price, image_url, product_url, retailer,
+ * product_id) for an id that may be a `products.id` (what every product card, compare
+ * drawer and quick-view modal in the client actually links with —
+ * client/src/components/marketplace/ProductCard.tsx and friends), a `listings.id`
+ * directly (old share links), or a curated product with no scraped offer yet. Every
+ * /api/product/:id* route below took only the middle case, which 404'd for the common
+ * case and left the product details page rendering its placeholder UI — generic brand,
+ * no image, no specs, every section showing its empty state — for essentially every real
+ * product in the catalog.
+ *
+ * Cheapest-first when a product has several store offers, so the same product always
+ * resolves to the same listing across calls (id, live-prices, price-history, alternatives).
+ */
+async function resolveListingByProductOrListingId(id) {
+  try {
+    const { data, error } = await supabase
+      .from("listings")
+      .select("*")
+      .eq("product_id", id)
+      .order("price", { ascending: true })
+      .limit(1);
+    if (!error && data && data.length > 0) return data[0];
+  } catch (err) {
+    console.warn("[Product Resolve Warning]:", sanitizeLog(err.message));
+  }
+
+  try {
+    const { data, error } = await supabase.from("listings").select("*").eq("id", id).maybeSingle();
+    if (!error && data) return data;
+  } catch (err) {
+    console.warn("[Product Resolve Warning]:", sanitizeLog(err.message));
+  }
+
+  // No scraped offer exists for this product at all — synthesize a minimal
+  // listing-shaped item from the curated catalog row so the caller still gets real
+  // name/brand/image/price instead of treating the product as not found.
+  try {
+    const { data: curated, error } = await supabase
+      .from("products")
+      .select(
+        "id, name, price, discount_price, brands ( name ), product_images ( image_url, is_primary, display_order )"
+      )
+      .eq("id", id)
+      .maybeSingle();
+    if (!error && curated) {
+      const images = curated.product_images || [];
+      const primaryImage = images.find((i) => i.is_primary) || images[0];
+      const price = curated.discount_price || curated.price || 0;
+      return {
+        id: curated.id,
+        product_id: curated.id,
+        title: curated.name,
+        brand: curated.brands?.name || "Generic",
+        price,
+        price_str: price > 0 ? `${price.toLocaleString()}৳` : "",
+        retailer: "PC-KINBA Catalog",
+        product_url: "",
+        image_url: primaryImage?.image_url || "",
+        last_scraped_at: null
+      };
+    }
+  } catch (err) {
+    console.warn("[Product Resolve Warning]:", sanitizeLog(err.message));
+  }
+
+  return null;
+}
+
 // Feature 3: Dynamic Product Details Endpoint with 5-Store Comparison & Normalization (Supabase)
 app.get("/api/product/:id", apiLimiter, async (req, res) => {
   const id = (req.params.id || "").trim();
@@ -674,127 +792,120 @@ app.get("/api/product/:id", apiLimiter, async (req, res) => {
 
   console.log(`[API Product] Fetching dynamic product details for ID: ${sanitizeLog(id)}`);
 
-  let item = null;
-
   try {
-    const { data, error } = await supabase
-      .from("listings")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
-    if (!error && data) {
-      item = data;
+    const item = await resolveListingByProductOrListingId(id);
+
+    if (!item) {
+      return res.status(404).json({ error: "Product not found" });
     }
-  } catch (err) {
-    console.warn("[Product Details Supabase Warning]:", sanitizeLog(err.message));
-  }
 
-  if (!item) {
-    return res.status(404).json({ error: "Product not found" });
-  }
+    // Extract canonical attributes & fingerprint
+    const { fingerprint, canonical_name, attributes } = generateFingerprint(item.title, item.brand);
+    const category = deriveCategory(item.title);
 
-  // Extract canonical attributes & fingerprint
-  const { fingerprint, canonical_name, attributes } = generateFingerprint(item.title, item.brand);
-  const category = deriveCategory(item.title);
+    // Search candidate matching listings across Supabase DB
+    const titleWords = item.title.split(/\s+/).filter(w => w.length > 2);
+    const mainKeywords = titleWords.slice(0, 3).join(" ");
 
-  // Search candidate matching listings across Supabase DB
-  const titleWords = item.title.split(/\s+/).filter(w => w.length > 2);
-  const mainKeywords = titleWords.slice(0, 3).join(" ");
+    const rawCandidates = await searchSupabaseListings(mainKeywords);
 
-  const rawCandidates = await searchSupabaseListings(mainKeywords);
+    // Filter candidates using 85% fuzzy match & variant safety checks (prevent merging 8GB vs 16GB)
+    const matchedListings = rawCandidates.filter((cand) => {
+      if (cand.id === item.id) return false;
+      return isSameProductVariant(item.title, cand.title, 0.85);
+    });
 
-  // Filter candidates using 85% fuzzy match & variant safety checks (prevent merging 8GB vs 16GB)
-  const matchedListings = rawCandidates.filter((cand) => {
-    if (cand.id === item.id) return false;
-    return isSameProductVariant(item.title, cand.title, 0.85);
-  });
+    // Group offers across target stores
+    let groupedResult = group5StoreOffers(item, matchedListings);
 
-  // Group offers across target stores
-  let groupedResult = group5StoreOffers(item, matchedListings);
+    // Automatic Real-Time Price Comparison: If fewer than 2 stores have prices or ?live=true, trigger live Google scanner
+    const pricedShopsCount = groupedResult.shops.filter(s => s.price > 0).length;
+    if (pricedShopsCount < 2 || req.query.live === 'true') {
+      try {
+        if (fs.existsSync(PYTHON_BIN)) {
+          console.log(`[API Product] Running Google Live Scanner for "${sanitizeLog(item.title)}"...`);
+          const scannerScript = path.join(process.cwd(), "scrapers/google_live_scanner.py");
+          const safeTitle = sanitizeCliArg(item.title || item.canonical_name || "");
 
-  // Automatic Real-Time Price Comparison: If fewer than 2 stores have prices or ?live=true, trigger live Google scanner
-  const pricedShopsCount = groupedResult.shops.filter(s => s.price > 0).length;
-  if (pricedShopsCount < 2 || req.query.live === 'true') {
-    try {
-      console.log(`[API Product] Running Google Live Scanner for "${sanitizeLog(item.title)}"...`);
-      const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
-      const scannerScript = path.join(process.cwd(), "scrapers/google_live_scanner.py");
-      const safeTitle = sanitizeCliArg(item.title || item.canonical_name || "");
+          const stdout = execFileSync(PYTHON_BIN, [scannerScript, safeTitle], {
+            timeout: 35000,
+            encoding: "utf-8",
+            env: { ...process.env, PYTHONPATH: "." }
+          });
 
-      const stdout = execFileSync(pythonPath, [scannerScript, safeTitle], {
-        timeout: 35000,
-        encoding: "utf-8",
-        env: { ...process.env, PYTHONPATH: "." }
-      });
-
-      const jsonMatch = stdout.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const liveData = JSON.parse(jsonMatch[0]);
-        if (liveData && Array.isArray(liveData.shops) && liveData.shops.length > 0) {
-          groupedResult.shops = liveData.shops;
-          if (liveData.best_price > 0) {
-            groupedResult.best_price = liveData.best_price;
-            groupedResult.best_price_str = liveData.best_price_str;
+          const jsonMatch = stdout.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const liveData = JSON.parse(jsonMatch[0]);
+            if (liveData && Array.isArray(liveData.shops) && liveData.shops.length > 0) {
+              groupedResult.shops = liveData.shops;
+              if (liveData.best_price > 0) {
+                groupedResult.best_price = liveData.best_price;
+                groupedResult.best_price_str = liveData.best_price_str;
+              }
+            }
           }
         }
+      } catch (e) {
+        console.warn("[Live Scanner Auto-Trigger Warning]:", sanitizeLog(e.message));
       }
-    } catch (e) {
-      console.warn("[Live Scanner Auto-Trigger Warning]:", sanitizeLog(e.message));
     }
-  }
 
-  // Intelligent Call for Price Estimation across all store offers (KNN / Historical / Groq)
-  groupedResult.shops = await enrichGroupedShops(groupedResult.shops, item, supabase);
-  const enrichedItem = await estimateSingleProductPrice(item, supabase, groupedResult.shops);
+    // Intelligent Call for Price Estimation across all store offers (KNN / Historical / Groq)
+    groupedResult.shops = await enrichGroupedShops(groupedResult.shops, item, supabase);
+    const enrichedItem = await estimateSingleProductPrice(item, supabase, groupedResult.shops);
 
-  // Construct dynamic key features
-  const keyFeatures = [
-    { label: "Brand", value: attributes.brand || item.brand || "Generic" },
-    { label: "Model", value: attributes.model || item.title },
-    { label: "Capacity / Storage", value: attributes.capacity || "N/A" },
-    { label: "Spec / Type", value: attributes.type || "Standard" },
-    { label: "Speed / Clock", value: attributes.speed || "Standard" },
-    { label: "Canonical Key", value: fingerprint },
-    { label: "Category", value: category },
-    { label: "Last Verified Price", value: enrichedItem.price_str || item.price_str }
-  ];
+    // Construct dynamic key features
+    const keyFeatures = [
+      { label: "Brand", value: attributes.brand || item.brand || "Generic" },
+      { label: "Model", value: attributes.model || item.title },
+      { label: "Capacity / Storage", value: attributes.capacity || "N/A" },
+      { label: "Spec / Type", value: attributes.type || "Standard" },
+      { label: "Speed / Clock", value: attributes.speed || "Standard" },
+      { label: "Canonical Key", value: fingerprint },
+      { label: "Category", value: category },
+      { label: "Last Verified Price", value: enrichedItem.price_str || item.price_str }
+    ];
 
-  const responsePayload = {
-    id: item.id,
-    product_id: item.product_id || null,
-    title: item.title,
-    canonical_name: canonical_name,
-    fingerprint: fingerprint,
-    brand: attributes.brand || item.brand || "Generic",
-    price: enrichedItem.price,
-    price_str: enrichedItem.price_str,
-    is_call_for_price: enrichedItem.is_call_for_price,
-    estimated_price: enrichedItem.estimated_price,
-    estimation_source: enrichedItem.estimation_source,
-    best_price: groupedResult.best_price || enrichedItem.price,
-    best_price_str: groupedResult.best_price_str || enrichedItem.price_str,
-    product: {
+    const responsePayload = {
       id: item.id,
+      product_id: item.product_id || null,
+      title: item.title,
       canonical_name: canonical_name,
       fingerprint: fingerprint,
-      manufacturer: attributes.manufacturer || "Generic",
-      base_model: attributes.baseModel || attributes.model,
-      type: attributes.type || "",
-      capacity: attributes.capacity || "",
-      speed: attributes.speed || "",
-      mpn: attributes.mpn || ""
-    },
-    retailer: item.retailer,
-    product_url: item.product_url,
-    image_url: item.image_url,
-    category: category,
-    last_scraped_at: item.last_scraped_at,
-    keyFeatures: keyFeatures,
-    offers: groupedResult.shops,
-    shops: groupedResult.shops
-  };
+      brand: attributes.brand || item.brand || "Generic",
+      price: enrichedItem.price,
+      price_str: enrichedItem.price_str,
+      is_call_for_price: enrichedItem.is_call_for_price,
+      estimated_price: enrichedItem.estimated_price,
+      estimation_source: enrichedItem.estimation_source,
+      best_price: groupedResult.best_price || enrichedItem.price,
+      best_price_str: groupedResult.best_price_str || enrichedItem.price_str,
+      product: {
+        id: item.id,
+        canonical_name: canonical_name,
+        fingerprint: fingerprint,
+        manufacturer: attributes.manufacturer || "Generic",
+        base_model: attributes.baseModel || attributes.model,
+        type: attributes.type || "",
+        capacity: attributes.capacity || "",
+        speed: attributes.speed || "",
+        mpn: attributes.mpn || ""
+      },
+      retailer: item.retailer,
+      product_url: item.product_url,
+      image_url: item.image_url,
+      category: category,
+      last_scraped_at: item.last_scraped_at,
+      keyFeatures: keyFeatures,
+      offers: groupedResult.shops,
+      shops: groupedResult.shops
+    };
 
-  return res.json(responsePayload);
+    return res.json(responsePayload);
+  } catch (err) {
+    console.error("[API Product Details Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to fetch product details", details: err.message });
+  }
 });
 
 // Feature 3b: Dynamic Category-Aware Alternative Parts Endpoint (Supabase)
@@ -805,7 +916,7 @@ app.get("/api/product/:id/alternatives", apiLimiter, async (req, res) => {
   }
 
   try {
-    const { data: item } = await supabase.from("listings").select("*").eq("id", id).maybeSingle();
+    const item = await resolveListingByProductOrListingId(id);
     if (item) {
       const alternatives = await buildProductAlternatives(item, supabase);
       return res.json({
@@ -854,25 +965,21 @@ app.get("/api/product/:id/live-prices", commandLimiter, async (req, res) => {
     return res.status(400).json({ error: "Valid product ID format required" });
   }
 
-  let item = null;
-
-  try {
-    const { data } = await supabase.from("listings").select("*").eq("id", id).maybeSingle();
-    item = data;
-  } catch (err) {
-    console.error("[Live Scan API Error]:", sanitizeLog(err.message));
-  }
+  const item = await resolveListingByProductOrListingId(id);
 
   if (!item) {
     return res.status(404).json({ error: "Product not found" });
   }
 
   try {
-    const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
+    if (!fs.existsSync(PYTHON_BIN)) {
+      return res.status(503).json({ error: "Live scanner environment not configured on server" });
+    }
+
     const scannerScript = path.join(process.cwd(), "scrapers/google_live_scanner.py");
     const safeTitle = sanitizeCliArg(item.title || item.canonical_name || "");
 
-    const stdout = execFileSync(pythonPath, [scannerScript, safeTitle], {
+    const stdout = execFileSync(PYTHON_BIN, [scannerScript, safeTitle], {
       timeout: 45000,
       encoding: "utf-8",
       env: { ...process.env, PYTHONPATH: "." }
@@ -902,11 +1009,14 @@ app.get("/api/live-scan", commandLimiter, async (req, res) => {
   }
 
   try {
-    const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
+    if (!fs.existsSync(PYTHON_BIN)) {
+      return res.status(503).json({ error: "Live scanner environment not configured on server" });
+    }
+
     const scannerScript = path.join(process.cwd(), "scrapers/google_live_scanner.py");
     const safeTitle = sanitizeCliArg(query);
 
-    const stdout = execFileSync(pythonPath, [scannerScript, safeTitle], {
+    const stdout = execFileSync(PYTHON_BIN, [scannerScript, safeTitle], {
       timeout: 45000,
       encoding: "utf-8",
       env: { ...process.env, PYTHONPATH: "." }
@@ -930,10 +1040,13 @@ app.get("/api/live-scan", commandLimiter, async (req, res) => {
 app.post("/api/reconcile", commandLimiter, (req, res) => {
   console.log("[Reconcile API] Triggering background product reconciliation job...");
   try {
-    const pythonPath = path.join(process.cwd(), "scrapers/venv/bin/python");
+    if (!fs.existsSync(PYTHON_BIN)) {
+      return res.status(503).json({ error: "Reconciliation environment not configured on server" });
+    }
+
     const scriptPath = path.join(process.cwd(), "scrapers/reconcile.py");
     
-    execFileSync(pythonPath, [scriptPath], {
+    execFileSync(PYTHON_BIN, [scriptPath], {
       timeout: 60000,
       stdio: "inherit",
       env: { ...process.env, PYTHONPATH: "." }
@@ -1074,9 +1187,9 @@ app.post("/api/product/:id/reviews", authActionLimiter, async (req, res) => {
 
   const { rating, title, content, pros, cons, images, userId, userName, userAvatar, userCountry, userCountryCode } = req.body || {};
 
-  const numRating = parseInt(rating, 10);
-  if (!numRating || numRating < 1 || numRating > 5) {
-    return res.status(400).json({ error: "Rating must be an integer between 1 and 5" });
+  const numRating = parseFloat(rating);
+  if (isNaN(numRating) || numRating < 0.5 || numRating > 5 || Math.round(numRating * 2) !== numRating * 2) {
+    return res.status(400).json({ error: "Rating must be between 0.5 and 5 in 0.5 increments" });
   }
 
   if (!title || typeof title !== "string" || !title.trim()) {
@@ -1409,6 +1522,148 @@ app.get("/api/user/price-alerts", apiLimiter, async (req, res) => {
   return res.json({ success: true, alerts });
 });
 
+// 4b. Resend price drop alert email for an existing alert
+app.post("/api/price-alerts/:id/resend", commandLimiter, async (req, res) => {
+  const alertId = (req.params.id || "").trim();
+  const email = (req.body?.email || req.query?.email || "").trim().toLowerCase();
+  const userId = (req.body?.userId || req.query?.userId || "").trim();
+
+  if (!alertId) {
+    return res.status(400).json({ error: "Alert ID is required" });
+  }
+
+  try {
+    let callerUser = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      const { data } = await supabase.auth.getUser(token);
+      if (data?.user) callerUser = data.user;
+    }
+
+    const { data: alert, error: fetchErr } = await supabase
+      .from("price_alerts")
+      .select("*")
+      .eq("id", alertId)
+      .maybeSingle();
+
+    if (fetchErr || !alert) {
+      return res.status(404).json({ error: "Price alert not found" });
+    }
+
+    const isOwner =
+      (callerUser && (callerUser.id === alert.user_id || callerUser.email?.toLowerCase() === alert.user_email?.toLowerCase())) ||
+      (email && email === alert.user_email?.toLowerCase()) ||
+      (userId && userId === alert.user_id);
+
+    if (!isOwner) {
+      return res.status(403).json({ error: "Unauthorized to resend notification for this alert" });
+    }
+
+    const freshCorrelationId = generateCorrelationId({
+      kind: "price_drop_resend",
+      recipient: alert.user_email,
+      eventId: Date.now(),
+      alertId: alert.id
+    });
+
+    const emailPayload = {
+      rawEmail: alert.user_email,
+      rawName: alert.user_name || "PC Builder",
+      productTitle: alert.product_title || "Component",
+      oldPrice: alert.initial_price || alert.current_price,
+      newPrice: alert.current_price,
+      storeName: "Tracked Store",
+      productId: alert.product_id,
+      correlationId: freshCorrelationId
+    };
+
+    const sendResult = await sendPriceDropAlertEmail(emailPayload);
+    const now = new Date().toISOString();
+
+    if (sendResult.ok) {
+      await supabase
+        .from("price_alerts")
+        .update({
+          last_notification_status: "sent",
+          last_notification_at: now,
+          last_notification_error: null,
+          failed_notification_count: 0,
+          updated_at: now
+        })
+        .eq("id", alert.id);
+
+      await recordDeliveryAttempt(supabase, {
+        kind: "price_drop_resend",
+        recipient: alert.user_email,
+        userId: alert.user_id,
+        alertId: alert.id,
+        eventId: null,
+        correlationId: freshCorrelationId,
+        status: "sent",
+        attempts: sendResult.attempts,
+        lastError: null,
+        messageId: sendResult.messageId
+      });
+
+      return res.json({
+        success: true,
+        message: `Price drop notification resent to ${maskEmail(alert.user_email)}`,
+        result: sendResult
+      });
+    } else {
+      const statusStr = "failed_" + (sendResult.classification || "transient");
+      await supabase
+        .from("price_alerts")
+        .update({
+          last_notification_status: statusStr,
+          last_notification_at: now,
+          last_notification_error: sendResult.error || "Delivery failed",
+          failed_notification_count: (alert.failed_notification_count || 0) + 1,
+          updated_at: now
+        })
+        .eq("id", alert.id);
+
+      await recordDeliveryAttempt(supabase, {
+        kind: "price_drop_resend",
+        recipient: alert.user_email,
+        userId: alert.user_id,
+        alertId: alert.id,
+        eventId: null,
+        correlationId: freshCorrelationId,
+        status: statusStr,
+        attempts: sendResult.attempts,
+        lastError: sendResult.error || "Delivery failed",
+        messageId: null
+      });
+
+      return res.status(502).json({
+        success: false,
+        error: `Failed to deliver email: ${sendResult.error}`,
+        result: sendResult
+      });
+    }
+  } catch (err) {
+    console.error("[Price Alert Resend Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to resend price alert notification" });
+  }
+});
+
+// 4c. Delivery health status over the last 24 hours and 7 days
+app.get("/api/price-alerts/delivery-health", apiLimiter, async (req, res) => {
+  try {
+    const stats = await getDeliveryHealthStats(supabase);
+    return res.json({
+      success: true,
+      stats,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error("[Delivery Health Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to load delivery health stats" });
+  }
+});
+
 // ==============================================================================
 // Price History (populated by DB trigger on listings) & Price-Drop Processing
 // ==============================================================================
@@ -1426,11 +1681,7 @@ app.get("/api/product/:id/price-history", apiLimiter, async (req, res) => {
   const days = PRICE_HISTORY_WINDOWS.has(Number(req.query.days)) ? Number(req.query.days) : 30;
 
   try {
-    const { data: listing } = await supabase
-      .from("listings")
-      .select("id, product_id, price")
-      .eq("id", id)
-      .maybeSingle();
+    const listing = await resolveListingByProductOrListingId(id);
     if (!listing) {
       return res.status(404).json({ error: "Product not found" });
     }
@@ -1487,11 +1738,13 @@ app.get("/api/product/:id/price-history", apiLimiter, async (req, res) => {
 
 
 
+const MAX_EVENT_RETRIES = 5;
+
 /**
  * Drains price_drop_events (enqueued by a DB trigger on price_history): emails price-alert
  * subscribers, notifies wishlist owners in-app (+ email unless opted out), marks events done.
  * Requires SUPABASE_SERVICE_ROLE_KEY — the queue and wishlists are not readable by anon.
- * @returns {Promise<number>} Number of notifications (email + in-app) produced.
+ * @returns {Promise<{ sent: number, failed: number, skipped: number, inApp: number, events: number }>}
  */
 async function processPriceDropEvents() {
   const { data: events, error } = await supabase
@@ -1500,7 +1753,10 @@ async function processPriceDropEvents() {
     .is("processed_at", null)
     .order("id", { ascending: true })
     .limit(200);
-  if (error || !events?.length) return 0;
+
+  if (error || !events?.length) {
+    return { sent: 0, failed: 0, skipped: 0, inApp: 0, events: 0 };
+  }
 
   const listingIds = [...new Set(events.map(e => e.listing_id))];
   const productIds = [...new Set(events.map(e => e.product_id).filter(Boolean))];
@@ -1523,28 +1779,126 @@ async function processPriceDropEvents() {
   const now = new Date().toISOString();
   const notifications = [];
   const seen = new Set();
-  let count = 0;
 
-  const email = (payload) =>
-    sendPriceDropAlertEmail(payload)
-      .then(() => { count++; })
-      .catch(err => console.error("[Price Drop Email Error]:", sanitizeLog(err.message)));
+  let sentCount = 0;
+  let failedCount = 0;
+  let skippedCount = 0;
+  let inAppCount = 0;
+
+  const eventTransientFailures = new Map();
+  for (const ev of events) {
+    eventTransientFailures.set(ev.id, 0);
+  }
+
+  const limit = createConcurrencyLimiter(5);
+  const tasks = [];
 
   for (const ev of events) {
     const productTitle = titleById.get(ev.listing_id) || "Tracked component";
     const dropPct = Math.round(((ev.old_price - ev.new_price) / ev.old_price) * 100);
-    const base = { productTitle, oldPrice: ev.old_price, newPrice: ev.new_price, storeName: ev.retailer, productId: ev.listing_id };
+    const base = {
+      productTitle,
+      oldPrice: ev.old_price,
+      newPrice: ev.new_price,
+      storeName: ev.retailer,
+      productId: ev.listing_id
+    };
 
-    for (const alert of (alerts || []).filter(a => a.product_id === ev.listing_id)) {
+    // 1. Process active price alerts for this listing
+    const matchingAlerts = (alerts || []).filter(a => a.product_id === ev.listing_id);
+    for (const alert of matchingAlerts) {
       const hitTarget = alert.target_price != null && ev.new_price <= Number(alert.target_price);
       if (!alert.notify_on_any_change && !hitTarget) continue;
-      await email({ ...base, rawEmail: alert.user_email, rawName: alert.user_name || "PC Builder" });
-      await supabase
-        .from("price_alerts")
-        .update({ current_price: ev.new_price, status: hitTarget ? "triggered" : "active", updated_at: now })
-        .eq("id", alert.id);
+
+      const correlationId = generateCorrelationId({
+        kind: "price_drop",
+        recipient: alert.user_email,
+        eventId: ev.id,
+        alertId: alert.id
+      });
+
+      tasks.push(
+        limit(async () => {
+          const alreadyDelivered = await isAlreadyDelivered(supabase, correlationId);
+          if (alreadyDelivered) {
+            skippedCount++;
+            return;
+          }
+
+          const res = await sendPriceDropAlertEmail({
+            ...base,
+            rawEmail: alert.user_email,
+            rawName: alert.user_name || "PC Builder",
+            correlationId
+          });
+
+          if (res.ok) {
+            sentCount++;
+            await supabase
+              .from("price_alerts")
+              .update({
+                current_price: ev.new_price,
+                status: hitTarget ? "triggered" : "active",
+                last_notification_status: "sent",
+                last_notification_at: now,
+                last_notification_error: null,
+                failed_notification_count: 0,
+                updated_at: now
+              })
+              .eq("id", alert.id);
+
+            await recordDeliveryAttempt(supabase, {
+              kind: "price_drop",
+              recipient: alert.user_email,
+              userId: alert.user_id,
+              alertId: alert.id,
+              eventId: ev.id,
+              correlationId,
+              status: "sent",
+              attempts: res.attempts,
+              lastError: null,
+              messageId: res.messageId
+            });
+          } else {
+            failedCount++;
+            const classification = res.classification || "transient";
+            if (classification === "transient") {
+              const prev = eventTransientFailures.get(ev.id) || 0;
+              eventTransientFailures.set(ev.id, prev + 1);
+            }
+            const statusStr = "failed_" + classification;
+
+            await supabase
+              .from("price_alerts")
+              .update({
+                current_price: ev.new_price,
+                status: "active",
+                last_notification_status: statusStr,
+                last_notification_at: now,
+                last_notification_error: res.error || "Delivery failed",
+                failed_notification_count: (alert.failed_notification_count || 0) + 1,
+                updated_at: now
+              })
+              .eq("id", alert.id);
+
+            await recordDeliveryAttempt(supabase, {
+              kind: "price_drop",
+              recipient: alert.user_email,
+              userId: alert.user_id,
+              alertId: alert.id,
+              eventId: ev.id,
+              correlationId,
+              status: statusStr,
+              attempts: res.attempts,
+              lastError: res.error || "Delivery failed",
+              messageId: null
+            });
+          }
+        })
+      );
     }
 
+    // 2. Process wishlist notifications
     for (const wish of (wishes || []).filter(w => w.product_id === ev.product_id)) {
       const key = `${wish.user_id}:${ev.product_id}`;
       if (seen.has(key)) continue;
@@ -1560,27 +1914,132 @@ async function processPriceDropEvents() {
 
       const profile = profileById.get(wish.user_id);
       if (profile?.email && profile.notification_prefs?.emailPriceDrops !== false) {
-        await email({ ...base, rawEmail: profile.email, rawName: profile.full_name || "PC Builder" });
+        const wishCorrelationId = generateCorrelationId({
+          kind: "price_drop_wishlist",
+          recipient: profile.email,
+          eventId: ev.id,
+          alertId: null
+        });
+
+        tasks.push(
+          limit(async () => {
+            const alreadyDelivered = await isAlreadyDelivered(supabase, wishCorrelationId);
+            if (alreadyDelivered) {
+              skippedCount++;
+              return;
+            }
+
+            const res = await sendPriceDropAlertEmail({
+              ...base,
+              rawEmail: profile.email,
+              rawName: profile.full_name || "PC Builder",
+              correlationId: wishCorrelationId
+            });
+
+            if (res.ok) {
+              sentCount++;
+              await recordDeliveryAttempt(supabase, {
+                kind: "price_drop_wishlist",
+                recipient: profile.email,
+                userId: wish.user_id,
+                alertId: null,
+                eventId: ev.id,
+                correlationId: wishCorrelationId,
+                status: "sent",
+                attempts: res.attempts,
+                lastError: null,
+                messageId: res.messageId
+              });
+            } else {
+              failedCount++;
+              const classification = res.classification || "transient";
+              if (classification === "transient") {
+                const prev = eventTransientFailures.get(ev.id) || 0;
+                eventTransientFailures.set(ev.id, prev + 1);
+              }
+
+              await recordDeliveryAttempt(supabase, {
+                kind: "price_drop_wishlist",
+                recipient: profile.email,
+                userId: wish.user_id,
+                alertId: null,
+                eventId: ev.id,
+                correlationId: wishCorrelationId,
+                status: "failed_" + classification,
+                attempts: res.attempts,
+                lastError: res.error || "Delivery failed",
+                messageId: null
+              });
+            }
+          })
+        );
       }
     }
   }
 
+  // Execute all bounded concurrency email dispatches
+  await Promise.all(tasks);
+
+  // In-app notifications
   if (notifications.length) {
     const { error: notifErr } = await supabase.from("notifications").insert(notifications);
-    if (notifErr) console.error("[Notifications Insert Error]:", sanitizeLog(notifErr.message));
-    else count += notifications.length;
+    if (notifErr) {
+      console.error("[Notifications Insert Error]:", sanitizeLog(notifErr.message));
+    } else {
+      inAppCount = notifications.length;
+    }
   }
-  await supabase.from("price_drop_events").update({ processed_at: now }).in("id", events.map(e => e.id));
 
-  if (count) console.log(`[Price Drop Events] Processed ${events.length} event(s), sent ${count} notification(s).`);
-  return count;
+  // 3. Drain events responsibly with retry capping
+  for (const ev of events) {
+    const transientFailures = eventTransientFailures.get(ev.id) || 0;
+    const retries = ev.retry_count || 0;
+
+    if (transientFailures === 0) {
+      // All deliveries succeeded, were deduplicated, or failed permanently
+      await supabase
+        .from("price_drop_events")
+        .update({ processed_at: now })
+        .eq("id", ev.id);
+    } else if (retries + 1 >= MAX_EVENT_RETRIES) {
+      console.warn(
+        `[Price Drop Events] Event ID ${ev.id} exceeded MAX_EVENT_RETRIES (${MAX_EVENT_RETRIES}). Marking processed to unblock queue.`
+      );
+      await supabase
+        .from("price_drop_events")
+        .update({ processed_at: now, retry_count: retries + 1 })
+        .eq("id", ev.id);
+    } else {
+      console.info(
+        `[Price Drop Events] Event ID ${ev.id} had transient delivery failures. Retrying on next drain (retry_count: ${retries + 1}).`
+      );
+      await supabase
+        .from("price_drop_events")
+        .update({ retry_count: retries + 1 })
+        .eq("id", ev.id);
+    }
+  }
+
+  if (sentCount || failedCount || skippedCount || inAppCount) {
+    console.log(
+      `[Price Drop Events] Processed ${events.length} event(s): sent=${sentCount}, failed=${failedCount}, skipped=${skippedCount}, inApp=${inAppCount}.`
+    );
+  }
+
+  return {
+    sent: sentCount,
+    failed: failedCount,
+    skipped: skippedCount,
+    inApp: inAppCount,
+    events: events.length
+  };
 }
 
 // 6. Manual / cron trigger to drain the price-drop event queue
 app.post("/api/price-alerts/process", commandLimiter, async (req, res) => {
   try {
-    const notified = await processPriceDropEvents();
-    return res.json({ success: true, notified });
+    const stats = await processPriceDropEvents();
+    return res.json({ success: true, ...stats });
   } catch (err) {
     console.error("[Price Alerts Process Error]:", sanitizeLog(err.message));
     return res.status(500).json({ error: "Failed to process price alerts" });
@@ -1752,18 +2211,45 @@ app.get("/api/builds/:code/og.png", apiLimiter, async (req, res) => {
   }
 });
 
+function getSafeClientOrigin(req) {
+  if (process.env.CLIENT_URL) {
+    try {
+      const parsed = new URL(process.env.CLIENT_URL);
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        return parsed.origin;
+      }
+    } catch {
+      // fallback
+    }
+  }
+  const host = (req.get("x-forwarded-host") || req.get("host") || "").trim();
+  if (/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) {
+    return "http://localhost:5173";
+  }
+  return "";
+}
+
 app.get("/b/:code", apiLimiter, async (req, res) => {
   const code = req.params.code.toLowerCase();
-  const origin = `${req.get("x-forwarded-proto") || req.protocol}://${req.get("x-forwarded-host") || req.get("host")}`;
-  if (!SHARE_CODE_RE.test(code)) return res.redirect(302, `${origin}/pc-builder`);
+  const clientBase = getSafeClientOrigin(req);
+  const fallbackRedirect = clientBase ? `${clientBase}/pc-builder` : "/pc-builder";
+  if (!SHARE_CODE_RE.test(code)) return res.redirect(302, fallbackRedirect);
   try {
     const build = await resolveSharedBuild(code);
-    if (!build) return res.redirect(302, `${origin}/pc-builder`);
-    const target = `${origin}/pc-builder?parts=${encodeURIComponent(build.partIds.join(","))}`;
+    if (!build) return res.redirect(302, fallbackRedirect);
+    const targetPath = `/pc-builder?parts=${encodeURIComponent(build.partIds.join(","))}`;
+    const target = clientBase ? `${clientBase}${targetPath}` : targetPath;
     const title = `${build.name} — ${fmtTaka(build.total)} | PC KINBA`;
     const description = build.parts.length
       ? build.parts.map((p) => p.name).join(" · ")
       : `${build.partIds.length}-part PC build on PC KINBA`;
+
+    const rawHost = req.get("x-forwarded-host") || req.get("host") || "pc-kinba.com";
+    const safeHost = /^[a-zA-Z0-9.\-_:]+$/.test(rawHost) ? rawHost : "pc-kinba.com";
+    const proto = req.get("x-forwarded-proto") === "https" ? "https" : "http";
+    const ogUrl = clientBase ? `${clientBase}/b/${code}` : `${proto}://${safeHost}/b/${code}`;
+    const ogImg = `${proto}://${safeHost}/api/builds/${code}/og.png`;
+
     res.set("Cache-Control", "public, max-age=300");
     return res.type("html").send(`<!doctype html>
 <html lang="en"><head>
@@ -1774,8 +2260,8 @@ app.get("/b/:code", apiLimiter, async (req, res) => {
 <meta property="og:site_name" content="PC KINBA">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(description)}">
-<meta property="og:url" content="${escapeHtml(`${origin}/b/${code}`)}">
-<meta property="og:image" content="${escapeHtml(`${origin}/api/builds/${code}/og.png`)}">
+<meta property="og:url" content="${escapeHtml(ogUrl)}">
+<meta property="og:image" content="${escapeHtml(ogImg)}">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="${escapeHtml(target)}">
@@ -1783,7 +2269,7 @@ app.get("/b/:code", apiLimiter, async (req, res) => {
 </head><body><p>Opening <a href="${escapeHtml(target)}">${escapeHtml(build.name)}</a>…</p></body></html>`);
   } catch (err) {
     console.error("[Share Link Error]:", sanitizeLog(err.message));
-    return res.redirect(302, `${origin}/pc-builder`);
+    return res.redirect(302, fallbackRedirect);
   }
 });
 
@@ -2008,6 +2494,74 @@ app.get("/api/products", apiLimiter, async (req, res) => {
   } catch (err) {
     console.error("[GET /api/products Error]:", sanitizeLog(err.message));
     return res.status(500).json({ error: "Failed to fetch products", details: err.message });
+  }
+});
+
+// 1b. Catalog Product Detail by ID — used by the Compare page to enrich a selected live/
+// scraped retailer listing with its full catalog record (multi-retailer pricing and any
+// recorded specs) when the listing is linked to a catalog product that has one.
+app.get("/api/catalog-product/:id", apiLimiter, async (req, res) => {
+  const id = (req.params.id || "").trim();
+  if (!id || !/^[a-zA-Z0-9\-_]{1,64}$/.test(id)) {
+    return res.status(400).json({ error: "Valid product ID format required" });
+  }
+
+  try {
+    const { data: product, error } = await supabase
+      .from("products")
+      .select(`
+        id,
+        name,
+        price,
+        discount_price,
+        categories:category_id ( name, slug ),
+        brands:brand_id ( name ),
+        product_images ( image_url, is_primary, display_order ),
+        product_specs ( spec_key, spec_value, spec_group )
+      `)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const { data: listings } = await supabase
+      .from("listings")
+      .select("retailer, price, product_url")
+      .eq("product_id", id);
+
+    const basePrice = product.discount_price || product.price || 0;
+    const retailers = (listings || [])
+      .filter((l) => l.retailer)
+      .map((l) => ({
+        name: l.retailer,
+        price: Number(l.price) > 0 ? Number(l.price) : basePrice,
+        inStock: true,
+        url: l.product_url || "",
+        warranty: "See retailer listing",
+      }));
+
+    const images = product.product_images || [];
+    const primaryImage = images.find((i) => i.is_primary) || images[0];
+
+    return res.json({
+      id: product.id,
+      name: product.name,
+      brand: product.brands?.name || null,
+      category: product.categories?.name || null,
+      image: primaryImage?.image_url || null,
+      price: basePrice,
+      specs: (product.product_specs || []).map((s) => ({
+        key: s.spec_key,
+        value: s.spec_value,
+      })),
+      retailers,
+    });
+  } catch (err) {
+    console.error("[GET /api/catalog-product/:id Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to fetch catalog product" });
   }
 });
 
@@ -2246,14 +2800,75 @@ app.post("/api/upload/imagekit", authActionLimiter, async (req, res) => {
   }
 });
 
+// 7.5. Admin Scraper Health Telemetry Endpoint
+app.get("/api/admin/scraper-health", async (req, res) => {
+  try {
+    const adminKey = process.env.ADMIN_API_KEY;
+    const providedKey = req.headers["x-admin-key"] || req.headers["authorization"]?.replace(/^Bearer\s+/i, "") || req.query.key;
+
+    if (adminKey && providedKey !== adminKey) {
+      return res.status(401).json({ error: "Unauthorized: Invalid admin credentials" });
+    }
+
+    // 1. Fetch scraper_health table
+    const { data: healthData, error: healthErr } = await supabase
+      .from("scraper_health")
+      .select("*")
+      .order("store_id", { ascending: true });
+
+    if (healthErr) {
+      console.warn("[Admin Health] Error fetching scraper_health:", sanitizeLog(healthErr.message));
+    }
+
+    // 2. Fetch scraper_runs from the last 24 hours
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: runsData, error: runsErr } = await supabase
+      .from("scraper_runs")
+      .select("*")
+      .gte("created_at", since24h)
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (runsErr) {
+      console.warn("[Admin Health] Error fetching scraper_runs:", sanitizeLog(runsErr.message));
+    }
+
+    // Group runs by store_id
+    const runsByStore = {};
+    (runsData || []).forEach((run) => {
+      if (!runsByStore[run.store_id]) {
+        runsByStore[run.store_id] = [];
+      }
+      runsByStore[run.store_id].push(run);
+    });
+
+    return res.json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      health: healthData || [],
+      recent_runs_24h: runsByStore
+    });
+  } catch (err) {
+    console.error("[Admin Scraper Health Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to retrieve scraper health status", details: err.message });
+  }
+});
+
 // 8. Tonima AI Build Agent Endpoints (Multi-Model SSE Architecture)
 /**
  * AI Assistant Endpoint: Stream PC Build configuration using team of models
  * POST /api/ai/build
- * Body: { message: string, sessionId?: string, userId?: string, language?: 'en'|'bn' }
+ * Body: { message: string, sessionId?: string, userId?: string, language?: 'en'|'bn', budgetBDT?: number }
+ * SSE Events emitted:
+ *  - thinking: { phase, message }
+ *  - build: { sessionId, build, parts, validation, totalBDT, budget_status, budget_shortfall_bdt, alternatives, swaps }
+ *  - token: { token }
+ *  - correction: { text, reason, offendingToken } (emitted when explainer output is grounded/corrected against verified build)
+ *  - done: { sessionId, tokensIn, tokensOut, model }
+ *  - error: { message }
  */
 app.post("/api/ai/build", commandLimiter, async (req, res) => {
-  const { message, sessionId, userId, language } = req.body || {};
+  const { message, sessionId, userId, language, budgetBDT } = req.body || {};
 
   if (!message || typeof message !== "string" || !message.trim()) {
     return res.status(400).json({ error: "Message query is required" });
@@ -2268,35 +2883,60 @@ app.post("/api/ai/build", commandLimiter, async (req, res) => {
     res.flushHeaders();
   }
 
+  let clientDisconnected = false;
+  req.on("close", () => {
+    clientDisconnected = true;
+  });
+
+  // 15-Second SSE heartbeat to keep proxy connections alive
+  const heartbeatInterval = setInterval(() => {
+    if (!clientDisconnected && !res.writableEnded) {
+      res.write(": ping\n\n");
+    }
+  }, 15000);
+
   const sendEvent = (event, data) => {
-    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (!clientDisconnected && !res.writableEnded) {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    }
   };
 
   try {
     const generator = runBuildOrchestrator(
       message.trim(),
-      { sessionId, userId, language },
+      { sessionId, userId, language, budgetBDT: Number(budgetBDT) > 0 ? Number(budgetBDT) : null },
       supabase
     );
 
     for await (const item of generator) {
+      if (clientDisconnected) break;
       sendEvent(item.event, item.data);
     }
   } catch (err) {
     console.error("[AI Build Error]:", sanitizeLog(err.message));
     sendEvent("error", { message: "Failed to generate build. Please try again." });
   } finally {
-    res.end();
+    clearInterval(heartbeatInterval);
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 });
 
 /**
  * AI Assistant Endpoint: Stream Build Refinement / Part-Swap
  * POST /api/ai/refine
- * Body: { sessionId: string, message: string, language?: 'en'|'bn' }
+ * Body: { sessionId: string, message: string, language?: 'en'|'bn', budgetBDT?: number }
+ * SSE Events emitted:
+ *  - thinking: { phase, message }
+ *  - build: { sessionId, build, parts, validation, totalBDT, budget_status, budget_shortfall_bdt, diff, alternatives, swaps }
+ *  - token: { token }
+ *  - correction: { text, reason, offendingToken } (emitted when explainer output is grounded/corrected against verified build)
+ *  - done: { sessionId }
+ *  - error: { message }
  */
 app.post("/api/ai/refine", commandLimiter, async (req, res) => {
-  const { sessionId, message, language } = req.body || {};
+  const { sessionId, message, language, budgetBDT } = req.body || {};
 
   if (!sessionId || !message || typeof message !== "string" || !message.trim()) {
     return res.status(400).json({ error: "sessionId and message are required" });
@@ -2310,26 +2950,43 @@ app.post("/api/ai/refine", commandLimiter, async (req, res) => {
     res.flushHeaders();
   }
 
+  let clientDisconnected = false;
+  req.on("close", () => {
+    clientDisconnected = true;
+  });
+
+  const heartbeatInterval = setInterval(() => {
+    if (!clientDisconnected && !res.writableEnded) {
+      res.write(": ping\n\n");
+    }
+  }, 15000);
+
   const sendEvent = (event, data) => {
-    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (!clientDisconnected && !res.writableEnded) {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    }
   };
 
   try {
     const generator = runRefineOrchestrator(
       sessionId,
       message.trim(),
-      { language },
+      { language, budgetBDT: Number(budgetBDT) > 0 ? Number(budgetBDT) : null },
       supabase
     );
 
     for await (const item of generator) {
+      if (clientDisconnected) break;
       sendEvent(item.event, item.data);
     }
   } catch (err) {
     console.error("[AI Refine Error]:", sanitizeLog(err.message));
     sendEvent("error", { message: "Failed to refine build. Please try again." });
   } finally {
-    res.end();
+    clearInterval(heartbeatInterval);
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 });
 
@@ -2343,12 +3000,14 @@ app.get("/api/ai/session/:id", async (req, res) => {
 
   const active = ACTIVE_SESSIONS.get(id);
   if (active) {
+    const memoryMessages = active.memory?.turns || [];
     return res.json({
       sessionId: active.id,
       request: active.request,
       build: active.build,
       parts: active.partsList,
-      validation: active.validation
+      validation: active.validation,
+      messages: memoryMessages
     });
   }
 
@@ -2380,14 +3039,35 @@ app.get("/api/ai/session/:id", async (req, res) => {
   }
 });
 
+// ==============================================================================
+// Client SPA Static Serving & Fallback Routing
+// ==============================================================================
+const clientDist = path.join(process.cwd(), "client", "dist");
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/b/")) return next();
+    res.sendFile(path.join(clientDist, "index.html"));
+  });
+} else {
+  // In development, redirect any non-API browser navigation on port 3001 to Vite dev server
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/b/")) return next();
+    const clientBase = getSafeClientOrigin(req) || "http://localhost:5173";
+    const safePath = req.originalUrl.startsWith("/") && !req.originalUrl.startsWith("//") ? req.originalUrl : "/";
+    return res.redirect(302, new URL(safePath, clientBase).toString());
+  });
+}
+
 const PORT = process.env.PORT || 3001;
 
 let server = null;
 if (process.env.NODE_ENV !== "test") {
   server = app.listen(PORT, () => {
     console.log(`🚀 PC Kinba Backend Server running on http://localhost:${PORT}`);
+    verifyMailerConfig().catch((err) => console.warn("[Mailer Startup Warning]:", sanitizeLog(err.message)));
   });
 }
 
-export { app, server, detectSearchIntent, getQueryVariations, sanitizeCliArg, sanitizeLog };
+export { app, server, supabase, detectSearchIntent, getQueryVariations, sanitizeCliArg, sanitizeLog, processPriceDropEvents };
 

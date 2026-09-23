@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { fetchBuySignal } from '../../api/priceHistory';
+import { sanitizeHref } from '../../utils/image';
 import type { BuildPurpose } from './buildConfig';
 import type { BuilderProduct, ComponentCategory } from './builderCatalog';
 import type { BuildSelection } from './compatibility';
@@ -92,7 +93,7 @@ export default function AIOptimizer({
                   {suggestion.href && (
                     <a
                       className="button-primary ai-suggestion-apply"
-                      href={suggestion.href}
+                      href={sanitizeHref(suggestion.href)}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -115,7 +116,7 @@ export default function AIOptimizer({
         <p className="ai-optimizer-empty">
           {Object.keys(build).length === 0
             ? 'Start picking parts and I’ll suggest optimizations in real time.'
-            : 'Your build looks well balanced — no optimizations needed right now.'}
+            : 'Your build looks well balanced. No optimizations needed right now.'}
         </p>
       )}
     </div>

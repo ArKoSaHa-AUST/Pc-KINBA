@@ -16,7 +16,10 @@ export function TermsModal({ open, onClose, onAccept }: TermsModalProps) {
       title="Terms of Service & Privacy Policy"
       closeLabel="Close Terms"
     >
-      <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-2 text-sm text-text-muted">
+      <div
+        className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-2 text-sm text-text-muted"
+        data-lenis-prevent
+      >
         <div className="flex items-center gap-2 p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent font-medium text-xs">
           <ShieldCheck className="w-4 h-4 shrink-0" />
           <span>

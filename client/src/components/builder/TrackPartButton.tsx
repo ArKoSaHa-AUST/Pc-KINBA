@@ -104,7 +104,7 @@ function TrackPartModal({ product, open, onClose }: TrackPartModalProps) {
       ) : (
         <>
           <p className="text-xs text-text-muted mb-3">
-            Pick the retailer listing to track — wishlist it or subscribe to price-drop alerts.
+            Pick the retailer listing to track: wishlist it or subscribe to price-drop alerts.
           </p>
           <div className="flex flex-col gap-2 mb-5">
             {matches.map((m, i) => {
@@ -133,7 +133,7 @@ function TrackPartModal({ product, open, onClose }: TrackPartModalProps) {
                     <span className="block text-xs text-text-muted">{m.retailer}</span>
                   </span>
                   <span className="text-sm font-bold text-accent whitespace-nowrap">
-                    {m.price_str || (m.price ? `৳${m.price.toLocaleString()}` : '—')}
+                    {m.price_str || (m.price ? `৳${m.price.toLocaleString()}` : '')}
                   </span>
                 </button>
               );

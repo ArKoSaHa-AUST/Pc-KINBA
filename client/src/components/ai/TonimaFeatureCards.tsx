@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, Store, Layers, Sparkles, Cpu, ShieldCheck, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { use3DTilt } from './use3DTilt';
 import './TonimaFeatureCards.css';
 
@@ -82,6 +83,7 @@ function ParallaxFeatureCard({
 }
 
 export default function TonimaFeatureCards() {
+  const { t } = useTranslation('ai');
   const [activeTabRetailer, setActiveTabRetailer] = useState<string>('Star Tech');
 
   const retailerPrices = [
@@ -104,15 +106,21 @@ export default function TonimaFeatureCards() {
         >
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass border border-glass-border text-xs font-semibold text-accent mb-4 shadow-[0_0_15px_var(--glass-glow)]">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>3D Spatial Intelligence Matrix</span>
+            <span>
+              {t('featuresMatrixBadge', { defaultValue: '3D Spatial Intelligence Matrix' })}
+            </span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-text-primary tracking-tight">
-            Next-Gen Neural Hardware <br />
-            <span className="gradient-accent">Architectural Capabilities</span>
+            {t('featuresHeadingPrefix', { defaultValue: 'Next-Gen Neural Hardware' })} <br />
+            <span className="gradient-accent">
+              {t('featuresHeadingGradient', { defaultValue: 'Architectural Capabilities' })}
+            </span>
           </h2>
           <p className="text-sm sm:text-base text-text-secondary mt-3">
-            Real-time validation algorithms, live multi-retailer aggregation across Bangladesh, and
-            interactive 3D component breakdown.
+            {t('featuresSubheading', {
+              defaultValue:
+                'Real-time validation algorithms, live multi-retailer aggregation across Bangladesh, and interactive 3D component breakdown.',
+            })}
           </p>
         </motion.div>
 

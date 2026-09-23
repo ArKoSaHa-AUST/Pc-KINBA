@@ -1,19 +1,22 @@
 /* ==========================================================================
    Tonima Main Workspace Container (Clean, Solid, Responsive)
+   Single source of truth for Tonima panel heights and grid layout.
    ========================================================================== */
 
 .tonima-workspace-section {
   position: relative;
   overflow: visible;
   overflow-x: clip;
-  padding-top: 24px;
-  padding-bottom: 96px;
+  padding-top: 16px;
+  /* Was 96px. That much dead space under the panels was itself most of the leftover
+     page scroll, while the panels they sat above were shorter than they needed to be. */
+  padding-bottom: 40px;
 }
 
 @media (max-width: 1024px) {
   .tonima-workspace-section {
-    padding-top: 16px;
-    padding-bottom: 64px;
+    padding-top: 12px;
+    padding-bottom: 40px;
   }
 }
 
@@ -24,17 +27,44 @@
   }
 }
 
+/* 
+ * Single source of truth for panel height:
+ * Both the chat card and 3D HUD card consume --tonima-panel-height.
+ */
 .tonima-workspace-container {
-  max-width: 1440px;
+  /*
+   * Panels claim nearly the whole viewport height. The old 620-860px clamp left the HUD
+   * shorter than its own content, so the 3D view, the compatibility gauge and the parts
+   * list all had to be scrolled inside a small box.
+   *
+   * No floor on purpose: a minimum taller than the viewport would push the bottom of the
+   * sticky HUD below the fold where nothing can scroll to it.
+   *
+   * This offset is intentionally small — it is NOT the same number as the HUD's sticky
+   * `top` (see BuildPreviewHUD.css, which clears the fixed 80px Navbar). Tying the two
+   * together previously meant "make the sticky position correct" and "make the box tall"
+   * fought each other: raising the offset to clear the navbar shrank the box by the same
+   * amount. Decoupled, the HUD can sit correctly below the navbar (via `top`) while the
+   * box itself is as tall as the viewport allows; the HUD's own content already scrolls
+   * internally, so a card taller than what's left below `top` is not a problem.
+   */
+  --tonima-panel-height: min(calc(100vh - var(--tonima-panel-offset, 24px)), 1440px);
+  max-width: 1560px;
   margin: 0 auto;
   padding-left: 32px;
   padding-right: 32px;
   width: 100%;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
-  gap: 2rem;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 430px);
+  gap: 1.75rem;
   align-items: start;
+}
+
+/* Enforce identical panel height across both columns */
+.tonima-workspace-container .tonima-chat-card,
+.tonima-workspace-container .tonima-hud-card {
+  height: var(--tonima-panel-height);
 }
 
 @media (max-width: 1100px) {
@@ -51,9 +81,22 @@
     max-width: 100%;
   }
 
-  .tonima-hud-card {
+  /*
+   * Stacked layout: the page itself scrolls, so neither panel needs an inner scrollbar.
+   * The HUD grows to whatever its active tab needs instead of clipping it at 540px.
+   */
+  .tonima-workspace-container .tonima-chat-card {
+    height: clamp(700px, 94vh, 1100px);
+  }
+
+  .tonima-workspace-container .tonima-hud-card {
     height: auto;
-    min-height: 540px;
+    min-height: 0;
+  }
+
+  .tonima-workspace-container .tonima-hud-content {
+    overflow: visible;
+    flex: 0 0 auto;
   }
 }
 

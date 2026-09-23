@@ -1,8 +1,11 @@
 import { motion } from 'framer-motion';
 import { Settings, CheckCircle2, Zap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './PCBuilderShowcase.css';
 
 export default function PCBuilderShowcase() {
+  const navigate = useNavigate();
+
   return (
     <section className="section builder-section" id="builder">
       <div className="container">
@@ -34,7 +37,7 @@ export default function PCBuilderShowcase() {
                 <div className="slider-fill" style={{ width: '60%' }}></div>
                 <div className="slider-thumb" style={{ left: '60%' }}></div>
               </div>
-              <div className="budget-value">$1,850</div>
+              <div className="budget-value">৳1,85,000</div>
             </div>
 
             <div className="score-widget">
@@ -59,7 +62,19 @@ export default function PCBuilderShowcase() {
             <div className="component-list">
               {['GPU', 'CPU', 'Motherboard', 'RAM', 'Storage', 'Power Supply', 'Case'].map(
                 (comp, i) => (
-                  <div key={i} className="comp-item glass">
+                  <div
+                    key={i}
+                    className="comp-item glass cursor-pointer"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate('/pc-builder')}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        navigate('/pc-builder');
+                      }
+                    }}
+                  >
                     <div className="comp-icon">
                       <Settings size={20} />
                     </div>

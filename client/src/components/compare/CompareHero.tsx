@@ -26,8 +26,8 @@ export const CompareHero: React.FC<CompareHeroProps> = ({
   return (
     <div className="relative pt-2 pb-6 border-b border-white/10 overflow-hidden">
       {/* Background ambient lighting glow */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-10 right-1/4 w-96 h-96 bg-purple/10 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl pointer-events-none -z-10 print:hidden" />
+      <div className="absolute top-10 right-1/4 w-96 h-96 bg-purple/10 rounded-full blur-3xl pointer-events-none -z-10 print:hidden" />
 
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
@@ -48,7 +48,7 @@ export const CompareHero: React.FC<CompareHeroProps> = ({
           </div>
 
           {/* Action Toolbar */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5 print:hidden">
             {/* Toggle Differences Only */}
             <motion.button
               whileTap={{ scale: 0.97 }}

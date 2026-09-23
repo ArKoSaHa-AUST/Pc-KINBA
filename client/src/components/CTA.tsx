@@ -1,8 +1,11 @@
 import { motion } from 'framer-motion';
 import { Sparkles, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './CTA.css';
 
 export default function CTA() {
+  const navigate = useNavigate();
+
   return (
     <section className="section cta-section">
       <div className="container">
@@ -23,10 +26,18 @@ export default function CTA() {
               Join thousands of builders using our AI to create the perfect rig.
             </p>
             <div className="cta-actions">
-              <button className="button-primary hero-btn">
+              <button
+                className="button-primary hero-btn"
+                onClick={() => navigate('/pc-builder')}
+                type="button"
+              >
                 Start Building <ChevronRight size={18} />
               </button>
-              <button className="button-secondary hero-btn">
+              <button
+                className="button-secondary hero-btn"
+                onClick={() => navigate('/ai-assistant')}
+                type="button"
+              >
                 <Sparkles size={18} className="inline-icon" /> Try AI Assistant
               </button>
             </div>

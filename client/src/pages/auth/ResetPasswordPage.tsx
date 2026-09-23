@@ -5,9 +5,10 @@ import { Lock } from 'lucide-react';
 import { Button, Input, useToast } from '../../components/ui';
 import { useAuth } from '../../auth/useAuth';
 import { authErrorMessage } from '../../auth/errorMessage';
+import { calculatePasswordStrength } from '../../utils/passwordStrength';
+import { meetsPasswordPolicy, passwordPolicyMessage } from '../../utils/passwordPolicy';
+import { PasswordStrengthMeter } from '../../components/auth/PasswordStrengthMeter';
 import AuthLayout from './AuthLayout';
-
-const STRONG_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
 export default function ResetPasswordPage() {
   const { t } = useTranslation('auth');
@@ -25,10 +26,19 @@ export default function ResetPasswordPage() {
   const [errors, setErrors] = useState<{ password?: string; confirmPassword?: string }>({});
   const [loading, setLoading] = useState(false);
 
+  // Password entropy engine
+  const userInputs = [email.split('@')[0].trim()].filter(Boolean);
+  const strength = calculatePasswordStrength(password, userInputs);
+
   const validate = () => {
     const next: { password?: string; confirmPassword?: string } = {};
-    if (!STRONG_RE.test(password)) next.password = t('validation.passwordWeak');
-    if (confirmPassword !== password) next.confirmPassword = t('validation.passwordMatch');
+    if (!meetsPasswordPolicy(strength)) {
+      const msgKey = passwordPolicyMessage(strength) || 'validation.passwordWeak';
+      next.password = t(msgKey);
+    }
+    if (confirmPassword !== password) {
+      next.confirmPassword = t('validation.passwordMatch');
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -73,9 +83,16 @@ export default function ResetPasswordPage() {
             revealLabel={t('togglePassword')}
             value={password}
             error={errors.password}
-            hint={errors.password ? undefined : t('validation.passwordWeak')}
-            onChange={(e) => setPassword(e.target.value)}
+            aria-describedby={password ? 'reset-password-feedback' : undefined}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+            }}
           />
+
+          {/* Entropy-Based Password Strength Meter */}
+          <PasswordStrengthMeter strength={strength} id="reset-password-feedback" />
+
           <Input
             type="password"
             label={t('confirmPassword')}
@@ -86,9 +103,18 @@ export default function ResetPasswordPage() {
             revealLabel={t('togglePassword')}
             value={confirmPassword}
             error={errors.confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              if (errors.confirmPassword)
+                setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+            }}
           />
-          <Button type="submit" fullWidth loading={loading}>
+          <Button
+            type="submit"
+            fullWidth
+            loading={loading}
+            disabled={!meetsPasswordPolicy(strength) || password !== confirmPassword}
+          >
             {t('reset.submit')}
           </Button>
         </form>

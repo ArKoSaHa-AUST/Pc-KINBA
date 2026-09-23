@@ -30,6 +30,14 @@ import {
 } from '../components/builder/compatibility';
 import { useToast } from '../components/ui/useToast';
 import { useBuilderCatalog } from '../hooks/useBuilderCatalog';
+import {
+  loadTonimaHandoff,
+  clearTonimaHandoff,
+  resolveHandoffParts,
+  toBuilderPurpose,
+  type TonimaHandoffPart,
+} from '../store/tonimaHandoff';
+import { Bot, AlertCircle } from 'lucide-react';
 import './PCBuilderPage.css';
 
 const DRAFT_KEY = 'pc-kinba.builder-draft';
@@ -65,15 +73,82 @@ export default function PCBuilderPage() {
   const [hydrated, setHydrated] = useState(false);
   const [activeSlot, setActiveSlot] = useState<ComponentCategory | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [isAiAssembled, setIsAiAssembled] = useState(false);
+  const [unresolvedParts, setUnresolvedParts] = useState<TonimaHandoffPart[]>([]);
 
-  // Hydrate once the catalog is available: share link wins, otherwise the saved draft.
+  // Hydrate: precedence is ?parts= + Tonima handoff -> ?parts= alone -> saved draft.
   useEffect(() => {
     if (hydrated || catalog.isLoading) return;
     const shared = new URLSearchParams(window.location.search).get('parts');
-    if (shared) {
+    const handoff = loadTonimaHandoff();
+    const draft = readDraft();
+
+    if (handoff) {
+      // If user has an in-progress saved draft, ask before overwriting
+      if (draft && draft.partIds.length > 0 && !window.location.search.includes('force=true')) {
+        const shouldReplace = window.confirm(
+          'You have an in-progress PC build saved. Would you like to replace it with Tonima AI’s assembled build?',
+        );
+        if (!shouldReplace) {
+          clearTonimaHandoff();
+          setBuild(selectionFromPartIds(draft.partIds.join(','), catalog.byId));
+          setBudget(draft.budget);
+          if (BUILD_PURPOSES.includes(draft.purpose)) setPurpose(draft.purpose);
+          toast({ message: 'Kept your previous saved build draft.', variant: 'info' });
+          setHydrated(true);
+          return;
+        }
+      }
+
+      // Resolve handoff parts against catalog
+      const { selection, resolved, unresolved } = resolveHandoffParts(
+        handoff.parts,
+        catalog.byId,
+        (slot) => catalog.forSlot(slot),
+      );
+
+      // Merge with shared URL IDs if present
+      if (shared) {
+        const urlSelection = selectionFromPartIds(shared, catalog.byId);
+        Object.assign(selection, urlSelection);
+      }
+
+      setBuild(selection);
+      setIsAiAssembled(true);
+
+      if (handoff.purpose) {
+        setPurpose(toBuilderPurpose(handoff.purpose));
+      }
+
+      if (handoff.budgetBDT) {
+        const clampedBudget = Math.max(BUDGET_MIN, Math.min(BUDGET_MAX, handoff.budgetBDT));
+        setBudget([Math.max(BUDGET_MIN, clampedBudget - 20000), clampedBudget]);
+      }
+
+      setUnresolvedParts(unresolved);
+      clearTonimaHandoff();
+
+      // Honest toast reporting
+      if (unresolved.length === 0 && resolved.length > 0) {
+        toast({
+          message: `Tonima’s build loaded: ${resolved.length} of ${handoff.parts.length} parts matched.`,
+          variant: 'success',
+        });
+      } else if (resolved.length > 0) {
+        const missingCategories = unresolved.map((u) => u.category).join(', ');
+        toast({
+          message: `Loaded ${resolved.length} of ${handoff.parts.length} parts. ${missingCategories} aren't in the builder catalog yet.`,
+          variant: 'info',
+        });
+      } else {
+        toast({
+          message: 'Could not match Tonima parts with local builder catalog items.',
+          variant: 'danger',
+        });
+      }
+    } else if (shared) {
       setBuild(selectionFromPartIds(shared, catalog.byId));
     } else {
-      const draft = readDraft();
       if (draft) {
         setBuild(selectionFromPartIds(draft.partIds.join(','), catalog.byId));
         setBudget(draft.budget);
@@ -82,7 +157,7 @@ export default function PCBuilderPage() {
       }
     }
     setHydrated(true);
-  }, [hydrated, catalog.isLoading, catalog.byId, toast]);
+  }, [hydrated, catalog.isLoading, catalog.byId, catalog, toast]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -141,14 +216,14 @@ export default function PCBuilderPage() {
 
   const handleClearAll = useCallback(() => {
     setBuild({});
-    toast({ message: 'Cleared all parts — starting fresh.', variant: 'info' });
+    toast({ message: 'Cleared all parts, starting fresh.', variant: 'info' });
   }, [toast]);
 
   const handleApplyPreset = useCallback(
     (preset: BuildPreset) => {
       setBuild(resolvePreset(preset, catalog.products, catalog.byId));
       setPurpose(preset.purpose);
-      toast({ message: `Loaded “${preset.name}” — customise any part below.`, variant: 'success' });
+      toast({ message: `Loaded “${preset.name}”: customise any part below.`, variant: 'success' });
       handleStartBuilding();
     },
     [catalog, toast, handleStartBuilding],
@@ -160,7 +235,7 @@ export default function PCBuilderPage() {
     setBuild(next);
     toast({
       message: added
-        ? `Filled ${added} slot${added > 1 ? 's' : ''} for ${purpose} — ${formatTaka(totalPriceOf(next))} total.`
+        ? `Filled ${added} slot${added > 1 ? 's' : ''} for ${purpose}: ${formatTaka(totalPriceOf(next))} total.`
         : 'Every core slot is already filled.',
       variant: added ? 'success' : 'info',
     });
@@ -216,10 +291,62 @@ export default function PCBuilderPage() {
             Choose Your <span className="gradient-text">Components</span>
           </h2>
           <p className="builder-section-subtitle">
-            Pick parts across 8 hardware categories — compatibility is checked in real time.
+            Pick parts across 8 hardware categories; compatibility is checked in real time.
             {catalog.isLive && ' Prices are the lowest live offer across Bangladeshi retailers.'}
           </p>
           <BuildLibraryTeaser catalog={catalog} onApplyPreset={handleApplyPreset} />
+
+          {/* AI Provenance Callout */}
+          {isAiAssembled && (
+            <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-semibold text-accent">
+                <Bot className="w-4 h-4 text-accent" />
+                <span>Assembled by Tonima AI · Real-time compatibility & pricing applied</span>
+              </div>
+              <button
+                type="button"
+                className="text-[11px] text-text-muted hover:text-text-primary underline"
+                onClick={() => setIsAiAssembled(false)}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* Unresolved Parts Warning Banner */}
+          {unresolvedParts.length > 0 && (
+            <div className="mb-4 p-3.5 rounded-xl bg-warning/10 border border-warning/30 text-warning text-xs space-y-1.5">
+              <div className="flex items-center justify-between font-bold">
+                <span className="flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-warning" />
+                  <span>
+                    {unresolvedParts.length} Tonima recommendation(s) not in current builder catalog
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="text-[10px] text-warning hover:underline"
+                  onClick={() => setUnresolvedParts([])}
+                >
+                  Dismiss
+                </button>
+              </div>
+              <p className="text-[11px] text-text-secondary">
+                The following parts were recommended by Tonima AI but could not be automatically
+                mapped to a catalog product. Please select an alternative manually:
+              </p>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {unresolvedParts.map((u, uIdx) => (
+                  <span
+                    key={uIdx}
+                    className="px-2 py-0.5 rounded bg-warning/20 border border-warning/30 text-[11px] font-medium text-text-primary"
+                  >
+                    {u.category}: {u.name} (৳{u.priceBDT.toLocaleString('en-IN')})
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="builder-grid-toolbar">
             <button
               type="button"
@@ -252,7 +379,7 @@ export default function PCBuilderPage() {
             Live <span className="gradient-text">3D Assembly</span>
           </h2>
           <p className="builder-section-subtitle">
-            Watch your rig come together — drag to orbit, explode the view, click any part to
+            Watch your rig come together: drag to orbit, explode the view, click any part to
             configure it.
           </p>
           <Suspense fallback={<div className="assembly-viewport-placeholder" />}>
@@ -268,7 +395,7 @@ export default function PCBuilderPage() {
             Build <span className="gradient-text">Summary</span>
           </h2>
           <p className="builder-section-subtitle">
-            Price, power, performance and compatibility — updated live as you pick parts.
+            Price, power, performance and compatibility, all updated live as you pick parts.
           </p>
           <BuildSummary
             build={build}

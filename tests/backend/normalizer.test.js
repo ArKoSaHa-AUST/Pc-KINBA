@@ -100,9 +100,30 @@ describe('Backend > Product Matching & Normalization Engine (lib/normalizer.js)'
       steps: 'group5StoreOffers(mockListings)',
       expected: 'Object containing shops array with availability & pricing',
       actual: `Successfully grouped ${grouped.shops.length} store offers`,
-      status: 'PASS',
       inputData: mockListings,
       outputData: grouped
     });
+  });
+
+  it('BE-NORM-005: Validates comprehensive normalization corpus against expected attributes', () => {
+    const corpusPath = path.join(process.cwd(), 'tests/fixtures/normalization_corpus.json');
+    const corpus = JSON.parse(fs.readFileSync(corpusPath, 'utf-8'));
+
+    expect(corpus.titles.length).toBeGreaterThanOrEqual(120);
+
+    for (const item of corpus.titles) {
+      const attrs = extractAttributes(item.raw_title);
+      const fp = generateFingerprint(item.raw_title);
+
+      expect(attrs.manufacturer).toBe(item.expected.manufacturer);
+      expect(attrs.brand).toBe(item.expected.brand);
+      expect(attrs.capacity).toBe(item.expected.capacity);
+      expect(attrs.type).toBe(item.expected.type);
+      expect(attrs.speed).toBe(item.expected.speed);
+      expect(attrs.model).toBe(item.expected.model);
+      expect(attrs.baseModel).toBe(item.expected.baseModel);
+      expect(attrs.mpn).toBe(item.expected.mpn);
+      expect(fp.fingerprint).toBe(item.expected.fingerprint);
+    }
   });
 });

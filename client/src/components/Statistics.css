@@ -1,5 +1,5 @@
 .stats-section {
-  padding: 6rem 0;
+  padding: 3.5rem 0;
   border-top: 1px solid var(--glass-border);
   border-bottom: 1px solid var(--glass-border);
   background: radial-gradient(circle at center, var(--glass-glow) 0%, transparent 70%);
@@ -9,7 +9,7 @@
   display: flex;
   justify-content: space-around;
   flex-wrap: wrap;
-  gap: 2rem;
+  gap: 3rem;
 }
 
 .stat-item {
@@ -17,7 +17,7 @@
 }
 
 .stat-value {
-  font-size: 4rem;
+  font-size: 3.25rem;
   font-weight: 800;
   margin-bottom: 0.5rem;
 }
