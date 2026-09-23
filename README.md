@@ -1,145 +1,329 @@
-# PCBuilder Bangladesh - Production-Ready Dockerized E-Commerce & AI Platform
+<div align="center">
 
-PCBuilder Bangladesh is a full-stack, enterprise-grade web application similar to **PCPartPicker**, built specifically for the Bangladesh PC hardware market. It features live multi-seller price comparisons, an AI-powered PC build recommendation generator, real-time compatibility auditing, and custom build sharing.
+# 🖥️ PC-KINBA (পিসি কিনবা)
 
-> **Backend Status:** The backend is being migrated to **Laravel (PHP + MySQL)**. The `server/` directory is currently empty and ready for a fresh Laravel installation. The React frontend and AI service are fully in place.
+### *Intelligent PC Builder, Real-Time Multi-Retailer Price Comparison & Hardware Compatibility Platform for Bangladesh*
+
+[![Node.js](https://img.shields.io/badge/Node.js-v22+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![Vite](https://img.shields.io/badge/Vite-v8.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+
+<p align="center">
+  <a href="#-key-features">Key Features</a> •
+  <a href="#-system-architecture">Architecture</a> •
+  <a href="#-getting-started">Getting Started</a> •
+  <a href="#-supported-retailers">Retailers</a> •
+  <a href="#-testing--quality-assurance">Testing</a> •
+  <a href="#-deployment">Deployment</a> •
+  <a href="#-contributing">Contributing</a>
+</p>
+
+</div>
 
 ---
 
-## 1. Project Architecture
+## 📌 Overview
 
-The application follows a layered architecture with a Laravel REST API backend and a React SPA frontend.
+**PC-KINBA** solves the massive fragmentation in Bangladesh's PC hardware market. When buying computer components in Bangladesh, consumers are forced to manually scour dozens of disparate e-commerce storefronts with volatile pricing, inconsistent naming, varying warranty terms, and unannounced stock changes.
 
+**PC-KINBA** unifies the entire ecosystem into a single high-performance platform:
+- **Universal Hardware Catalog**: Clean, canonical, deduplicated component specifications.
+- **12-Retailer Live Price Tracker**: Automated pricing and stock monitoring across Star Tech, Ryans, Tech Land, Skyland, and more.
+- **Intelligent 3D PC Builder**: Real-time compatibility engine (sockets, TDP, RAM generation, physical dimensions) with interactive 3D assembly.
+- **Tonima AI Advisor**: Bilingual conversational AI hardware consultant (English & বাংলা) for budget allocation and bottleneck diagnostics.
+- **Multi-Store Basket Optimization**: Calculates the lowest-cost split basket across multiple stores to maximize savings in Bangladeshi Taka (৳ / BDT).
+
+---
+
+## ✨ Key Features
+
+| Feature | Description |
+|---|---|
+| ⚡ **Live Multi-Retailer Price Comparison** | Real-time prices, stock status (`In Stock`, `Out of Stock`, `Call for Price`), and historical price charts across 12 top Bangladeshi stores. |
+| 🛠️ **Compatibility Auditor (`@pc-kinba/compat-rules`)** | Monorepo-shared rule engine validating CPU sockets (LGA1700, AM5, AM4), DDR4/DDR5 RAM, motherboard form factors, PSU wattage headroom, and GPU casing clearance. |
+| 🧊 **Interactive 3D Assembly View** | Holographic 3D PC case visualization built with **Three.js** and **React Three Fiber** illustrating part placement and aesthetic synergy. |
+| 🤖 **Tonima AI Hardware Advisor** | Natural language hardware consultant powered by **Google Gemini** & **Groq LLM pools** that designs builds based on user budget, intent, and gaming/workstation archetypes. |
+| 🛒 **Smart Multi-Store Basket Router** | Intelligent routing algorithm that groups selected PC parts to find either the single cheapest store or the optimal multi-store combination. |
+| 🔔 **Price Drop Alerts & Email Dispatch** | PostgreSQL trigger-based event pipeline dispatching transactional email notifications via **Brevo SMTP** when tracked component prices drop. |
+| 🔗 **Dynamic OpenGraph Build Previews (`/b/:code`)** | Server-side rendered social preview cards displaying component lists, total cost, and custom preview graphics on Facebook, Discord, WhatsApp, and Twitter/X. |
+| 🌐 **Bilingual (English & বাংলা)** | Seamless dynamic localization with native BDT (`৳`) pricing, English/Bengali search queries, and localized component terminology. |
+
+---
+
+## 🏗️ System Architecture
+
+```text
+                               ┌─────────────────────────────────────────┐
+                               │            End User Browser             │
+                               └───────────┬─────────────────┬───────────┘
+                                           │                 │
+                           React 19 (SPA)  │                 │ Direct Auth / Subscriptions
+                                           ▼                 ▼
+             ┌─────────────────────────────────────────┐   ┌───────────────────────────┐
+             │       Frontend Client (Vite 8 SPA)      │   │       Supabase Auth       │
+             │   - React Three Fiber (3D Rig View)     │   │   - JWT Session Tokens    │
+             │   - Tailwind CSS v4 & Framer Motion     │   │   - OAuth / Magic Links   │
+             │   - i18next Localization (EN / BN)      │   └─────────────┬─────────────┘
+             └────────────────────┬────────────────────┘                 │
+                                  │ HTTPS API Requests                   │
+                                  ▼                                      │
+             ┌─────────────────────────────────────────┐                 │
+             │        Node.js 22 Express API Server    │                 │
+             │   - REST API Endpoints (/api/*)         │                 │
+             │   - OpenGraph Dynamic Metadata (/b/*)   │                 │
+             │   - Search Intent & Token Normalizer    │                 │
+             │   - Rate Limiting & Security Filters    │                 │
+             └────────────────────┬────────────────────┘                 │
+                                  │                                      │
+               ┌──────────────────┼──────────────────┐                   │
+               │ PostgreSQL (RLS) │ Query Data       │ Event Queue       │
+               ▼                  ▼                  ▼                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           Supabase Cloud Platform                            │
+│  - Products, Listings & Categories      - User Profiles, Saved Builds & Cart │
+│  - Price History & Realtime Snapshots   - Scraper Health & Run Telemetry     │
+│  - DB Trigger -> Price Drop Events Queue                                     │
+└──────────────────────┬───────────────────────────────────────────────┬───────┘
+                       │                                               │
+                       ▼                                               ▼
+        ┌──────────────────────────────┐                ┌──────────────────────────────┐
+        │       AI Engine Pools        │                │    Scraper & Health Canary   │
+        │ - Google Gemini (Tonima AI)  │                │ - 12 Store Parsers (Python)  │
+        │ - Groq Multi-Key Fallback    │                │ - curl_cffi TLS Impersonate  │
+        │ - Ollama Local Extraction    │                │ - GitHub Actions 6-Hour Cron │
+        └──────────────────────────────┘                └──────────────────────────────┘
 ```
-                  +-----------------------------------+
-                  |      React SPA (Vite / TS)        |
-                  +-----------------------------------+
-                                    |
-                                    v (HTTP / REST APIs)
-                  +-----------------------------------+
-                  |     Laravel API (PHP 8.2+)        |
-                  +-----------------------------------+
-                    |             |                 |
-                    v             v                 v
-            +---------------+ +---------------+ +---------------+
-            |  Eloquent ORM | | Sanctum/Auth  | | AI / Scrapers |
-            |    (MySQL)    | |    (JWT)       | |  (Services)   |
-            +---------------+ +---------------+ +---------------+
-                    \             |                 /
-                     \            v                /
-                      +---------------------------+
-                      |     Domain Models/Rules   |
-                      +---------------------------+
+
+---
+
+## 📂 Repository Structure
+
+```text
+PC-KINBA/
+├── client/                     # React 19 + TypeScript + Vite 8 frontend application
+│   ├── src/
+│   │   ├── api/                # Typed REST client & Supabase API handlers
+│   │   ├── auth/               # Supabase AuthProvider, context & protected routes
+│   │   ├── components/         # UI components (Builder, Compare, 3D Canvas, Reviews)
+│   │   ├── hooks/              # Custom React hooks (speech-to-text, audio, filters)
+│   │   ├── i18n/               # Localization dictionaries (English & Bengali)
+│   │   └── store/              # Zustand state stores (build, compare, cart)
+│   ├── vercel.json             # Vercel SPA routing rewrites & static asset caching
+│   └── vite.config.ts          # Vite build configuration & LAN proxy
+├── packages/
+│   └── compat-rules/           # Shared isomorphic hardware compatibility rules package
+│       └── src/                # Socket, TDP, DDR, RAM & dimension validation logic
+├── lib/
+│   └── ai/                     # AI orchestration (Tonima AI, Groq client, intent parser)
+├── scrapers/                   # High-performance Python scrapers for BD retailers
+│   ├── selectors.py            # Centralized CSS selector registry for all 12 stores
+│   ├── fast_scrapers.py        # curl_cffi TLS-impersonated scrapers & parsers
+│   ├── health.py               # Rolling-median anomaly detection & state machine
+│   └── smoke_test.py           # Canary runner for scheduled health audits
+├── supabase/
+│   └── migrations/             # Timestamped SQL migrations (PostgreSQL DDL & RLS)
+├── tests/                      # Comprehensive Vitest & Pytest test suites
+│   ├── backend/                # API endpoints, search intent, normalizer & AI tests
+│   ├── frontend/               # Component, store, and UI unit tests
+│   └── scrapers/               # Golden HTML parser regression fixtures & unit tests
+├── .github/workflows/          # CI/CD pipelines (Tests, Scraper Health, Releases)
+├── Dockerfile                  # Multi-stage production Node.js 22 container manifest
+├── docker-compose.yml          # Local and production multi-container configuration
+├── server.js                   # Node.js + Express primary backend API server
+├── mailer.js                   # Nodemailer + Brevo SMTP email delivery engine
+├── deployment.md               # Complete production deployment & operations guide
+└── package.json                # Root npm workspace manifest
 ```
 
 ---
 
-## 2. Directory Layout
+## 🏬 Supported Retailers
 
-The workspace is organized into logical folders separating UI, backend, docker configurations, and management tools:
+PC-KINBA continuously indexes and tracks hardware prices across **12 leading technology retailers in Bangladesh**:
 
-```
-PCBuilder/
-├── .github/                 # GitHub CI Actions workflows & templates
-├── .vscode/                 # VS Code launch and settings configurations
-├── assets/                  # Logos and static documentation assets
-├── client/                  # React + TypeScript Vite application
-├── docker/                  # Containership manifests (Dockerfiles)
-│   ├── client/              # React SPA Dockerfile + Prod Nginx serve config
-│   ├── nginx/               # Reverse proxy config & routing rules
-│   └── ai/                  # AI Python service Dockerfile placeholder
-├── docs/                    # Architectural Decision Records (ADRs)
-├── scripts/                 # Cross-platform startup and housekeeping scripts
-├── server/                  # Laravel backend (to be initialized)
-├── .editorconfig            # Code style styling rules
-├── .gitattributes           # Git checkout LF line-ending normalization config
-├── .gitignore               # Detailed VCS ignore index
-├── client-build.sh          # Local client compiler Docker wrapper
-├── client-dev.sh            # Local client dev server Docker wrapper
-├── docker-compose.yml       # Production-like container configuration
-├── docker-compose.override.yml # Local development volumes & live reload configurations
-└── README.md                # This document
-```
+| Retailer | Store Code | Parser Engine | Platform Base |
+|---|---|---|---|
+| **Star Tech BD** | `startech` | `fast_scrapers.py` | Custom PHP |
+| **Ryans Computers** | `ryans` | `fast_scrapers.py` | Custom SPA / API |
+| **Tech Land BD** | `techland` | `fast_scrapers.py` | Custom E-Commerce |
+| **Skyland BD** | `skyland` | `fast_scrapers.py` | OpenCart |
+| **PCB Store** | `pcbstore` | `fast_scrapers.py` | Custom |
+| **Computer Mania BD** | `computermania` | `fast_scrapers.py` | WooCommerce |
+| **Binary Logic** | `binarylogic` | `fast_scrapers.py` | Custom |
+| **Sell Tech BD** | `selltech` | `fast_scrapers.py` | OpenCart |
+| **Computer Village** | `computervillage` | `fast_scrapers.py` | OpenCart |
+| **PC House BD** | `pchouse` | `fast_scrapers.py` | Custom |
+| **Ultra Technology** | `ultratech` | `fast_scrapers.py` | OpenCart |
+| **Global Brand** | `globalbrand` | `fast_scrapers.py` | OpenCart |
 
 ---
 
-## 3. Requirements
+## 🚀 Getting Started
 
-To run the application, ensure the following are installed:
-*   **Docker & Docker Compose** (minimum Docker Compose v2.0+)
-*   **Node.js (v20+)** (optional, for running local non-containerized UI dev server)
-*   **PHP 8.2+ & Composer** (optional, for running local non-containerized Laravel backend)
-*   **MySQL 8.0** (provided via Docker Compose)
+### Prerequisites
 
----
+- **Node.js**: `v22.0.0` or higher
+- **npm**: `v10.0.0` or higher
+- **Python**: `3.10+` (for scraper modules and Python tests)
+- **Supabase Account**: (Free tier or self-hosted PostgreSQL)
 
-## 4. Getting Started
+### 1. Clone & Install Dependencies
 
-### 4.1 Simple Bootstrap (Recommended)
-
-1.  Clone this repository.
-2.  Copy `.env.example` into a local `.env` configuration file:
-    ```bash
-    cp .env.example .env
-    ```
-3.  Start the entire development environment:
-    ```bash
-    docker compose up --build
-    ```
-4.  Once started, access the services:
-    *   **Frontend Client**: [http://localhost](http://localhost)
-    *   **Database (MySQL)**: `localhost:3306` (User: `root`, Password: matches `.env`)
-    *   **Redis Cache**: `localhost:6379`
-    *   **AI Service**: [http://localhost:8000](http://localhost:8000)
-
----
-
-## 5. Development Infrastructure & Workflow
-
-### 5.1 Host Directory Special-Character Bypass (Linux/macOS)
-Due to special characters in host directory paths on some machines, standard CLI commands can fail because bundlers/compilers URL-encode paths. Custom wrappers are provided:
-*   **React SPA Build**: Run **`./client-build.sh`** to compile the client inside a container.
-*   **React Dev Server**: Run **`./client-dev.sh`** to launch Vite inside a container with HMR mapped to `http://localhost:5173`.
-
-### 5.2 Backend (Laravel)
-Once the Laravel app is initialized inside `server/`, run backend commands via Composer and Artisan:
-*   **Install dependencies**: `composer install`
-*   **Run migrations**: `php artisan migrate`
-*   **Serve locally**: `php artisan serve`
-
-### 5.3 Helper scripts (`scripts/`)
-We include helper scripts under `scripts/`:
-*   **Start Stack**: `./scripts/start.sh`
-*   **Stop Stack**: `./scripts/stop.sh`
-*   **Rebuild**: `./scripts/rebuild.sh`
-*   **Tail Logs**: `./scripts/logs.sh`
-
----
-
-## 6. Running Tests
-
-To run Laravel backend tests (once the backend is initialized):
 ```bash
-php artisan test
+# Clone the repository
+git clone https://github.com/ArKoSaHa-AUST/Pc-KINBA.git
+cd PC-KINBA
+
+# Install root & workspace dependencies
+npm install
+
+# Install client dependencies
+cd client && npm install && cd ..
 ```
 
-To run frontend tests and checks:
+### 2. Configure Environment Variables
+
+Create `.env` in the root directory:
+
 ```bash
-cd client && npm run lint && npx tsc --noEmit
+cp .env.example .env
+```
+
+Fill in your configuration keys:
+
+```ini
+# Application
+NODE_ENV=development
+PORT=3001
+PUBLIC_APP_URL=http://localhost:5173
+
+# Supabase
+SUPABASE_URL=https://<your-project-ref>.supabase.co
+SUPABASE_PUBLISHABLE_KEY=<your-anon-publishable-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+
+# AI Integrations (Optional)
+GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEYS=gsk_key1,gsk_key2
+
+# Email & Notifications (Optional)
+BREVO_SMTP_HOST=smtp-relay.brevo.com
+BREVO_SMTP_PORT=587
+BREVO_SMTP_USER=your_brevo_user
+BREVO_SMTP_PASS=your_brevo_password
+EMAIL_FROM="PC Kinba <notifications@pckinba.com>"
+```
+
+And configure `client/.env.local` for the frontend:
+
+```ini
+VITE_API_URL=http://localhost:3001/api
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<your-anon-publishable-key>
+```
+
+### 3. Build Shared Packages & Run Database Migrations
+
+```bash
+# Compile shared compatibility package
+npm run build:packages
+
+# Apply Supabase database schema
+npx supabase link --project-ref <YOUR_PROJECT_REF>
+npx supabase db push
+```
+
+### 4. Start Development Servers
+
+You can start both backend and frontend concurrently:
+
+```bash
+# Terminal 1: Backend Express API (Port 3001)
+npm run dev:server
+
+# Terminal 2: Frontend Vite Client (Port 5173)
+npm run client
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+---
+
+## 🐳 Docker Deployment
+
+PC-KINBA includes a production-ready, multi-stage [`Dockerfile`](Dockerfile):
+
+```bash
+# Build the production container
+docker build -t pc-kinba:latest .
+
+# Run the unified container (serves API + built React SPA on port 3001)
+docker run -d \
+  --name pc-kinba-app \
+  -p 3001:3001 \
+  --env-file .env \
+  --restart unless-stopped \
+  pc-kinba:latest
 ```
 
 ---
 
-## 7. Production Deployment Guidelines
+## 🧪 Testing & Quality Assurance
 
-When moving your application to a production environment, ensure the following practices are implemented:
+The codebase maintains strict automated test coverage across frontend components, backend APIs, compatibility validation, and retailer scraping algorithms:
 
-Environment Configuration: Set the `APP_ENV` variable explicitly to `production` and `APP_DEBUG` to `false`.
+```bash
+# Run all Vitest unit and integration suites (240+ tests)
+npm test
 
-Database Security: Update the default MySQL password (`DB_PASSWORD`) to a strong, cryptographically secure string. Never commit this password to version control systems (VCS).
+# Run client-specific component tests
+npm --prefix client test
 
-Secrets Management: Keep sensitive credentials—such as your `GEMINI_API_KEY`, `JWT_SECRET`, and Laravel `APP_KEY`—protected by storing them in a dedicated production manager like HashiCorp Vault, Azure Key Vault, or Kubernetes Secrets.
+# Run Python scraper parser tests against golden HTML fixtures
+python -m pytest tests/scrapers/
 
-Reverse Proxy Configuration: Configure Nginx to bind to port 443 using valid SSL/TLS certificates, and mandate an automatic redirect from HTTP to HTTPS.
+# Run scraper canary smoke test (without catalog mutation)
+python -m scrapers.smoke_test --dry-run --query "rtx 4060"
+```
 
-Multi-Stage Serving Deployment: Use a multi-stage process where the client application is built within a Node.js container and its assets are then transferred to Nginx. Optimize the Nginx service to efficiently serve compressed static bundles (Gzip and Brotli).
+---
+
+## 🌐 Production Deployment
+
+For complete, step-by-step production setup across different hosting platforms, see our [**Deployment Guide (`deployment.md`)**](deployment.md):
+
+- **[Vercel + Railway Decoupled Topology](deployment.md#41-backend-on-railway)** (Recommended)
+- **[Render Cloud Hosting](deployment.md#42-backend-on-render-alternative)**
+- **[Unified Monolith Single-Service Hosting](deployment.md#option-b-unified-monolith-single-service-or-docker)**
+- **[Self-Hosted Ubuntu VPS with PM2, Nginx & Certbot SSL](deployment.md#45-self-hosted-linux-vps-with-pm2--nginx)**
+- **[OpenGraph Social Preview Configuration (`/b/:code`)](deployment.md#5-dynamic-opengraph-meta-tags--social-sharing-bcode)**
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions from the community! To contribute:
+
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/amazing-feature`).
+3. Ensure all tests pass (`npm test` and `npm --prefix client run lint`).
+4. Commit your changes following [Conventional Commits](https://www.conventionalcommits.org/) (`git commit -m 'feat: add support for new retailer'`).
+5. Push to the branch (`git push origin feature/amazing-feature`).
+6. Open a Pull Request.
+
+Please read our [**Contributing Guidelines**](CONTRIBUTING.md) and [**Security Policy**](SECURITY.md) for more details.
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+<div align="center">
+  <sub>Built with ❤️ for the PC enthusiast and gaming community of Bangladesh 🇧🇩</sub>
+</div>
