@@ -140,7 +140,7 @@ export default function TonimaHero({ onLaunchPrompt }: TonimaHeroProps) {
         >
           {/* Main Headline */}
           <h1 className="ai-hero-headline">
-            {t('heroTitlePrefix', { defaultValue: 'Meet Tonima —' })} <br />
+            {t('heroTitlePrefix', { defaultValue: 'Meet Tonima' })} <br />
             <span className="gradient-accent">
               {t('heroTitleGradient', { defaultValue: 'Your Next-Gen' })}
             </span>{' '}

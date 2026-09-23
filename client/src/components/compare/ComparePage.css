@@ -68,3 +68,12 @@
 .custom-compare-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 229, 255, 0.6);
 }
+
+/* Export PDF (window.print()) — browsers default to ~1in/25mm margins, which on top of
+   this page's spacious web-layout padding wastes a lot of paper. Tightening the page
+   margin here is the one thing that can't be done with a Tailwind print: utility. */
+@media print {
+  @page {
+    margin: 10mm;
+  }
+}

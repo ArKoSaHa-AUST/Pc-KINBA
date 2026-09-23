@@ -60,7 +60,7 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
           status: 'warning',
           title: 'Moderate CPU Bottleneck Potential at 1080p',
           description:
-            'High-tier GPUs like the RTX 4070 Ti and RX 7900 XT render frames faster than entry/mid CPUs can feed them at 1080p. Pair with at least a Ryzen 7 7800X3D or Core i7-14700K for maximum framerate stability.',
+            'High-tier GPUs render frames faster than entry/mid CPUs can feed them at 1080p. Pair your selected GPU with a modern high-core-clock CPU (e.g. Ryzen 7 X3D or Core i7/i9-series) for maximum framerate stability.',
         };
       case '1440p':
         return {
@@ -76,7 +76,7 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
           status: 'optimal',
           title: '100% GPU Saturation at 4K Ultra HD',
           description:
-            'Pixel throughput is entirely graphics-bound. 4K textures will heavily leverage VRAM capacity (RX 7900 XT 20GB and RTX 4070 Ti 12GB/16GB).',
+            'Pixel throughput is entirely graphics-bound. 4K textures will heavily leverage the selected GPU(s) full VRAM capacity, so prioritize cards with higher onboard memory.',
         };
     }
   };
@@ -86,10 +86,10 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
   return (
     <div
       id="ai-auditor-section"
-      className="w-full rounded-3xl bg-glass border border-border backdrop-blur-2xl p-6 sm:p-8 shadow-2xl overflow-hidden relative"
+      className="w-full rounded-3xl bg-glass border border-border backdrop-blur-2xl p-6 sm:p-8 shadow-2xl overflow-hidden relative print:shadow-none"
     >
       {/* Glow Effects */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple/10 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple/10 rounded-full blur-3xl pointer-events-none -z-10 print:hidden" />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-border pb-5">
@@ -114,7 +114,7 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
         </div>
 
         {/* Target Resolution Toggle */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-fill-subtle border border-border self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-fill-subtle border border-border self-start sm:self-auto print:hidden">
           {(['1080p', '1440p', '4k'] as const).map((res) => (
             <button
               key={res}
@@ -129,10 +129,14 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
             </button>
           ))}
         </div>
+        {/* Print-only static label, since the interactive toggle above is hidden on paper */}
+        <span className="hidden print:inline text-xs font-bold uppercase text-text-muted">
+          Target Resolution: {targetResolution}
+        </span>
       </div>
 
       {/* Audit Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 print:break-inside-avoid">
         {/* 1. PSU & Power Envelope */}
         <div className="p-4 rounded-2xl bg-fill-subtle border border-border flex flex-col justify-between">
           <div>
@@ -233,7 +237,7 @@ export const AICalloutAuditor: React.FC<AICalloutAuditorProps> = ({ slots }) => 
       </div>
 
       {/* Footer Call to Action with Tonima AI */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-accent/10 via-purple/10 to-transparent border border-accent/20">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-accent/10 via-purple/10 to-transparent border border-accent/20 print:hidden">
         <div className="flex items-center gap-3">
           <Bot className="w-5 h-5 text-accent flex-shrink-0" />
           <p className="text-xs sm:text-sm text-text-primary">

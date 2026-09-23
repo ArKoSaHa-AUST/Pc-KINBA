@@ -122,7 +122,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.2 }}
         onClick={() => onAddClick(slotIndex)}
-        className="h-full min-h-[300px] flex flex-col items-center justify-center p-6 rounded-3xl border-2 border-dashed border-border hover:border-accent/40 bg-fill-subtle hover:bg-fill-muted transition-all cursor-pointer group text-center"
+        className="h-full min-h-[300px] flex flex-col items-center justify-center p-6 rounded-3xl border-2 border-dashed border-border hover:border-accent/40 bg-fill-subtle hover:bg-fill-muted transition-all cursor-pointer group text-center print:hidden"
       >
         <div className="w-12 h-12 rounded-full bg-fill-subtle group-hover:bg-accent/10 border border-border group-hover:border-accent/30 flex items-center justify-center text-text-muted group-hover:text-accent transition-all mb-3 group-hover:scale-110">
           <Plus className="w-6 h-6" />
@@ -148,7 +148,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
     <div
       ref={cardRef}
       style={{ perspective: 1200 }}
-      className="h-full"
+      className="h-full print:break-inside-avoid"
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
     >
@@ -181,7 +181,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
           </span>
 
           {/* Action icons */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 print:hidden">
             {totalSlots > 1 && (
               <button
                 onClick={(e) => {
@@ -229,7 +229,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                 e.stopPropagation();
                 onInspect3DClick(product);
               }}
-              className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-bg-surface/90 hover:bg-accent hover:text-slate-950 text-accent border border-accent/40 backdrop-blur-md transition-all shadow-md"
+              className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-bg-surface/90 hover:bg-accent hover:text-slate-950 text-accent border border-accent/40 backdrop-blur-md transition-all shadow-md print:hidden"
               title="Inspect in 3D WebGL Modal"
             >
               <Eye className="w-3 h-3" />

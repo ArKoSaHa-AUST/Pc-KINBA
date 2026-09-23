@@ -115,7 +115,7 @@ export default function AIOptimizer({
         <p className="ai-optimizer-empty">
           {Object.keys(build).length === 0
             ? 'Start picking parts and I’ll suggest optimizations in real time.'
-            : 'Your build looks well balanced — no optimizations needed right now.'}
+            : 'Your build looks well balanced. No optimizations needed right now.'}
         </p>
       )}
     </div>

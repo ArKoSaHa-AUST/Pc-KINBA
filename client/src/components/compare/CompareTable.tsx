@@ -43,8 +43,8 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
     const firstVal = activeProducts[0].specs[specKey];
     return activeProducts.every((p) => {
       const v = p.specs[specKey];
-      if (firstVal === undefined || firstVal === null || firstVal === '—') {
-        return v === undefined || v === null || v === '—';
+      if (firstVal === undefined || firstVal === null || firstVal === '') {
+        return v === undefined || v === null || v === '';
       }
       return String(firstVal).trim().toLowerCase() === String(v).trim().toLowerCase();
     });
@@ -130,21 +130,38 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
     return Math.min(100, Math.max(10, (num / maxVal) * 100));
   };
 
-  return (
-    <div className="w-full border border-border rounded-3xl bg-glass backdrop-blur-2xl overflow-hidden shadow-2xl">
-      {SPEC_CATEGORIES.map((category) => {
-        // Filter visible specs based on diffOnly
-        const visibleSpecs = category.specs.filter((spec) => {
-          if (!diffOnly) return true;
-          return !isRowIdentical(spec.key);
-        });
+  // Pre-filter so we know which category is first/last for corner-rounding — the container
+  // no longer uses overflow-hidden (see note below), so rounding has to be applied directly.
+  const visibleCategories = SPEC_CATEGORIES.map((category) => ({
+    category,
+    visibleSpecs: category.specs.filter((spec) => !diffOnly || !isRowIdentical(spec.key)),
+  })).filter(({ visibleSpecs }) => visibleSpecs.length > 0);
 
-        if (visibleSpecs.length === 0) return null;
+  return (
+    <div className="w-full border border-border rounded-3xl bg-glass backdrop-blur-2xl shadow-2xl print:shadow-none">
+      {visibleCategories.map(({ category, visibleSpecs }, catIdx) => {
+        const isFirstCategory = catIdx === 0;
+        const isLastCategory = catIdx === visibleCategories.length - 1;
 
         return (
           <div key={category.id} className="border-b border-border last:border-b-0">
             {/* Category Header Row (Sticky Locking) */}
-            <div className="sticky top-[80px] z-30 flex items-center gap-2.5 px-6 py-3.5 bg-bg-surface/90 backdrop-blur-md border-b border-border">
+            {/* Note: this container intentionally has no overflow-hidden on any ancestor —
+                overflow other than visible on an ancestor breaks position:sticky, which is
+                what caused this header to render overlapping the row below it. Corners are
+                rounded directly on the first header / last row instead of via clipping.
+                print:static — sticky positioning doesn't paginate sensibly on paper.
+                print:break-after-avoid — keeps the header from being the last thing on a
+                page with its own rows pushed to the next one. The category as a whole is
+                intentionally NOT break-inside-avoid (only individual rows are): a whole
+                category can be taller than a full page's remaining space, and forcing it
+                to stay together just pushes it onto a fresh page, wasting the rest of the
+                previous one — the exact "empty page" problem this is fixing. */}
+            <div
+              className={`sticky top-[80px] print:static print:break-after-avoid z-30 flex items-center gap-2.5 px-6 py-3.5 bg-bg-surface backdrop-blur-md border-b border-border ${
+                isFirstCategory ? 'rounded-t-3xl' : ''
+              }`}
+            >
               {getCategoryIcon(category.iconName)}
               <h3 className="text-xs font-bold uppercase tracking-wider text-accent">
                 {isBn ? category.titleBn || category.title : category.title}
@@ -156,15 +173,17 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
               <AnimatePresence initial={false}>
                 {visibleSpecs.map((spec, sIdx) => {
                   const winnerInfo = getWinnerInfo(spec);
+                  const isLastRow = isLastCategory && sIdx === visibleSpecs.length - 1;
 
                   return (
                     <motion.div
                       key={spec.key}
                       initial={{ opacity: 0, y: 10 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true, amount: 0.15 }}
+                      animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: sIdx * 0.03, duration: 0.3, ease: 'easeOut' }}
-                      className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 items-center hover:bg-fill-subtle transition-colors"
+                      className={`grid grid-cols-1 items-center hover:bg-fill-subtle transition-colors print:break-inside-avoid ${
+                        slots.length >= 4 ? 'md:grid-cols-5 lg:grid-cols-5' : 'md:grid-cols-4 lg:grid-cols-4'
+                      } ${isLastRow ? 'rounded-b-3xl overflow-hidden' : ''}`}
                     >
                       {/* Column 0: Metric Label */}
                       <div className="py-4 px-6 text-xs font-semibold text-text-muted flex items-center justify-between border-b md:border-b-0 md:border-r border-border bg-fill-subtle">
@@ -176,16 +195,14 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
                         )}
                       </div>
 
-                      {/* Columns 1–4: Slot Values */}
-                      {slots.slice(0, 3).map((prod, slotIdx) => {
+                      {/* Slot Value Columns */}
+                      {slots.map((prod, slotIdx) => {
                         if (!prod) {
                           return (
                             <div
                               key={slotIdx}
                               className="py-4 px-6 text-xs text-text-muted/40 font-mono text-center md:border-r border-border last:border-r-0"
-                            >
-                              —
-                            </div>
+                            />
                           );
                         }
 
@@ -206,7 +223,7 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
                                 <span className={typeof rawVal === 'number' ? 'font-mono' : ''}>
                                   {rawVal !== undefined && rawVal !== null && rawVal !== ''
                                     ? String(rawVal)
-                                    : '—'}
+                                    : ''}
                                 </span>
                                 {deltaBadge}
                               </div>
@@ -225,8 +242,7 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
                               <div className="w-full h-1.5 rounded-full bg-fill-muted overflow-hidden mt-1">
                                 <motion.div
                                   initial={{ width: 0 }}
-                                  whileInView={{ width: `${barWidth}%` }}
-                                  viewport={{ once: true }}
+                                  animate={{ width: `${barWidth}%` }}
                                   transition={{ duration: 0.8, ease: 'easeOut' }}
                                   className={`h-full rounded-full ${
                                     isWinner

@@ -186,8 +186,8 @@ export default function BuildPreviewHUD({
       : isLiquidCooler
         ? '~54°C'
         : '~62°C'
-    : '—';
-  const gpuTempEstimated = hasBuild ? (estimatedWattage > 350 ? '~66°C' : '~58°C') : '—';
+    : '';
+  const gpuTempEstimated = hasBuild ? (estimatedWattage > 350 ? '~66°C' : '~58°C') : '';
 
   // Price freshness computation
   const uniqueRetailersCount = new Set(components.map((c) => c.retailer).filter(Boolean)).size || 1;

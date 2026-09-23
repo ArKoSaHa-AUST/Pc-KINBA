@@ -50,12 +50,18 @@ export default function ComparePage() {
   const refreshPrices = useCallback(async () => {
     setIsRefreshingPrices(true);
     const activeIds = slots.filter((p): p is CompareProduct => p !== null).map((p) => p.id);
+    let syncedCount = 0;
     if (activeIds.length > 0) {
-      await fetchLiveRetailerPrices(activeIds);
+      const results = await fetchLiveRetailerPrices(activeIds);
+      syncedCount = Object.keys(results).length;
     }
     setTimeout(() => {
       setIsRefreshingPrices(false);
-      showToast('Retailer prices synced with Star Tech & Ryans!');
+      showToast(
+        syncedCount > 0
+          ? `Retailer prices synced for ${syncedCount} of ${activeIds.length} item(s).`
+          : 'Live retailer sync unavailable right now. Showing last known prices.',
+      );
     }, 600);
   }, [slots, showToast]);
 
@@ -79,7 +85,10 @@ export default function ComparePage() {
     };
   }, []);
 
-  // Initialize from URL query parameters
+  // Initialize from URL query parameters on first load only (e.g. a pasted/shared link).
+  // Intentionally NOT re-run on every `searchParams` change: syncToUrl() below also writes to
+  // searchParams on every slot edit, and re-deriving `slots` from that (lossy — it drops empty
+  // slots) on each write created a feedback loop that silently compacted/lost the 4th slot.
   useEffect(() => {
     const slotsParam = searchParams.get('slots');
     const diffParam = searchParams.get('diff');
@@ -101,14 +110,20 @@ export default function ComparePage() {
       }
       setSlots(loadedSlots.slice(0, 4));
     }
-  }, [searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sync state to URL query parameters
   const syncToUrl = (newSlots: (CompareProduct | null)[], isDiff: boolean) => {
-    const activeIds = newSlots.filter((p): p is CompareProduct => p !== null).map((p) => p.id);
+    // Preserve empty slots' positions (as blank segments) so a shared link restores products
+    // into their original slots — only trim trailing empty slots.
+    const ids = newSlots.map((p) => (p ? p.id : ''));
+    while (ids.length > 0 && ids[ids.length - 1] === '') {
+      ids.pop();
+    }
     const params: Record<string, string> = {};
-    if (activeIds.length > 0) {
-      params.slots = activeIds.join(',');
+    if (ids.length > 0) {
+      params.slots = ids.join(',');
     }
     if (isDiff) {
       params.diff = 'true';
@@ -118,22 +133,18 @@ export default function ComparePage() {
 
   // Add Product to Slot
   const handleSelectProduct = (product: CompareProduct) => {
-    setSlots((prev) => {
-      const next = [...prev];
-      next[targetSlotIndex] = product;
-      syncToUrl(next, diffOnly);
-      return next;
-    });
+    const next = [...slots];
+    next[targetSlotIndex] = product;
+    setSlots(next);
+    syncToUrl(next, diffOnly);
   };
 
   // Remove Slot
   const handleRemoveSlot = (index: number) => {
-    setSlots((prev) => {
-      const next = [...prev];
-      next[index] = null;
-      syncToUrl(next, diffOnly);
-      return next;
-    });
+    const next = [...slots];
+    next[index] = null;
+    setSlots(next);
+    syncToUrl(next, diffOnly);
     showToast(
       t('toast.slotCleared', { index: index + 1, defaultValue: `Slot ${index + 1} cleared.` }),
     );
@@ -141,7 +152,7 @@ export default function ComparePage() {
 
   // Clear All
   const handleClearAll = () => {
-    const empty = [null, null, null];
+    const empty = slots.map(() => null);
     setSlots(empty);
     syncToUrl(empty, diffOnly);
     showToast(t('actions.clearAll', 'All slots cleared.'));
@@ -169,14 +180,12 @@ export default function ComparePage() {
 
   // Execute Swap
   const handleExecuteSwap = (targetIndex: number) => {
-    setSlots((prev) => {
-      const next = [...prev];
-      const temp = next[swapSourceIndex];
-      next[swapSourceIndex] = next[targetIndex];
-      next[targetIndex] = temp;
-      syncToUrl(next, diffOnly);
-      return next;
-    });
+    const next = [...slots];
+    const temp = next[swapSourceIndex];
+    next[swapSourceIndex] = next[targetIndex];
+    next[targetIndex] = temp;
+    setSlots(next);
+    syncToUrl(next, diffOnly);
     setSwapModalOpen(false);
     showToast(
       t('toast.slotsSwapped', {
@@ -222,8 +231,8 @@ export default function ComparePage() {
         const firstVal = activeProducts[0].specs[spec.key];
         const isIdentical = activeProducts.every((p) => {
           const v = p.specs[spec.key];
-          if (firstVal === undefined || firstVal === null || firstVal === '—') {
-            return v === undefined || v === null || v === '—';
+          if (firstVal === undefined || firstVal === null || firstVal === '') {
+            return v === undefined || v === null || v === '';
           }
           return String(firstVal).trim().toLowerCase() === String(v).trim().toLowerCase();
         });
@@ -234,7 +243,7 @@ export default function ComparePage() {
   }, [activeProducts]);
 
   return (
-    <div className="compare-page-container bg-bg-primary text-text-primary min-h-screen pb-24 pt-4">
+    <div className="compare-page-container bg-bg-primary text-text-primary min-h-screen pb-24 pt-4 print:pb-0">
       {/* Toast Notification */}
       <AnimatePresence>
         {toastMessage && (
@@ -242,7 +251,7 @@ export default function ComparePage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-glass border border-accent/40 text-accent text-sm font-semibold shadow-2xl backdrop-blur-md flex items-center gap-2"
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-glass border border-accent/40 text-accent text-sm font-semibold shadow-2xl backdrop-blur-md flex items-center gap-2 print:hidden"
           >
             <Check className="w-4 h-4 text-accent" />
             <span>{toastMessage}</span>
@@ -261,11 +270,15 @@ export default function ComparePage() {
         activeCount={activeProducts.length}
       />
 
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-10">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-10 print:space-y-4 print:mt-2 print:px-0">
         {/* Component Header Slots Grid (with 3D Parallax & Physics) */}
         <div>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6 mb-6">
-            {slots.slice(0, 3).map((product, idx) => (
+          <div
+            className={`grid grid-cols-1 gap-6 mb-6 ${
+              slots.length >= 4 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3 lg:grid-cols-3'
+            }`}
+          >
+            {slots.map((product, idx) => (
               <SlotCard
                 key={idx}
                 slotIndex={idx}
@@ -281,13 +294,13 @@ export default function ComparePage() {
 
           {/* 4th Slot Expansion Trigger */}
           {slots.length < 4 && (
-            <div className="flex justify-center">
+            <div className="flex justify-center print:hidden">
               <button
                 onClick={handleAddFourthSlot}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-fill-subtle hover:bg-fill-muted border border-border hover:border-accent/40 text-text-secondary hover:text-text-primary transition-all shadow-lg"
               >
                 <Plus className="w-4 h-4 text-accent" />
-                <span>{t('actions.addSlot', 'Add 4th Slot for 4-Way Comparison')}</span>
+                <span>{t('actions.addFourthSlot', 'Add 4th Slot for 4-Way Comparison')}</span>
               </button>
             </div>
           )}
@@ -339,6 +352,7 @@ export default function ComparePage() {
         onSelectProduct={handleSelectProduct}
         targetSlotIndex={targetSlotIndex}
         currentProductIds={activeProducts.map((p) => p.id)}
+        currentSlotProductId={slots[targetSlotIndex]?.id ?? null}
       />
 
       {/* Holographic 3D Component Inspector Modal */}

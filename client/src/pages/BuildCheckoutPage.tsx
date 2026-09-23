@@ -207,7 +207,7 @@ export default function BuildCheckoutPage() {
                 ) : (
                   <div className="checkout-strategy-option">
                     <span className="checkout-strategy-label">Single store</span>
-                    <span className="checkout-strategy-total">—</span>
+                    <span className="checkout-strategy-total" />
                     <span className="checkout-strategy-note">
                       No single retailer stocks every part. Best coverage: {plans[0].retailer} (
                       {plans[0].covered.length}/{parts.length} parts, {formatTaka(plans[0].total)})

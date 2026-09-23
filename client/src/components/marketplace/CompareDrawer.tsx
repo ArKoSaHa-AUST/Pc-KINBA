@@ -234,7 +234,7 @@ export default function CompareDrawer() {
 
                   {/* Dynamic Technical Specs */}
                   {allSpecKeys.map((key) => {
-                    const values = compareList.map((item) => item.specs[key] || '—');
+                    const values = compareList.map((item) => item.specs[key] || '');
                     const hasDifference = new Set(values).size > 1;
 
                     return (

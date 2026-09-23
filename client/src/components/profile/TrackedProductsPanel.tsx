@@ -36,7 +36,7 @@ interface TrackedItem {
   isResending?: boolean;
 }
 
-const formatTaka = (n: number | null) => (n && n > 0 ? `৳${n.toLocaleString()}` : '—');
+const formatTaka = (n: number | null) => (n && n > 0 ? `৳${n.toLocaleString()}` : '');
 
 /** Everything the user is tracking: wishlisted products + active price alerts. */
 export function TrackedProductsPanel() {
@@ -237,7 +237,7 @@ export function TrackedProductsPanel() {
                       <div className="flex items-center gap-2 min-w-0">
                         <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
                         <span className="truncate">
-                          We couldn't reach your email — the price did drop.
+                          We couldn't reach your email, but the price did drop.
                         </span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">

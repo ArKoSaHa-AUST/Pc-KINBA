@@ -7,6 +7,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
+import os from "os";
 import { execFileSync } from "child_process";
 import rateLimit from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
@@ -454,6 +455,40 @@ app.get("/", (req, res) => {
       products: "/api/products"
     }
   });
+});
+
+// Local-network IP of this machine — used by the Compare page's Share modal so a QR code /
+// link generated while developing on `localhost` can actually be opened from another device
+// (e.g. a phone) on the same WiFi, where "localhost" would otherwise resolve to that device
+// itself rather than this machine.
+// Dev machines commonly have several adapters at once (real WiFi, real Ethernet, plus
+// virtual ones from VPNs, VirtualBox, Docker, WSL, Hyper-V) whose IPs aren't reachable
+// from another device on the same WiFi. A phone joins over WiFi, so a Wi-Fi-named adapter
+// is the most reliable pick when present; otherwise prefer any adapter not matching known
+// virtual-adapter naming, and only fall back to whatever's left if nothing else qualifies.
+const WIFI_ADAPTER_NAME_PATTERN = /wi-?fi|wlan|airport/i;
+const VIRTUAL_ADAPTER_NAME_PATTERN =
+  /virtualbox|vmware|hyper-v|veth|docker|wsl|loopback|tailscale|tap|tun|zerotier/i;
+
+app.get("/api/lan-ip", (req, res) => {
+  try {
+    const interfaces = os.networkInterfaces();
+    const candidates = [];
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name] || []) {
+        if (iface.family === "IPv4" && !iface.internal) {
+          candidates.push({ name, address: iface.address });
+        }
+      }
+    }
+    const wifi = candidates.find((c) => WIFI_ADAPTER_NAME_PATTERN.test(c.name));
+    const nonVirtual = candidates.find((c) => !VIRTUAL_ADAPTER_NAME_PATTERN.test(c.name));
+    const pick = wifi || nonVirtual || candidates[0] || null;
+    return res.json({ ip: pick ? pick.address : null });
+  } catch (err) {
+    console.error("[GET /api/lan-ip Error]:", sanitizeLog(err.message));
+    return res.json({ ip: null });
+  }
 });
 
 // Feature 1: Multi-Retailer Search Autosuggest Endpoint (StarTech, Ryans, Techland, Skyland, etc.)
@@ -2437,6 +2472,74 @@ app.get("/api/products", apiLimiter, async (req, res) => {
   } catch (err) {
     console.error("[GET /api/products Error]:", sanitizeLog(err.message));
     return res.status(500).json({ error: "Failed to fetch products", details: err.message });
+  }
+});
+
+// 1b. Catalog Product Detail by ID — used by the Compare page to enrich a selected live/
+// scraped retailer listing with its full catalog record (multi-retailer pricing and any
+// recorded specs) when the listing is linked to a catalog product that has one.
+app.get("/api/catalog-product/:id", apiLimiter, async (req, res) => {
+  const id = (req.params.id || "").trim();
+  if (!id || !/^[a-zA-Z0-9\-_]{1,64}$/.test(id)) {
+    return res.status(400).json({ error: "Valid product ID format required" });
+  }
+
+  try {
+    const { data: product, error } = await supabase
+      .from("products")
+      .select(`
+        id,
+        name,
+        price,
+        discount_price,
+        categories:category_id ( name, slug ),
+        brands:brand_id ( name ),
+        product_images ( image_url, is_primary, display_order ),
+        product_specs ( spec_key, spec_value, spec_group )
+      `)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const { data: listings } = await supabase
+      .from("listings")
+      .select("retailer, price, product_url")
+      .eq("product_id", id);
+
+    const basePrice = product.discount_price || product.price || 0;
+    const retailers = (listings || [])
+      .filter((l) => l.retailer)
+      .map((l) => ({
+        name: l.retailer,
+        price: Number(l.price) > 0 ? Number(l.price) : basePrice,
+        inStock: true,
+        url: l.product_url || "",
+        warranty: "See retailer listing",
+      }));
+
+    const images = product.product_images || [];
+    const primaryImage = images.find((i) => i.is_primary) || images[0];
+
+    return res.json({
+      id: product.id,
+      name: product.name,
+      brand: product.brands?.name || null,
+      category: product.categories?.name || null,
+      image: primaryImage?.image_url || null,
+      price: basePrice,
+      specs: (product.product_specs || []).map((s) => ({
+        key: s.spec_key,
+        value: s.spec_value,
+      })),
+      retailers,
+    });
+  } catch (err) {
+    console.error("[GET /api/catalog-product/:id Error]:", sanitizeLog(err.message));
+    return res.status(500).json({ error: "Failed to fetch catalog product", details: err.message });
   }
 });
 

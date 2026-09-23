@@ -134,7 +134,7 @@ export default function CompatibilityGauge({
             {/* Score Text */}
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-xl font-extrabold text-text-primary">
-                {hasBuild ? `${displayScore}%` : '—'}
+                {hasBuild ? `${displayScore}%` : ''}
               </span>
               <span className="text-[10px] text-text-muted font-medium uppercase tracking-wider">
                 {hasBuild ? 'Audited' : 'Idle'}
@@ -164,7 +164,7 @@ export default function CompatibilityGauge({
             <span>Power & TDP</span>
           </div>
           <div className="text-base font-extrabold text-accent mt-0.5 whitespace-nowrap">
-            {hasBuild && estimatedWattage > 0 ? `${estimatedWattage}W` : '—'}{' '}
+            {hasBuild && estimatedWattage > 0 ? `${estimatedWattage}W` : ''}{' '}
             <span className="text-xs font-normal text-text-muted">
               {hasBuild && psuWattage > 0 ? `/ ${psuWattage}W` : ''}
             </span>
