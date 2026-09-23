@@ -182,7 +182,9 @@ export const CompareTable = ({ slots, diffOnly }: CompareTableProps) => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: sIdx * 0.03, duration: 0.3, ease: 'easeOut' }}
                       className={`grid grid-cols-1 items-center hover:bg-fill-subtle transition-colors print:break-inside-avoid ${
-                        slots.length >= 4 ? 'md:grid-cols-5 lg:grid-cols-5' : 'md:grid-cols-4 lg:grid-cols-4'
+                        slots.length >= 4
+                          ? 'md:grid-cols-5 lg:grid-cols-5'
+                          : 'md:grid-cols-4 lg:grid-cols-4'
                       } ${isLastRow ? 'rounded-b-3xl overflow-hidden' : ''}`}
                     >
                       {/* Column 0: Metric Label */}

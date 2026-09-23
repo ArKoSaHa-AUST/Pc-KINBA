@@ -220,12 +220,8 @@ export default function BuildComparePage() {
                   return (
                     <tr key={metric.label} className="compare-metric-row">
                       <td className="parts-table-category">{metric.label}</td>
-                      <td className="parts-table-price">
-                        {a.ids.length ? metric.format(va) : ''}
-                      </td>
-                      <td className="parts-table-price">
-                        {b.ids.length ? metric.format(vb) : ''}
-                      </td>
+                      <td className="parts-table-price">{a.ids.length ? metric.format(va) : ''}</td>
+                      <td className="parts-table-price">{b.ids.length ? metric.format(vb) : ''}</td>
                       <td className="compare-delta-col">
                         {ready && <Delta a={va} b={vb} metric={metric} />}
                       </td>

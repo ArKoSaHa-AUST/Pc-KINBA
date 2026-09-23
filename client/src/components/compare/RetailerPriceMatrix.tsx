@@ -106,7 +106,10 @@ export const RetailerPriceMatrix = ({
           </thead>
           <tbody className="divide-y divide-border text-sm">
             {retailersList.map((retailer) => (
-              <tr key={retailer.slug} className="hover:bg-fill-subtle transition-colors print:break-inside-avoid">
+              <tr
+                key={retailer.slug}
+                className="hover:bg-fill-subtle transition-colors print:break-inside-avoid"
+              >
                 {/* Retailer Info */}
                 <td className="py-4 px-4 align-top">
                   <div className="flex items-center gap-2.5">

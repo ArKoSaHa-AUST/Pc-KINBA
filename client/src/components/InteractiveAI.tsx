@@ -60,8 +60,8 @@ export default function InteractiveAI() {
             <span className="gradient-text">PC Architect</span>
           </h2>
           <p className="section-subtitle">
-            Not sure where to start? Just tell Tonima AI what you want to do, and it will generate the
-            perfect build for your budget and needs.
+            Not sure where to start? Just tell Tonima AI what you want to do, and it will generate
+            the perfect build for your budget and needs.
           </p>
           <button
             className="button-primary hero-btn"
@@ -104,8 +104,8 @@ export default function InteractiveAI() {
 
             <div className="chat-messages">
               <div className="message bot-msg">
-                Hello! I'm Tonima AI, your AI PC building assistant. What kind of PC are you looking to
-                build today?
+                Hello! I'm Tonima AI, your AI PC building assistant. What kind of PC are you looking
+                to build today?
               </div>
               <div className="message user-msg">
                 {typedText}

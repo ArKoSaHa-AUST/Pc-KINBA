@@ -26,6 +26,7 @@ import {
   TONIMA_HANDOFF_VERSION,
   type TonimaHandoff,
 } from '../../store/tonimaHandoff';
+import { sanitizeHref } from '../../utils/image';
 import './BuildPreviewHUD.css';
 
 export interface BuildComponentItem {
@@ -160,9 +161,7 @@ export default function BuildPreviewHUD({
     // The handoff payload above is what actually assembles the build; the ?parts= ids are
     // only a convenience for sharing/refresh, so listing ids (which the builder catalog
     // does not key on) are left out rather than producing a URL that resolves to nothing.
-    const partIds = components
-      .map((c) => c.productId)
-      .filter((id): id is string => !!id);
+    const partIds = components.map((c) => c.productId).filter((id): id is string => !!id);
 
     navigate(partIds.length > 0 ? `/pc-builder?parts=${partIds.join(',')}` : '/pc-builder');
   };
@@ -369,7 +368,7 @@ export default function BuildPreviewHUD({
                         {/* Part Name with Link Affordance */}
                         {part.productUrl ? (
                           <a
-                            href={part.productUrl}
+                            href={sanitizeHref(part.productUrl)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs font-medium text-text-primary hover:text-accent truncate mt-0.5 flex items-center gap-1 group/link"

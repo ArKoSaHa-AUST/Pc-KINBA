@@ -158,10 +158,7 @@ export const AddComponentModal: React.FC<AddComponentModalProps> = ({
   const liveTotalPages = Math.max(1, Math.ceil(liveResults.length / LIVE_RESULTS_PAGE_SIZE));
   const pagedLiveResults = useMemo(
     () =>
-      liveResults.slice(
-        (livePage - 1) * LIVE_RESULTS_PAGE_SIZE,
-        livePage * LIVE_RESULTS_PAGE_SIZE,
-      ),
+      liveResults.slice((livePage - 1) * LIVE_RESULTS_PAGE_SIZE, livePage * LIVE_RESULTS_PAGE_SIZE),
     [liveResults, livePage],
   );
 
@@ -257,9 +254,7 @@ export const AddComponentModal: React.FC<AddComponentModalProps> = ({
           {inStock !== undefined && (
             <span
               className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                inStock
-                  ? 'text-emerald-400 bg-emerald-500/10'
-                  : 'text-danger bg-danger/10'
+                inStock ? 'text-emerald-400 bg-emerald-500/10' : 'text-danger bg-danger/10'
               }`}
             >
               {inStock ? <Check className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
@@ -418,10 +413,7 @@ export const AddComponentModal: React.FC<AddComponentModalProps> = ({
             </div>
 
             {/* Results list — always visible, fills the rest of the modal */}
-            <div
-              className="flex-1 overflow-y-auto py-2 rounded-b-3xl"
-              data-lenis-prevent
-            >
+            <div className="flex-1 overflow-y-auto py-2 rounded-b-3xl" data-lenis-prevent>
               {/* Curated section: full spec-sheet items from the built-in dataset */}
               {filteredProducts.length > 0 && (
                 <div>
@@ -501,7 +493,9 @@ export const AddComponentModal: React.FC<AddComponentModalProps> = ({
               {filteredProducts.length === 0 && !debouncedQuery && (
                 <div className="py-16 text-center text-text-muted text-sm">
                   <Filter className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p>{t('modal.noResults', 'No hardware components found matching your search.')}</p>
+                  <p>
+                    {t('modal.noResults', 'No hardware components found matching your search.')}
+                  </p>
                   {selectedCategory !== 'all' && (
                     <button
                       onClick={() => setSelectedCategory('all')}

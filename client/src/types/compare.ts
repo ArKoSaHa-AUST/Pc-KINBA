@@ -1,12 +1,5 @@
 export type ComponentCategory =
-  | 'gpu'
-  | 'cpu'
-  | 'motherboard'
-  | 'ram'
-  | 'storage'
-  | 'psu'
-  | 'case'
-  | 'other';
+  'gpu' | 'cpu' | 'motherboard' | 'ram' | 'storage' | 'psu' | 'case' | 'other';
 
 export interface RetailerPriceInfo {
   retailerName: string;

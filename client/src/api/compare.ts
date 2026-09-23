@@ -55,7 +55,17 @@ function deriveComponentCategory(rawCategory: string | undefined): ComponentCate
   return 'other';
 }
 
-const KNOWN_VENDORS = ['nvidia', 'amd', 'intel', 'asus', 'msi', 'gigabyte', 'zotac', 'sapphire', 'pny'];
+const KNOWN_VENDORS = [
+  'nvidia',
+  'amd',
+  'intel',
+  'asus',
+  'msi',
+  'gigabyte',
+  'zotac',
+  'sapphire',
+  'pny',
+];
 
 function deriveVendor(brand: string | undefined): CompareProduct['vendor'] {
   const b = (brand || '').toLowerCase();
@@ -203,9 +213,13 @@ export function mergeCatalogDetailIntoProduct(
   const lowestPrice = validPrices.length > 0 ? Math.min(...validPrices) : base.basePriceBDT;
   const lowestRetailer = retailers.find((r) => r.priceBDT === lowestPrice);
 
-  const startechCell = formatRetailerCellPrice(retailers.find((r) => r.retailerSlug === 'startech'));
+  const startechCell = formatRetailerCellPrice(
+    retailers.find((r) => r.retailerSlug === 'startech'),
+  );
   const ryansCell = formatRetailerCellPrice(retailers.find((r) => r.retailerSlug === 'ryans'));
-  const techlandCell = formatRetailerCellPrice(retailers.find((r) => r.retailerSlug === 'techland'));
+  const techlandCell = formatRetailerCellPrice(
+    retailers.find((r) => r.retailerSlug === 'techland'),
+  );
   if (startechCell) specs.startechPrice = startechCell;
   if (ryansCell) specs.ryansPrice = ryansCell;
   if (techlandCell) specs.techlandPrice = techlandCell;
@@ -217,9 +231,10 @@ export function mergeCatalogDetailIntoProduct(
 
   return {
     ...base,
-    image: base.image && base.image !== FALLBACK_PRODUCT_IMAGE
-      ? base.image
-      : sanitizeImageUrl(detail.image) || base.image,
+    image:
+      base.image && base.image !== FALLBACK_PRODUCT_IMAGE
+        ? base.image
+        : sanitizeImageUrl(detail.image) || base.image,
     basePriceBDT: lowestPrice ?? base.basePriceBDT,
     retailers,
     specs,

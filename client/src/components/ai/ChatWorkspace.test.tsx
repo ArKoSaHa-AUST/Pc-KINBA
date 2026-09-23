@@ -384,8 +384,7 @@ describe('Tonima AI Chat Workspace UI (ChatWorkspace.test.tsx)', () => {
         instance = this;
       }
     }
-    (window as unknown as { SpeechRecognition: unknown }).SpeechRecognition =
-      MockSpeechRecognition;
+    (window as unknown as { SpeechRecognition: unknown }).SpeechRecognition = MockSpeechRecognition;
 
     render(<ChatWorkspace />);
     const micButton = screen.getByRole('button', { name: /voice input/i });

@@ -67,7 +67,7 @@ describe('StarRating Component', () => {
   it('updates preview fill on hover over half star', () => {
     const { container } = render(<StarRating rating={2} interactive />);
     const star4Left = screen.getByLabelText('3.5 stars');
-    
+
     fireEvent.mouseEnter(star4Left);
     const halfFilledOnHover = container.querySelectorAll('div[style*="width: 50%"]');
     const fullFilledOnHover = container.querySelectorAll('div[style*="width: 100%"]');

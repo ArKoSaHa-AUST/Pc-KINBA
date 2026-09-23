@@ -2211,23 +2211,45 @@ app.get("/api/builds/:code/og.png", apiLimiter, async (req, res) => {
   }
 });
 
+function getSafeClientOrigin(req) {
+  if (process.env.CLIENT_URL) {
+    try {
+      const parsed = new URL(process.env.CLIENT_URL);
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        return parsed.origin;
+      }
+    } catch {
+      // fallback
+    }
+  }
+  const host = (req.get("x-forwarded-host") || req.get("host") || "").trim();
+  if (/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) {
+    return "http://localhost:5173";
+  }
+  return "";
+}
+
 app.get("/b/:code", apiLimiter, async (req, res) => {
   const code = req.params.code.toLowerCase();
-  const host = req.get("x-forwarded-host") || req.get("host") || "";
-  const proto = req.get("x-forwarded-proto") || req.protocol || "http";
-  let clientOrigin = `${proto}://${host}`;
-  if (host.includes("localhost:3001") || host.includes("127.0.0.1:3001")) {
-    clientOrigin = process.env.CLIENT_URL || "http://localhost:5173";
-  }
-  if (!SHARE_CODE_RE.test(code)) return res.redirect(302, `${clientOrigin}/pc-builder`);
+  const clientBase = getSafeClientOrigin(req);
+  const fallbackRedirect = clientBase ? `${clientBase}/pc-builder` : "/pc-builder";
+  if (!SHARE_CODE_RE.test(code)) return res.redirect(302, fallbackRedirect);
   try {
     const build = await resolveSharedBuild(code);
-    if (!build) return res.redirect(302, `${clientOrigin}/pc-builder`);
-    const target = `${clientOrigin}/pc-builder?parts=${encodeURIComponent(build.partIds.join(","))}`;
+    if (!build) return res.redirect(302, fallbackRedirect);
+    const targetPath = `/pc-builder?parts=${encodeURIComponent(build.partIds.join(","))}`;
+    const target = clientBase ? `${clientBase}${targetPath}` : targetPath;
     const title = `${build.name} — ${fmtTaka(build.total)} | PC KINBA`;
     const description = build.parts.length
       ? build.parts.map((p) => p.name).join(" · ")
       : `${build.partIds.length}-part PC build on PC KINBA`;
+
+    const rawHost = req.get("x-forwarded-host") || req.get("host") || "pc-kinba.com";
+    const safeHost = /^[a-zA-Z0-9.\-_:]+$/.test(rawHost) ? rawHost : "pc-kinba.com";
+    const proto = req.get("x-forwarded-proto") === "https" ? "https" : "http";
+    const ogUrl = clientBase ? `${clientBase}/b/${code}` : `${proto}://${safeHost}/b/${code}`;
+    const ogImg = `${proto}://${safeHost}/api/builds/${code}/og.png`;
+
     res.set("Cache-Control", "public, max-age=300");
     return res.type("html").send(`<!doctype html>
 <html lang="en"><head>
@@ -2238,8 +2260,8 @@ app.get("/b/:code", apiLimiter, async (req, res) => {
 <meta property="og:site_name" content="PC KINBA">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(description)}">
-<meta property="og:url" content="${escapeHtml(`${clientOrigin}/b/${code}`)}">
-<meta property="og:image" content="${escapeHtml(`${proto}://${host}/api/builds/${code}/og.png`)}">
+<meta property="og:url" content="${escapeHtml(ogUrl)}">
+<meta property="og:image" content="${escapeHtml(ogImg)}">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="${escapeHtml(target)}">
@@ -2247,7 +2269,7 @@ app.get("/b/:code", apiLimiter, async (req, res) => {
 </head><body><p>Opening <a href="${escapeHtml(target)}">${escapeHtml(build.name)}</a>…</p></body></html>`);
   } catch (err) {
     console.error("[Share Link Error]:", sanitizeLog(err.message));
-    return res.redirect(302, `${clientOrigin}/pc-builder`);
+    return res.redirect(302, fallbackRedirect);
   }
 });
 
@@ -2539,7 +2561,7 @@ app.get("/api/catalog-product/:id", apiLimiter, async (req, res) => {
     });
   } catch (err) {
     console.error("[GET /api/catalog-product/:id Error]:", sanitizeLog(err.message));
-    return res.status(500).json({ error: "Failed to fetch catalog product", details: err.message });
+    return res.status(500).json({ error: "Failed to fetch catalog product" });
   }
 });
 
@@ -3031,8 +3053,9 @@ if (fs.existsSync(clientDist)) {
   // In development, redirect any non-API browser navigation on port 3001 to Vite dev server
   app.use((req, res, next) => {
     if (req.path.startsWith("/api") || req.path.startsWith("/b/")) return next();
-    const clientOrigin = process.env.CLIENT_URL || "http://localhost:5173";
-    return res.redirect(302, `${clientOrigin}${req.originalUrl}`);
+    const clientBase = getSafeClientOrigin(req) || "http://localhost:5173";
+    const safePath = req.originalUrl.startsWith("/") && !req.originalUrl.startsWith("//") ? req.originalUrl : "/";
+    return res.redirect(302, new URL(safePath, clientBase).toString());
   });
 }
 
