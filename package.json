@@ -12,8 +12,7 @@
     "dev:server": "node server.js",
     "release": "semantic-release",
     "build:packages": "npm run build --workspace @pc-kinba/compat-rules",
-    "test": "vitest run",
-    "prestart": "npm run build:packages"
+    "test": "vitest run"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -27,7 +26,6 @@
     "playwright": "^1.63.0",
     "semantic-release": "^25.0.0",
     "supertest": "^7.2.2",
-    "typescript": "^7.0.2",
     "vitest": "^4.1.11"
   },
   "dependencies": {
@@ -41,6 +39,7 @@
     "express-rate-limit": "^8.7.0",
     "nodemailer": "^9.0.5",
     "sharp": "^0.35.4",
+    "typescript": "^5.8.2",
     "zod": "^4.5.4"
   },
   "workspaces": [

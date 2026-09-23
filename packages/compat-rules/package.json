@@ -19,6 +19,9 @@
     "build": "tsc -p tsconfig.json",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
+  "dependencies": {
+    "typescript": "^5.8.2"
+  },
   "engines": {
     "node": ">=22.0.0"
   }
